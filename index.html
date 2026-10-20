@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Filament Spool — Studio Roll View</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html {
+            overflow-x: hidden;
+            overflow-y: scroll;
+            background: #ffffff;
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: #ffffff;
+            overflow-x: hidden;
+            min-height: 560vh; /* Smooth, generous scroll runway */
+            margin: 0;
+            padding: 0;
+            width: 100%;
+        }
+
+        /* Fixed Fullscreen WebGL Canvas */
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            z-index: 1;
+            pointer-events: none; /* Passes all scroll & wheel events through to window */
+        }
+
+        .scroll-spacer {
+            height: 560vh;
+            width: 100%;
+            pointer-events: none;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           SLEEK GLASSMORPHIC STUDIO FILAMENT CONTROL PANEL
+           ══════════════════════════════════════════════════════════════ */
+        #studio-ctrl {
+            position: fixed;
+            top: 92px;
+            right: 32px;
+            z-index: 50;
+            width: 320px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            border-radius: 18px;
+            box-shadow: 
+                0 16px 40px rgba(0, 0, 0, 0.06), 
+                0 2px 8px rgba(0, 0, 0, 0.02),
+                inset 0 1px 1.5px rgba(255, 255, 255, 0.95);
+            padding: 18px 20px;
+            pointer-events: auto;
+            user-select: none;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+
+        #studio-ctrl.minimized {
+            transform: translateX(calc(100% + 40px));
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Floating Toggle Pill when minimized */
+        #studio-ctrl-toggle {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 49;
+            height: 42px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 999px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #111827;
+            pointer-events: auto;
+            transition: all 0.2s ease;
+        }
+        #studio-ctrl-toggle:hover {
+            background: #ffffff;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .ctrl-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .ctrl-title-wrap {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ctrl-tag {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #9ca3af;
+        }
+
+        .ctrl-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+        }
+
+        .ctrl-close {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.04);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .ctrl-close:hover {
+            background: rgba(0, 0, 0, 0.08);
+            color: #0f172a;
+        }
+
+        .ctrl-section-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin: 12px 0 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Swatches Grid */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .swatch-btn {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            outline: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.10);
+        }
+        .swatch-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .swatch-btn.active {
+            border-color: #0f172a;
+            transform: scale(1.08);
+            box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.2);
+        }
+
+        /* Custom Color Button with Hidden Input */
+        .custom-color-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.10);
+            cursor: pointer;
+            background: conic-gradient(from 180deg at 50% 50%, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .custom-color-wrap input[type="color"] {
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            width: 80px;
+            height: 80px;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .custom-color-icon {
+            font-size: 12px;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+            pointer-events: none;
+        }
+
+        /* Finish Segmented Toggles */
+        .finish-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.04);
+            padding: 3px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+        .finish-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 0;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .finish-btn.active {
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Fine-tuning Sliders */
+        .slider-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: #475569;
+        }
+        .slider-row span {
+            width: 70px;
+            font-weight: 500;
+        }
+        .slider-row input[type="range"] {
+            flex: 1;
+            height: 4px;
+            accent-color: #0f172a;
+            cursor: pointer;
+        }
+        .slider-val {
+            width: 28px;
+            text-align: right;
+            font-size: 10px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           TYPOGRAPHIC BRAND LOGOTYPE (ANTAPANI EXTRA BOLD + SKEUOMORPHISM)
+           ══════════════════════════════════════════════════════════════ */
+        @font-face {
+            font-family: 'Antapani';
+            src: url('Fonts/antapani-extrabold.otf') format('opentype');
+            font-weight: 800;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           PREMIUM LIQUID GLASSMORPHISM TOP BAR (GENUINE OPTICAL GLASS)
+           ══════════════════════════════════════════════════════════════ */
+        .liquid-glass-nav {
+            position: fixed;
+            top: 20px;
+            left: 32px;
+            right: 32px;
+            height: 60px;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            
+            /* Genuine Optical Liquid Glass (Zero Fake AI Glow) */
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(28px) saturate(190%) contrast(102%);
+            -webkit-backdrop-filter: blur(28px) saturate(190%) contrast(102%);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            box-shadow: 
+                0 16px 38px -8px rgba(0, 0, 0, 0.04),
+                0 2px 8px rgba(0, 0, 0, 0.02),
+                inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.98),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.03);
+            pointer-events: auto;
+            user-select: none;
+            transition: box-shadow 0.25s ease, background 0.25s ease;
+        }
+
+        .liquid-glass-nav:hover {
+            box-shadow: 
+                0 20px 48px -6px rgba(0, 0, 0, 0.06),
+                0 4px 12px rgba(0, 0, 0, 0.03),
+                inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 1),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.03);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 7px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .nav-brand:hover {
+            opacity: 0.75;
+        }
+
+        .nav-brand-stan {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 23px;
+            font-weight: 800;
+            color: #000000;
+            letter-spacing: -0.02em;
+            display: inline-flex;
+            align-items: baseline;
+            gap: 1px;
+        }
+
+        .delta-symbol-nav {
+            width: 17px;
+            height: 17px;
+            display: inline-block;
+            vertical-align: -1px;
+            margin: 0 1px;
+        }
+
+        .nav-brand-studio {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 23px;
+            font-weight: 800; /* Bold as before */
+            color: #000000;
+            letter-spacing: -0.02em;
+            margin-left: 6px;
+        }
+
+        .crimson-dot {
+            color: #dc2626; /* Pure Crimson Red */
+            display: inline-block;
+            font-weight: 800;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Tactile Minimalist Glass Trigger (Zero neon, pure luxury) */
+        .nav-action-btn {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+            cursor: pointer;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            outline: none;
+        }
+
+        .nav-action-btn:hover {
+            background: rgba(0, 0, 0, 0.08);
+            transform: translateY(-0.5px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+        }
+
+        .nav-action-btn:active {
+            transform: translateY(0.5px);
+            background: rgba(0, 0, 0, 0.10);
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           HERO RIGHT-SIDE BRAND TYPOGRAPHY (PURE TEXT, ZERO BOX, ZERO GAP)
+           ══════════════════════════════════════════════════════════════ */
+        .hero-brand {
+            position: fixed;
+            top: 50%;
+            right: 17%;
+            transform: translateY(-50%);
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            user-select: none;
+            pointer-events: auto;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .hero-stan {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 92px;
+            font-weight: 800;
+            line-height: 0.78;
+            letter-spacing: -0.03em;
+            color: #000000;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 2px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .delta-symbol-hero {
+            width: 68px;
+            height: 68px;
+            display: inline-block;
+            vertical-align: -3px;
+            margin: 0 2px;
+        }
+
+        .hero-studio {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 42px;
+            font-weight: 800; /* Bold as before */
+            line-height: 0.82;
+            letter-spacing: -0.02em;
+            color: #000000;
+            text-align: center;
+            margin: 0;
+            margin-top: 6px; /* ZERO awkward gap between STAN and studio. */
+            padding: 0;
+            display: block;
+        }
+
+        .hero-scroll-cue {
+            margin-top: 38px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #181a1e;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+            border: none;
+            outline: none;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .hero-scroll-cue:hover {
+            transform: translateY(2px) scale(1.05);
+            background: #000000;
+        }
+
+        .hero-scroll-cue svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Genuine Optical Liquid Glassmorphism Top Navigation Bar -->
+<header class="liquid-glass-nav" id="liquid-glass-nav">
+    <div class="nav-left">
+        <a href="#" class="nav-brand" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;" title="STΔN studio.">
+            <span class="nav-brand-stan">STΔN</span>
+            <span class="nav-brand-studio">studio<span class="crimson-dot">.</span></span>
+        </a>
+    </div>
+    <div class="nav-right">
+        <button class="nav-action-btn" id="nav-lab-btn" onclick="toggleStudioCtrl()" title="Filament Material Studio">
+            Filament Studio
+        </button>
+    </div>
+</header>
+
+<!-- Hero Brand Lockup in Empty Right Space (STΔN / studio. / down arrow) -->
+<div class="hero-brand" id="hero-brand">
+    <div class="hero-stan">STΔN</div>
+    <div class="hero-studio">studio<span class="crimson-dot">.</span></div>
+    <button class="hero-scroll-cue" onclick="window.scrollBy({top: window.innerHeight * 0.8, behavior:'smooth'})" title="Scroll down" aria-label="Scroll down">
+        <svg viewBox="0 0 24 24">
+            <polyline points="7 10 12 15 17 10"></polyline>
+        </svg>
+    </button>
+</div>
+
+<!-- Pure WebGL Viewport on Crisp White -->
+<canvas id="webgl-canvas"></canvas>
+<div class="scroll-spacer"></div>
+
+<!-- Interactive Scroll Status & Quick Reset -->
+<div id="scroll-status" style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:40; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:8px 18px; border-radius:999px; border:1px solid rgba(0,0,0,0.08); font-size:12px; font-weight:600; color:#64748b; box-shadow:0 8px 24px rgba(0,0,0,0.06); pointer-events:auto; user-select:none; transition:all 0.2s ease;">
+    <span id="scroll-percent">Scroll to unroll filament • 0%</span>
+    <button id="reset-scroll-btn" onclick="window.scrollTo({top:0, behavior:'smooth'})" style="background:#0f172a; color:#ffffff; border:none; padding:5px 12px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; display:none; transition:transform 0.15s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">↺ Back to Spool</button>
+</div>
+
+<div id="studio-ctrl" class="minimized">
+    <div class="ctrl-header">
+        <div class="ctrl-title-wrap">
+            <span class="ctrl-tag">STAN STUDIO // PBR LAB</span>
+            <span class="ctrl-title">Filament Material Studio</span>
+        </div>
+        <button class="ctrl-close" onclick="toggleStudioCtrl(false)" title="Minimize Panel">✕</button>
+    </div>
+
+    <!-- Finish Presets -->
+    <div class="ctrl-section-label">
+        <span>Polymer Finish</span>
+    </div>
+    <div class="finish-tabs">
+        <button class="finish-btn active" data-finish="matte">Matte PLA</button>
+        <button class="finish-btn" data-finish="silk">Silk Gloss</button>
+        <button class="finish-btn" data-finish="carbon">Carbon</button>
+    </div>
+
+    <!-- Live Sliders -->
+    <div class="slider-row">
+        <span>Roughness</span>
+        <input type="range" id="slider-roughness" min="0.05" max="0.95" step="0.01" value="0.90">
+        <span class="slider-val" id="val-roughness">0.90</span>
+    </div>
+    <div class="slider-row">
+        <span>Clearcoat</span>
+        <input type="range" id="slider-clearcoat" min="0.0" max="1.0" step="0.02" value="0.00">
+        <span class="slider-val" id="val-clearcoat">0.00</span>
+    </div>
+    <div class="slider-row">
+        <span>Sheen</span>
+        <input type="range" id="slider-sheen" min="0.0" max="1.0" step="0.02" value="0.00">
+        <span class="slider-val" id="val-sheen">0.00</span>
+    </div>
+</div>
+
+<!-- Local Three.js with CDN Fallback (100% offline & robust) -->
+<script src="three.min.js"></script>
+<script>
+if (typeof THREE === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"><\/script>');
+}
+</script>
+
+<script>
+/* ====================================================================
+   STΔN 3D STUDIO — AUTHENTIC INJECTION-MOLDED SPOOL & S-CURVE UNROLLING
+   1. Authentic Injection-Molded ABS Spool Frame:
+      - 4 Large trapezoidal/sector cutout windows showing tightly packed coils
+      - 2 Solid quadrants with STΔN technical spec decal + barcode
+      - Raised outer perimeter rim lip with filament clip notches
+      - Raised inner bore collar and 8 radial structural reinforcement ribs
+   2. Precision Coiled Filament (1.75mm scale proportion, strandR = 0.0135):
+      - Visible concentric micro-rings through cutout windows with radial AO
+      - 48 tightly wound outer wire rings matching unrolled strand diameter
+   3. True Soft Studio Contact Shadows (feathered multi-stop Gaussian texture)
+   4. Rotation Physics Fix: Rolls forward in the direction filament is peeling
+   5. Gravity S-Curve Choreography: Dips low under hero text, never hits navbar
+   ==================================================================== */
+;(function () {
+'use strict';
+
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
+window.scrollTo(0, 0);
+
+/* ─── CAD Dimensions for 1kg Spool ────────────────────────────── */
+const S = {
+    flangeR  : 1.95,   // Outer flange disc radius
+    flangeTh : 0.075,  // Flange disc thickness
+    hubInR   : 0.50,   // Center axle hole radius (hollow bore)
+    hubOutR  : 0.96,   // Outer hub barrel where winding starts
+    width    : 1.22,   // Gap between inner flange faces
+    maxWindR : 1.82,   // Full 1kg wound filament radius
+    minWindR : 0.98,   // Depleted spool radius
+    strandR  : 0.024,  // Tactile wire radius matching 24 bold spool rings
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   RENDERER & STUDIO SETUP
+   ═══════════════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('webgl-canvas');
+const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    powerPreference: 'high-performance',
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0xffffff, 1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.06;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCENE & STUDIO PMREM ENVIRONMENT
+   ═══════════════════════════════════════════════════════════════════ */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffffff);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xffffff);
+envScene.add(new THREE.AmbientLight(0xffffff, 1.3));
+
+const envKey = new THREE.DirectionalLight(0xffffff, 2.0);
+envKey.position.set(4, 8, 5);
+envScene.add(envKey);
+
+const envFill = new THREE.DirectionalLight(0xf0f4ff, 1.0);
+envFill.position.set(-5, 3, -3);
+envScene.add(envFill);
+
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+pmrem.dispose();
+
+const camera = new THREE.PerspectiveCamera(33, innerWidth / innerHeight, 0.1, 100);
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIGHTING SETUP (CLEAN INDUSTRIAL STUDIO)
+   ═══════════════════════════════════════════════════════════════════ */
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
+keyLight.position.set(5.5, 9.5, 5.5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 2048;
+keyLight.shadow.mapSize.height = 2048;
+keyLight.shadow.camera.near = 1.0;
+keyLight.shadow.camera.far = 25.0;
+keyLight.shadow.camera.left = -6.0;
+keyLight.shadow.camera.right = 6.0;
+keyLight.shadow.camera.top = 6.0;
+keyLight.shadow.camera.bottom = -6.0;
+keyLight.shadow.bias = -0.0003;
+keyLight.shadow.radius = 4.2;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xedf3ff, 0.90);
+fillLight.position.set(-6.0, 4.0, -3.0);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffffff, 1.40);
+rimLight.position.set(-3.5, 3.5, 7.5);
+scene.add(rimLight);
+
+/* ═══════════════════════════════════════════════════════════════════
+   CLEAN STUDIO FLOOR SHADOW PLANE
+   ═══════════════════════════════════════════════════════════════════ */
+const shadowPlaneGeo = new THREE.PlaneGeometry(80, 80);
+const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.14 });
+const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
+shadowPlane.rotation.x = -Math.PI / 2;
+shadowPlane.position.y = -1.10;
+shadowPlane.receiveShadow = true;
+scene.add(shadowPlane);
+
+/* ═══════════════════════════════════════════════════════════════════
+   PREMIUM PBR MATERIALS (INJECTION-MOLDED ABS & PRECISION MATTE PLA)
+   ═══════════════════════════════════════════════════════════════════ */
+const matSpool = new THREE.MeshPhysicalMaterial({
+    color: 0x141416,
+    roughness: 0.38,
+    metalness: 0.08,
+    clearcoat: 0.15,
+    clearcoatRoughness: 0.30,
+    side: THREE.DoubleSide,
+});
+
+const matAxlePipe = new THREE.MeshPhysicalMaterial({
+    color: 0x0f1013,
+    roughness: 0.48,
+    metalness: 0.10,
+    clearcoat: 0.12,
+    clearcoatRoughness: 0.35,
+    side: THREE.DoubleSide,
+});
+
+const initialHex = 0x085d63; // Rich Precision Matte Teal from previous version
+const initialColor = new THREE.Color(initialHex);
+
+/* ═══════════════════════════════════════════════════════════════════
+   PROCEDURAL TEXTURES FOR 24 BOLD WOUND RINGS & RADIAL SIDE COILS
+   - 24 Distinct, tactile 3D cylinder strands with deep crevice shadows
+   - Side concentric coils with ambient occlusion visible in cutout windows
+   ═══════════════════════════════════════════════════════════════════ */
+function createWoundCylinderTextures() {
+    const w = 1024, h = 1024;
+    const cColor = document.createElement('canvas');
+    cColor.width = w; cColor.height = h;
+    const ctxC = cColor.getContext('2d');
+
+    const cNorm = document.createElement('canvas');
+    cNorm.width = w; cNorm.height = h;
+    const ctxN = cNorm.getContext('2d');
+    const imgN = ctxN.createImageData(w, h);
+    const dN = imgN.data;
+
+    const numStrands = 24; // Bold tactile rings matching previous version
+    const strandH = h / numStrands;
+
+    for (let y = 0; y < h; y++) {
+        const t = (y % strandH) / strandH;
+        const curve = Math.sin(t * Math.PI);
+        // Deep, rich crevice shading (0.36 in groove, 1.0 at peak)
+        const shade = 0.36 + 0.64 * Math.pow(curve, 0.62);
+        const v = Math.round(255 * shade);
+
+        ctxC.fillStyle = `rgb(${v},${v},${v})`;
+        ctxC.fillRect(0, y, w, 1);
+
+        const ny = Math.cos(t * Math.PI);
+        const nz = Math.sin(t * Math.PI);
+        for (let x = 0; x < w; x++) {
+            const idx = (y * w + x) * 4;
+            const microNoise = (Math.random() - 0.5) * 4;
+            dN[idx    ] = Math.min(255, Math.max(0, 128 + microNoise));
+            dN[idx + 1] = Math.min(255, Math.max(0, 128 + ny * 115 + microNoise));
+            dN[idx + 2] = Math.min(255, Math.max(0, 128 + nz * 115));
+            dN[idx + 3] = 255;
+        }
+    }
+    ctxN.putImageData(imgN, 0, 0);
+
+    const colorTex = new THREE.CanvasTexture(cColor);
+    colorTex.wrapS = colorTex.wrapT = THREE.RepeatWrapping;
+    colorTex.anisotropy = 16;
+
+    const normTex = new THREE.CanvasTexture(cNorm);
+    normTex.wrapS = normTex.wrapT = THREE.RepeatWrapping;
+    normTex.anisotropy = 16;
+
+    return { colorTex, normTex };
+}
+
+/* Dedicated Radial Texture for the Concentric Coils seen through Cutout Windows */
+function createSideCoilTextures() {
+    const size = 1024;
+    const cColor = document.createElement('canvas');
+    cColor.width = size; cColor.height = size;
+    const ctxC = cColor.getContext('2d');
+
+    const cNorm = document.createElement('canvas');
+    cNorm.width = size; cNorm.height = size;
+    const ctxN = cNorm.getContext('2d');
+    const imgN = ctxN.createImageData(size, size);
+    const dN = imgN.data;
+
+    const cx = size / 2, cy = size / 2;
+    const rMax = size * 0.485;
+    const rMin = rMax * (S.hubOutR / S.maxWindR);
+    const numLayers = 18;
+    const layerPitch = (rMax - rMin) / numLayers;
+
+    // Fill background with deep crevice shade
+    ctxC.fillStyle = 'rgb(95,95,95)';
+    ctxC.fillRect(0, 0, size, size);
+
+    for (let py = 0; py < size; py++) {
+        const dy = py - cy;
+        for (let px = 0; px < size; px++) {
+            const dx = px - cx;
+            const r = Math.sqrt(dx * dx + dy * dy);
+            const idx = (py * size + px) * 4;
+
+            if (r >= rMin - 4 && r <= rMax + 4) {
+                const angle = Math.atan2(dy, dx);
+                const relR = (r - rMin);
+                const layerT = (relR % layerPitch) / layerPitch;
+                const curve = Math.sin(layerT * Math.PI);
+                
+                const nr = Math.cos(layerT * Math.PI);
+                const nx = nr * Math.cos(angle);
+                const ny = nr * Math.sin(angle);
+                const nz = Math.sin(layerT * Math.PI);
+
+                dN[idx    ] = Math.min(255, Math.max(0, 128 + nx * 110));
+                dN[idx + 1] = Math.min(255, Math.max(0, 128 - ny * 110));
+                dN[idx + 2] = Math.min(255, Math.max(0, 128 + nz * 110));
+                dN[idx + 3] = 255;
+            } else {
+                dN[idx    ] = 128;
+                dN[idx + 1] = 128;
+                dN[idx + 2] = 255;
+                dN[idx + 3] = 255;
+            }
+        }
+    }
+
+    // Render color rings to 2D canvas with anti-aliasing and Radial Ambient Occlusion
+    for (let i = 0; i < numLayers; i++) {
+        const rLayer = rMin + (i + 0.5) * layerPitch;
+        const normR = i / (numLayers - 1);
+        const ao = 0.52 + 0.48 * Math.pow(normR, 0.60);
+        const v = Math.round(255 * ao);
+        ctxC.beginPath();
+        ctxC.arc(cx, cy, rLayer, 0, Math.PI * 2);
+        ctxC.strokeStyle = `rgb(${v},${v},${v})`;
+        ctxC.lineWidth = layerPitch * 0.82;
+        ctxC.stroke();
+
+        // Dark crevice separator
+        ctxC.beginPath();
+        ctxC.arc(cx, cy, rMin + i * layerPitch, 0, Math.PI * 2);
+        ctxC.strokeStyle = 'rgb(90,90,90)';
+        ctxC.lineWidth = layerPitch * 0.22;
+        ctxC.stroke();
+    }
+    ctxN.putImageData(imgN, 0, 0);
+
+    const sideColorTex = new THREE.CanvasTexture(cColor);
+    sideColorTex.anisotropy = 16;
+    const sideNormTex = new THREE.CanvasTexture(cNorm);
+    sideNormTex.anisotropy = 16;
+
+    return { sideColorTex, sideNormTex };
+}
+
+const { colorTex: cylinderColorTex, normTex: cylinderNormTex } = createWoundCylinderTextures();
+const { sideColorTex, sideNormTex } = createSideCoilTextures();
+
+/* STRICT MATTE PLA MATERIALS (ZERO GLOSS, ZERO CLEARCOAT) */
+const matWoundFilament = new THREE.MeshPhysicalMaterial({
+    color: initialColor,
+    map: cylinderColorTex,
+    normalMap: cylinderNormTex,
+    normalScale: new THREE.Vector2(2.4, 2.4),
+    roughness: 0.90,
+    metalness: 0.0,
+    clearcoat: 0.0,
+    clearcoatRoughness: 1.0,
+    sheen: 0.0,
+    side: THREE.FrontSide,
+});
+
+const matSideCoil = new THREE.MeshPhysicalMaterial({
+    color: initialColor,
+    map: sideColorTex,
+    normalMap: sideNormTex,
+    normalScale: new THREE.Vector2(2.0, 2.0),
+    roughness: 0.90,
+    metalness: 0.0,
+    clearcoat: 0.0,
+    clearcoatRoughness: 1.0,
+    sheen: 0.0,
+    side: THREE.DoubleSide,
+});
+
+const matUnrolledStrand = new THREE.MeshPhysicalMaterial({
+    color: initialColor,
+    roughness: 0.90,
+    metalness: 0.0,
+    clearcoat: 0.0,
+    clearcoatRoughness: 1.0,
+    sheen: 0.0,
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   3D STAGE & SPOOL (ANCHORED BEAUTIFULLY ON LEFT OF SCREEN)
+   ═══════════════════════════════════════════════════════════════════ */
+const stage = new THREE.Group();
+stage.scale.set(0.58, 0.58, 0.58);
+stage.position.set(-1.85, 0.05, 0.0);
+scene.add(stage);
+
+const spoolAnchor = new THREE.Group();
+spoolAnchor.position.set(-1.40, 0.0, 0.0);
+stage.add(spoolAnchor);
+
+const spoolPose = new THREE.Group();
+spoolPose.rotation.x = -0.22;
+spoolPose.rotation.y = 0.92;
+spoolPose.rotation.z = Math.PI / 2 + 0.14;
+spoolAnchor.add(spoolPose);
+
+const spoolRotor = new THREE.Group();
+spoolPose.add(spoolRotor);
+
+/* ─── REAL 3D HOLLOW AXLE PIPE (100% CLEAR BORE) ──────────────── */
+const pipeH = S.width + S.flangeTh * 2 + 0.08;
+const axlePipeGeo = new THREE.CylinderGeometry(S.hubInR, S.hubInR, pipeH, 64, 1, true);
+const axlePipeMesh = new THREE.Mesh(axlePipeGeo, matAxlePipe);
+spoolRotor.add(axlePipeMesh);
+
+const lipGeo = new THREE.TorusGeometry(S.hubInR, 0.020, 16, 64);
+const lipTop = new THREE.Mesh(lipGeo, matAxlePipe);
+lipTop.rotation.x = Math.PI / 2;
+lipTop.position.y = pipeH / 2;
+spoolRotor.add(lipTop);
+
+const lipBottom = new THREE.Mesh(lipGeo, matAxlePipe);
+lipBottom.rotation.x = Math.PI / 2;
+lipBottom.position.y = -pipeH / 2;
+spoolRotor.add(lipBottom);
+
+// Central Hub Cylinder Barrel
+const hubH = S.width;
+const hubGeo = new THREE.CylinderGeometry(S.hubOutR, S.hubOutR, hubH, 64, 1, true);
+const hubMesh = new THREE.Mesh(hubGeo, matSpool);
+hubMesh.castShadow = true;
+hubMesh.receiveShadow = true;
+spoolRotor.add(hubMesh);
+
+/* ═══════════════════════════════════════════════════════════════════
+   AUTHENTIC INJECTION-MOLDED SPOOL FRAME GENERATOR
+   - 4 Sector / Trapezoidal window cutouts showing coiled filament inside
+   - 4 Solid quadrants with authentic STΔN spec decal
+   - Raised outer perimeter rim lip + filament clip notches
+   - Raised inner bore collar + radial structural reinforcement ribs
+   ═══════════════════════════════════════════════════════════════════ */
+function createSpecLabelDecal() {
+    const w = 512, h = 180;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, w - 4, h - 4);
+
+    ctx.fillStyle = '#0a0a0c';
+    ctx.font = 'bold 36px -apple-system, sans-serif';
+    ctx.fillText('STΔN  PLA-PRO', 20, 48);
+
+    ctx.fillStyle = '#475569';
+    ctx.font = '600 18px monospace';
+    ctx.fillText('1.75MM • 1000G • PRECISION', 20, 76);
+
+    ctx.fillStyle = '#0a0a0c';
+    let bx = 20;
+    const by = 94, bh = 56;
+    const barWidths = [3, 1, 4, 2, 1, 5, 2, 4, 1, 3, 2, 5, 1, 4, 2, 3, 1, 2, 5, 3, 2, 4, 1, 3, 2, 4, 1, 5, 2, 3, 1, 4, 2];
+    for (let i = 0; i < barWidths.length && bx < w - 24; i++) {
+        ctx.fillRect(bx, by, barWidths[i] * 2.2, bh);
+        bx += barWidths[i] * 2.2 + 3.8;
+    }
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '600 15px monospace';
+    ctx.fillText('LOT #STN-2604 // 205-225°C', 20, 168);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 16;
+    return tex;
+}
+
+const specLabelTex = createSpecLabelDecal();
+const matSpecLabel = new THREE.MeshPhysicalMaterial({
+    map: specLabelTex,
+    roughness: 0.90,
+    metalness: 0.02,
+    clearcoat: 0.04,
+    side: THREE.DoubleSide,
+});
+
+function createInjectionMoldedFlange(isFront = false) {
+    const flangeGroup = new THREE.Group();
+
+    // 1. Base Shape with Central Bore and 4 Sector Windows
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, S.flangeR, 0, Math.PI * 2, false);
+
+    const centerHole = new THREE.Path();
+    centerHole.absarc(0, 0, S.hubInR, 0, Math.PI * 2, true);
+    shape.holes.push(centerHole);
+
+    // 4 Sector Window Cutouts centered at 45°, 135°, 225°, 315°
+    const windowAngles = [
+        Math.PI * 0.25, // Top-Right (45°)
+        Math.PI * 0.75, // Top-Left (135°)
+        Math.PI * 1.25, // Bottom-Left (225°)
+        Math.PI * 1.75  // Bottom-Right (315°)
+    ];
+    const r1 = S.hubOutR + 0.12; // 1.08
+    const r2 = S.flangeR - 0.20;  // 1.75
+    const span = Math.PI * 0.26;  // ~47 degrees
+
+    windowAngles.forEach(a => {
+        const hPath = new THREE.Path();
+        const aStart = a - span / 2;
+        const aEnd = a + span / 2;
+
+        hPath.absarc(0, 0, r2, aStart, aEnd, false);
+        hPath.lineTo(Math.cos(aEnd) * r1, Math.sin(aEnd) * r1);
+        hPath.absarc(0, 0, r1, aEnd, aStart, true);
+        hPath.lineTo(Math.cos(aStart) * r2, Math.sin(aStart) * r2);
+        shape.holes.push(hPath);
+    });
+
+    // 2 Pairs of tiny filament-clip holes on outer rim
+    const clipAngles = [Math.PI * 0.50, Math.PI * 1.50];
+    clipAngles.forEach(ca => {
+        for (let offset = -0.045; offset <= 0.045; offset += 0.09) {
+            const clipPath = new THREE.Path();
+            const angle = ca + offset;
+            const cr = S.flangeR - 0.07;
+            const cx = Math.cos(angle) * cr;
+            const cy = Math.sin(angle) * cr;
+            clipPath.absarc(cx, cy, 0.022, 0, Math.PI * 2, true);
+            shape.holes.push(clipPath);
+        }
+    });
+
+    const geo = new THREE.ExtrudeGeometry(shape, {
+        depth: S.flangeTh,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        steps: 1,
+        bevelSize: 0.012,
+        bevelThickness: 0.012,
+        curveSegments: 64,
+    });
+    geo.center();
+    geo.rotateX(Math.PI / 2);
+
+    const mainPlate = new THREE.Mesh(geo, matSpool);
+    mainPlate.castShadow = true;
+    mainPlate.receiveShadow = true;
+    flangeGroup.add(mainPlate);
+
+    // 2. Raised Outer Perimeter Rim Lip
+    const rimLipGeo = new THREE.TorusGeometry(S.flangeR - 0.035, 0.036, 16, 72);
+    const rimLip = new THREE.Mesh(rimLipGeo, matSpool);
+    rimLip.rotation.x = Math.PI / 2;
+    rimLip.position.y = (S.flangeTh / 2) + 0.015;
+    rimLip.castShadow = true;
+    flangeGroup.add(rimLip);
+
+    // 3. Raised Inner Hub Collar Ring
+    const collarGeo = new THREE.TorusGeometry(S.hubInR + 0.06, 0.028, 16, 64);
+    const collar = new THREE.Mesh(collarGeo, matSpool);
+    collar.rotation.x = Math.PI / 2;
+    collar.position.y = (S.flangeTh / 2) + 0.012;
+    collar.castShadow = true;
+    flangeGroup.add(collar);
+
+    // 4. 8 Raised Radial Structural Ribs (Framing the borders of each window)
+    const ribLen = r2 - r1 + 0.22;
+    const ribMidR = (r1 + r2) * 0.50;
+    const ribGeo = new THREE.BoxGeometry(0.040, 0.024, ribLen);
+
+    const borderRibAngles = [];
+    windowAngles.forEach(wa => {
+        borderRibAngles.push(wa - span / 2 - 0.015);
+        borderRibAngles.push(wa + span / 2 + 0.015);
+    });
+
+    borderRibAngles.forEach(ra => {
+        const rib = new THREE.Mesh(ribGeo, matSpool);
+        rib.position.x = Math.cos(ra) * ribMidR;
+        rib.position.z = Math.sin(ra) * ribMidR;
+        rib.position.y = (S.flangeTh / 2) + 0.012;
+        rib.rotation.y = -ra + Math.PI / 2;
+        rib.castShadow = true;
+        flangeGroup.add(rib);
+    });
+
+    // 5. STΔN Technical Spec Label Decal (on solid quadrant matching reference)
+    if (isFront) {
+        const decalGeo = new THREE.PlaneGeometry(0.44, 0.18);
+        const decalMesh = new THREE.Mesh(decalGeo, matSpecLabel);
+        decalMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
+        decalMesh.position.set(-ribMidR, (S.flangeTh / 2) + 0.016, 0.0);
+        decalMesh.castShadow = false;
+        flangeGroup.add(decalMesh);
+    }
+
+    return flangeGroup;
+}
+
+const flangeLeft = createInjectionMoldedFlange(false);
+flangeLeft.position.y = -(S.width / 2 + S.flangeTh / 2);
+spoolRotor.add(flangeLeft);
+
+const flangeRight = createInjectionMoldedFlange(true); // Front flange with STΔN spec decal
+flangeRight.position.y = (S.width / 2 + S.flangeTh / 2);
+spoolRotor.add(flangeRight);
+
+/* ═══════════════════════════════════════════════════════════════════
+   COILED FILAMENT PACK: 24 BOLD TACTILE RINGS & RECESSED SIDE COILS
+   ═══════════════════════════════════════════════════════════════════ */
+const halfW = (S.width - 0.02) / 2;
+
+// 1. Outer Cylindrical Wound Barrel (Clean UV mapping across full spool width)
+let woundCylGeo = new THREE.CylinderGeometry(S.maxWindR, S.maxWindR, S.width - 0.02, 96, 1, true);
+const woundMesh = new THREE.Mesh(woundCylGeo, matWoundFilament);
+woundMesh.castShadow = true;
+woundMesh.receiveShadow = true;
+spoolRotor.add(woundMesh);
+
+// 2. Recessed Side Coils visible through the 4 Sector Cutout Windows
+function createSideCoilGeo(currentR) {
+    const geo = new THREE.RingGeometry(S.hubOutR + 0.015, currentR, 72, 1);
+    const pos = geo.attributes.position;
+    const uvs = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const u = 0.5 + (x / (S.maxWindR * 2.06));
+        const v = 0.5 + (y / (S.maxWindR * 2.06));
+        uvs.setXY(i, u, v);
+    }
+    uvs.needsUpdate = true;
+    return geo;
+}
+
+let sideCoilFrontGeo = createSideCoilGeo(S.maxWindR);
+const sideCoilFront = new THREE.Mesh(sideCoilFrontGeo, matSideCoil);
+sideCoilFront.rotation.x = -Math.PI / 2;
+sideCoilFront.position.y = halfW - 0.005;
+sideCoilFront.receiveShadow = true;
+spoolRotor.add(sideCoilFront);
+
+let sideCoilBackGeo = createSideCoilGeo(S.maxWindR);
+const sideCoilBack = new THREE.Mesh(sideCoilBackGeo, matSideCoil);
+sideCoilBack.rotation.x = Math.PI / 2;
+sideCoilBack.position.y = -halfW + 0.005;
+sideCoilBack.receiveShadow = true;
+spoolRotor.add(sideCoilBack);
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   AERODYNAMIC UNROLLING FILAMENT STRAND & CINEMATIC CAMERA
+   ═══════════════════════════════════════════════════════════════════ */
+const PEEL_RAD = 18 * Math.PI / 180; // Top-front rim peel angle
+const cosP = Math.cos(PEEL_RAD);
+const sinP = Math.sin(PEEL_RAD);
+
+// Pure circumferential tangent (+theta direction)
+const tLocal = new THREE.Vector3(-sinP, 0, cosP);
+
+// 13-point smooth aerodynamic trajectory across studio in stage space
+const strandPoints = [
+    new THREE.Vector3(-1.45,  1.78,  0.05), // P_anc: snug on roll surface
+    new THREE.Vector3(-1.10,  1.79,  0.15), // P0: Dynamic peel point on roll
+    new THREE.Vector3(-0.79,  1.72,  0.38), // P1: Smooth tangent departure
+    new THREE.Vector3(-0.35,  1.66,  0.68), // P2: Tangent lift into air
+    new THREE.Vector3( 0.25,  1.56,  1.02), // P3: Tangent arc fusion
+    new THREE.Vector3( 1.45,  1.18,  0.92), // P4: Smooth sweeping glide to the right
+    new THREE.Vector3( 2.45,  0.50,  0.65), // P5: Gentle aerodynamic curve
+    new THREE.Vector3( 2.75, -0.35,  0.40), // P6: Wide radius banking down
+    new THREE.Vector3( 2.25, -1.25,  0.15), // P7: Inward sweeping flourish
+    new THREE.Vector3( 1.20, -1.95, -0.05), // P8: Flowing across lower center
+    new THREE.Vector3(-0.05, -2.60, -0.20), // P9: Low studio floor flow
+    new THREE.Vector3( 0.50, -3.45, -0.15), // P10: Continuous ribbon loop
+    new THREE.Vector3( 1.40, -4.30,  0.10), // P11: Trailing off gracefully
+];
+
+let strandCurve = new THREE.CatmullRomCurve3(strandPoints, false, 'centripetal', 0.5);
+const RADIAL_SEGS = 16;
+const INDICES_PER_SEG = RADIAL_SEGS * 6; // Exactly 96 indices per tubular segment
+const TUBE_SEGS = 260;
+let strandGeo = new THREE.TubeGeometry(strandCurve, TUBE_SEGS, S.strandR, RADIAL_SEGS, false);
+const strandMesh = new THREE.Mesh(strandGeo, matUnrolledStrand);
+strandMesh.castShadow = true;
+stage.add(strandMesh); // Placed directly in stage coordinates
+
+// Watertight Solid Polymer Tip Cap (cleanly seals the tube end without any hole or clipping)
+const tipCapGeo = new THREE.SphereGeometry(S.strandR * 1.08, 24, 16);
+const tipCapMesh = new THREE.Mesh(tipCapGeo, matUnrolledStrand);
+tipCapMesh.castShadow = true;
+tipCapMesh.visible = false;
+stage.add(tipCapMesh);
+
+/* ═══════════════════════════════════════════════════════════════════
+   CINEMATIC MULTI-ANGLE CAMERA CHOREOGRAPHY
+   ═══════════════════════════════════════════════════════════════════ */
+const cameraSpline = new THREE.CatmullRomCurve3([
+    new THREE.Vector3( 0.00,  0.35, 5.8), // 0.00: Hero view pinned on far left
+    new THREE.Vector3(-0.25,  0.75, 4.5), // 0.25: Macro peel shot from above
+    new THREE.Vector3(-0.65,  0.15, 4.5), // 0.52: Bore-sight down hollow axle pipe
+    new THREE.Vector3( 0.55, -0.40, 4.6), // 0.75: Wide sweep along unrolling wire
+    new THREE.Vector3( 0.35, -1.45, 4.2), // 1.00: Spool gone; pure wire tracking centered
+], false, 'catmullrom', 0.5);
+
+const lookAtSpline = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.90,  0.05, 0.0), // 0.00: Pinned to spool on far left
+    new THREE.Vector3(-0.95,  0.45, 0.2), // 0.25: Focus on peel point & winding traverse
+    new THREE.Vector3(-1.15,  0.05, 0.0), // 0.52: Focus straight down hollow axle pipe
+    new THREE.Vector3(-0.15, -0.35, 0.1), // 0.75: Focus on sweeping wire
+    new THREE.Vector3(-0.45, -1.30, 0.0), // 1.00: Focus on continuing wire loops in viewport center
+], false, 'catmullrom', 0.5);
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCROLL ENGINE & INERTIAL DAMPING PHYSICS
+   ═══════════════════════════════════════════════════════════════════ */
+let targetProgress = 0;
+let currentProgress = 0;
+let spoolRotationAngle = 0;
+
+const scrollPercentEl = document.getElementById('scroll-percent');
+const resetScrollBtn = document.getElementById('reset-scroll-btn');
+
+function handleScroll() {
+    const scrollMax = document.documentElement.scrollHeight - window.innerHeight;
+    if (scrollMax > 0) {
+        const raw = window.pageYOffset / scrollMax;
+        targetProgress = Math.min(1.0, Math.max(0.0, isNaN(raw) ? 0 : raw));
+    } else {
+        targetProgress = 0;
+    }
+}
+
+window.addEventListener('scroll', handleScroll, { passive: true });
+window.addEventListener('resize', handleScroll);
+window.addEventListener('pageshow', () => {
+    window.scrollTo(0, 0);
+    handleScroll();
+});
+handleScroll();
+
+// Interactive Mouse Parallax
+let mouseX = 0, mouseY = 0;
+let targetMouseX = 0, targetMouseY = 0;
+window.addEventListener('mousemove', (e) => {
+    targetMouseX = (e.clientX / innerWidth - 0.5) * 2;
+    targetMouseY = (e.clientY / innerHeight - 0.5) * 2;
+}, { passive: true });
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN RENDER LOOP (60FPS DETERMINISTIC, REAL FORWARD ROTATION)
+   ═══════════════════════════════════════════════════════════════════ */
+const _camPos = new THREE.Vector3();
+const _lookTarget = new THREE.Vector3();
+const _p0Local = new THREE.Vector3();
+const _p1Local = new THREE.Vector3();
+const _p2Local = new THREE.Vector3();
+const _p3Local = new THREE.Vector3();
+let prevRadius = S.maxWindR;
+let lastStrandP = -1;
+
+function render() {
+    requestAnimationFrame(render);
+
+    if (isNaN(targetProgress) || !isFinite(targetProgress)) targetProgress = 0;
+    if (isNaN(currentProgress) || !isFinite(currentProgress)) currentProgress = 0;
+
+    currentProgress += (targetProgress - currentProgress) * 0.085;
+    if (Math.abs(targetProgress - currentProgress) < 0.0001) {
+        currentProgress = targetProgress;
+    }
+    const p = Math.min(1.0, Math.max(0.0, currentProgress));
+
+    mouseX += (targetMouseX - mouseX) * 0.05;
+    mouseY += (targetMouseY - mouseY) * 0.05;
+
+    const pct = Math.round(p * 100);
+    if (scrollPercentEl) {
+        scrollPercentEl.textContent = p >= 0.99 ? 'Unrolling Complete • 100%' : `Scroll to unroll filament • ${pct}%`;
+    }
+    if (resetScrollBtn) {
+        resetScrollBtn.style.display = p > 0.05 ? 'inline-block' : 'none';
+    }
+
+    /* 1. Dynamic Spool Radius (Shrinks uniformly as filament is consumed) */
+    const wp = Math.pow(p, 0.70);
+    const currentR = THREE.MathUtils.lerp(S.maxWindR, S.minWindR, wp);
+
+    if (Math.abs(currentR - prevRadius) > 0.003) {
+        woundCylGeo.dispose();
+        woundCylGeo = new THREE.CylinderGeometry(currentR, currentR, S.width - 0.02, 96, 1, true);
+        woundMesh.geometry = woundCylGeo;
+
+        sideCoilFrontGeo.dispose();
+        sideCoilFrontGeo = createSideCoilGeo(currentR);
+        sideCoilFront.geometry = sideCoilFrontGeo;
+
+        sideCoilBackGeo.dispose();
+        sideCoilBackGeo = createSideCoilGeo(currentR);
+        sideCoilBack.geometry = sideCoilBackGeo;
+
+        prevRadius = currentR;
+    }
+
+    /* 2. FORWARD CLOCKWISE ROTATION DIRECTION:
+          The spool rolls forward in the direction filament is peeling (-p * Math.PI * 4.6) */
+    const targetSpoolAngle = -p * Math.PI * 4.6;
+    spoolRotationAngle += (targetSpoolAngle - spoolRotationAngle) * 0.12;
+    spoolRotor.rotation.y = spoolRotationAngle;
+
+    spoolPose.rotation.x = -0.22 + Math.sin(p * Math.PI) * 0.12 + mouseY * 0.02;
+    spoolPose.rotation.y = 0.92 + Math.sin(p * Math.PI * 0.8) * 0.22 + mouseX * 0.04;
+    spoolPose.rotation.z = Math.PI / 2 + 0.14 - Math.sin(p * Math.PI) * 0.06;
+
+    /* 3. Spool Exit Animation:
+          Spool stays visible on far-left (0 to 0.82), then accelerates off-screen */
+    const exitProgress = Math.max(0, (p - 0.82) / 0.18);
+    const exitOffset = Math.pow(exitProgress, 1.4) * 6.8;
+    spoolAnchor.position.x = -1.40 - exitOffset;
+
+    /* 4. Local Tangent Peel Mechanics (Zero Kinks, C2-Continuous Flow):
+          P_anc, P0, P1, P2, P3 are computed in local spool frame along the pure circumferential
+          tangent and transformed smoothly into stage coordinate space */
+    const traverseY = Math.sin(p * Math.PI * 6.0) * (halfW * 0.40);
+
+    const anchorAngle = PEEL_RAD - 0.28;
+    const _pAncLocal = new THREE.Vector3(currentR * Math.cos(anchorAngle), traverseY, currentR * Math.sin(anchorAngle));
+    _p0Local.set(currentR * cosP, traverseY, currentR * sinP);
+    _p1Local.copy(_p0Local).addScaledVector(tLocal, 0.40);
+    _p2Local.copy(_p0Local).addScaledVector(tLocal, 0.85);
+    const _p3Local = _p0Local.clone().addScaledVector(tLocal, 1.45);
+
+    spoolAnchor.updateMatrixWorld(true);
+    spoolPose.updateMatrix();
+
+    const m = spoolPose.matrixWorld;
+    const pAncWorld = _pAncLocal.clone().applyMatrix4(m);
+    const p0World = _p0Local.clone().applyMatrix4(m);
+    const p1World = _p1Local.clone().applyMatrix4(m);
+    const p2World = _p2Local.clone().applyMatrix4(m);
+    const p3World = _p3Local.clone().applyMatrix4(m);
+
+    stage.worldToLocal(pAncWorld);
+    stage.worldToLocal(p0World);
+    stage.worldToLocal(p1World);
+    stage.worldToLocal(p2World);
+    stage.worldToLocal(p3World);
+
+    strandPoints[0].copy(pAncWorld);
+    strandPoints[1].copy(p0World);
+    strandPoints[2].copy(p1World);
+    strandPoints[3].copy(p2World);
+    strandPoints[4].copy(p3World);
+
+    if (Math.abs(p - lastStrandP) > 0.0006 || lastStrandP < 0) {
+        strandGeo.dispose();
+        strandCurve = new THREE.CatmullRomCurve3(strandPoints, false, 'centripetal', 0.5);
+        strandGeo = new THREE.TubeGeometry(strandCurve, TUBE_SEGS, S.strandR, RADIAL_SEGS, false);
+        strandMesh.geometry = strandGeo;
+        lastStrandP = p;
+    }
+
+    /* 5. Trailing Filament Reveal with Smooth Dynamic Peel */
+    const reveal = Math.min(1.0, Math.pow(p, 0.78) * 1.15);
+    const completedSegs = Math.floor(reveal * TUBE_SEGS);
+    const drawCount = completedSegs * INDICES_PER_SEG;
+
+    strandGeo.setDrawRange(0, drawCount);
+    strandMesh.visible = completedSegs > 0;
+
+    if (completedSegs > 0) {
+        tipCapMesh.visible = true;
+        const uTip = Math.min(1.0, completedSegs / TUBE_SEGS);
+        strandCurve.getPoint(uTip, tipCapMesh.position);
+    } else {
+        tipCapMesh.visible = false;
+    }
+
+    /* Hero Brand Typography Scroll Fade */
+    const heroBrandEl = document.getElementById('hero-brand');
+    if (heroBrandEl) {
+        const heroOpacity = Math.max(0, 1 - p / 0.16);
+        heroBrandEl.style.opacity = heroOpacity.toFixed(3);
+        heroBrandEl.style.pointerEvents = heroOpacity < 0.05 ? 'none' : 'auto';
+        heroBrandEl.style.transform = `translateY(calc(-50% - ${p * 60}px))`;
+    }
+
+    /* 6. Dynamic Robotic Studio Camera Tracking & Parallax */
+    cameraSpline.getPointAt(p, _camPos);
+    lookAtSpline.getPointAt(p, _lookTarget);
+
+    _camPos.x += mouseX * 0.10;
+    _camPos.y += -mouseY * 0.08;
+
+    camera.position.copy(_camPos);
+    camera.lookAt(_lookTarget);
+
+    /* 7. Subtle Cinematic Banking */
+    const dutchTilt = Math.sin(p * Math.PI) * -0.065;
+    camera.rotation.z += dutchTilt;
+
+    renderer.render(scene, camera);
+}
+
+// Start render loop
+render();
+
+/* ═══════════════════════════════════════════════════════════════════
+   WINDOW RESIZE
+   ═══════════════════════════════════════════════════════════════════ */
+window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    handleScroll();
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   STUDIO CONTROLS INTERACTIVE ENGINE (COLOR & MATERIAL TWEAKER)
+   ═══════════════════════════════════════════════════════════════════ */
+window.setFilamentColor = function (hex) {
+    const col = new THREE.Color(hex);
+    matWoundFilament.color.copy(col);
+    if (typeof matSideCoil !== 'undefined') matSideCoil.color.copy(col);
+    matUnrolledStrand.color.copy(col);
+
+    const hexStr = '#' + col.getHexString().toUpperCase();
+    const hexLabel = document.getElementById('active-hex-label');
+    if (hexLabel) hexLabel.textContent = hexStr;
+
+    const ind = document.getElementById('toggle-indicator');
+    if (ind) ind.style.background = hexStr;
+};
+
+window.setMaterialFinish = function (type) {
+    const rSlider = document.getElementById('slider-roughness');
+    const cSlider = document.getElementById('slider-clearcoat');
+    const sSlider = document.getElementById('slider-sheen');
+
+    if (type === 'matte') {
+        matWoundFilament.roughness = matUnrolledStrand.roughness = 0.90;
+        matWoundFilament.clearcoat = matUnrolledStrand.clearcoat = 0.00;
+        matWoundFilament.sheen = matUnrolledStrand.sheen = 0.00;
+        matWoundFilament.metalness = matUnrolledStrand.metalness = 0.00;
+        if (typeof matSideCoil !== 'undefined') {
+            matSideCoil.roughness = 0.90;
+            matSideCoil.clearcoat = 0.00;
+            matSideCoil.sheen = 0.00;
+            matSideCoil.metalness = 0.00;
+        }
+    } else if (type === 'silk') {
+        matWoundFilament.roughness = matUnrolledStrand.roughness = 0.22;
+        matWoundFilament.clearcoat = matUnrolledStrand.clearcoat = 0.70;
+        matWoundFilament.sheen = matUnrolledStrand.sheen = 0.95;
+        matWoundFilament.metalness = matUnrolledStrand.metalness = 0.02;
+        if (typeof matSideCoil !== 'undefined') {
+            matSideCoil.roughness = 0.22;
+            matSideCoil.clearcoat = 0.70;
+            matSideCoil.sheen = 0.95;
+            matSideCoil.metalness = 0.02;
+        }
+    } else if (type === 'carbon') {
+        matWoundFilament.roughness = matUnrolledStrand.roughness = 0.75;
+        matWoundFilament.clearcoat = matUnrolledStrand.clearcoat = 0.04;
+        matWoundFilament.sheen = matUnrolledStrand.sheen = 0.08;
+        matWoundFilament.metalness = matUnrolledStrand.metalness = 0.12;
+        if (typeof matSideCoil !== 'undefined') {
+            matSideCoil.roughness = 0.75;
+            matSideCoil.clearcoat = 0.04;
+            matSideCoil.sheen = 0.08;
+            matSideCoil.metalness = 0.12;
+        }
+    }
+
+    if (rSlider) { rSlider.value = matWoundFilament.roughness; document.getElementById('val-roughness').textContent = matWoundFilament.roughness; }
+    if (cSlider) { cSlider.value = matWoundFilament.clearcoat; document.getElementById('val-clearcoat').textContent = matWoundFilament.clearcoat; }
+    if (sSlider) { sSlider.value = matWoundFilament.sheen; document.getElementById('val-sheen').textContent = matWoundFilament.sheen; }
+};
+
+window.toggleStudioCtrl = function (forceState) {
+    const ctrl = document.getElementById('studio-ctrl');
+    if (!ctrl) return;
+    if (typeof forceState === 'boolean') {
+        if (forceState) ctrl.classList.remove('minimized');
+        else ctrl.classList.add('minimized');
+    } else {
+        ctrl.classList.toggle('minimized');
+    }
+};
+
+// Wire UI Event Listeners
+document.querySelectorAll('.swatch-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.swatch-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const color = btn.dataset.color;
+        window.setFilamentColor(color);
+    });
+});
+
+const customInput = document.getElementById('custom-color-input');
+if (customInput) {
+    customInput.addEventListener('input', (e) => {
+        document.querySelectorAll('.swatch-btn').forEach(b => b.classList.remove('active'));
+        window.setFilamentColor(e.target.value);
+    });
+}
+
+document.querySelectorAll('.finish-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.finish-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        window.setMaterialFinish(btn.dataset.finish);
+    });
+});
+
+const rSlider = document.getElementById('slider-roughness');
+if (rSlider) {
+    rSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        matWoundFilament.roughness = matSideCoil.roughness = matUnrolledStrand.roughness = val;
+        document.getElementById('val-roughness').textContent = val.toFixed(2);
+    });
+}
+
+const cSlider = document.getElementById('slider-clearcoat');
+if (cSlider) {
+    cSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        matWoundFilament.clearcoat = matSideCoil.clearcoat = matUnrolledStrand.clearcoat = val;
+        document.getElementById('val-clearcoat').textContent = val.toFixed(2);
+    });
+}
+
+const sSlider = document.getElementById('slider-sheen');
+if (sSlider) {
+    sSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        matWoundFilament.sheen = matSideCoil.sheen = matUnrolledStrand.sheen = val;
+        document.getElementById('val-sheen').textContent = val.toFixed(2);
+    });
+}
+
+})();
+</script>
+</body>
+</html>
