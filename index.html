@@ -1034,7 +1034,7 @@
 <div class="hero-brand" id="hero-brand">
     <div class="hero-stan">STΔN</div>
     <div class="hero-studio">studio<span class="crimson-dot">.</span></div>
-    <button class="hero-scroll-cue" onclick="animateRollTo(1.0, 3000)" title="Scroll to unroll filament in 3 seconds (100%)" aria-label="Scroll down">
+    <button class="hero-scroll-cue" onclick="animateRollTo(1.0, 1500)" title="Scroll to unroll filament in 1.5 seconds (100%)" aria-label="Scroll down">
         <svg viewBox="0 0 24 24">
             <polyline points="7 10 12 15 17 10"></polyline>
         </svg>
@@ -1050,7 +1050,7 @@
 <!-- Interactive Scroll Status & Quick Reset -->
 <div id="scroll-status" style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:40; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:8px 18px; border-radius:999px; border:1px solid rgba(0,0,0,0.08); font-size:12px; font-weight:600; color:#64748b; box-shadow:0 8px 24px rgba(0,0,0,0.06); pointer-events:auto; user-select:none; transition:all 0.2s ease;">
     <span id="scroll-percent">Scroll to unroll filament • 0%</span>
-    <button id="reset-scroll-btn" onclick="animateRollTo(0.0, 3000)" style="background:#0f172a; color:#ffffff; border:none; padding:5px 12px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; display:none; transition:transform 0.15s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">↺ Back to Spool</button>
+    <button id="reset-scroll-btn" onclick="animateRollTo(0.0, 1500)" style="background:#0f172a; color:#ffffff; border:none; padding:5px 12px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; display:none; transition:transform 0.15s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">↺ Back to Spool</button>
 </div>
 
 <div id="studio-ctrl" class="minimized" style="display:none;">
@@ -2147,7 +2147,7 @@ const resetScrollBtn = document.getElementById('reset-scroll-btn');
 
 let isTransitioning = false;
 let transStartTime = 0;
-let transDuration = 3000; // 3 seconds to reach 100%
+let transDuration = 1500; // 1.5 seconds to reach 100%
 let transStartP = 0;
 let transTargetP = 0;
 
@@ -2155,7 +2155,7 @@ function easeInOutCubic(t) {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-window.animateRollTo = function (destP, duration = 3000) {
+window.animateRollTo = function (destP, duration = 1500) {
     transStartP = currentProgress;
     transTargetP = Math.max(0, Math.min(1.0, destP));
     transStartTime = performance.now();
@@ -2163,18 +2163,18 @@ window.animateRollTo = function (destP, duration = 3000) {
     isTransitioning = true;
 };
 
-// Mouse wheel trigger: scrolling down smoothly unrolls to 100% over 3 seconds
+// Mouse wheel trigger: scrolling down smoothly unrolls to 100% over 1.5 seconds
 let lastWheelTrigger = 0;
 window.addEventListener('wheel', (e) => {
     const now = performance.now();
-    if (now - lastWheelTrigger < 600) return; // debounce
+    if (now - lastWheelTrigger < 400) return; // debounce
 
     if (e.deltaY > 15 && currentProgress < 0.95) {
         lastWheelTrigger = now;
-        window.animateRollTo(1.0, 3000);
+        window.animateRollTo(1.0, 1500);
     } else if (e.deltaY < -15 && currentProgress > 0.05) {
         lastWheelTrigger = now;
-        window.animateRollTo(0.0, 3000);
+        window.animateRollTo(0.0, 1500);
     }
 }, { passive: true });
 
