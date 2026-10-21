@@ -987,6 +987,244 @@
             stroke-linecap: round;
             stroke-linejoin: round;
         }
+
+        /* ══════════════════════════════════════════════════════════════
+           FLOATING GLASSMORPHIC PARTICLE MAGNET TUNING BAR
+           ══════════════════════════════════════════════════════════════ */
+        .glass-magnet-panel {
+            position: fixed;
+            bottom: 24px;
+            right: 28px;
+            z-index: 55;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 18px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.09), 0 2px 8px rgba(0, 0, 0, 0.04);
+            padding: 13px 16px;
+            pointer-events: auto;
+            user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        body.dark-mode .glass-magnet-panel {
+            background: rgba(18, 22, 30, 0.90);
+            border-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .magnet-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .magnet-title-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .magnet-tag {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        body.dark-mode .magnet-tag {
+            color: #94a3b8;
+        }
+
+        .magnet-title {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+        }
+
+        body.dark-mode .magnet-title {
+            color: #f8fafc;
+        }
+
+        .magnet-btn-toggle {
+            background: rgba(0, 0, 0, 0.05);
+            border: none;
+            border-radius: 999px;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #475569;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .magnet-btn-toggle:hover {
+            background: rgba(0, 0, 0, 0.10);
+        }
+
+        body.dark-mode .magnet-btn-toggle {
+            background: rgba(255, 255, 255, 0.10);
+            color: #f1f5f9;
+        }
+
+        .magnet-body {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+
+        .glass-magnet-panel.minimized .magnet-body {
+            display: none;
+        }
+
+        .glass-magnet-panel.minimized {
+            padding: 8px 12px;
+            width: auto;
+        }
+
+        .mag-row {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .mag-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10.5px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        body.dark-mode .mag-label-row {
+            color: #cbd5e1;
+        }
+
+        .mag-badge {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 10px;
+            font-weight: 700;
+            background: rgba(0, 0, 0, 0.06);
+            padding: 1px 5px;
+            border-radius: 5px;
+            color: #0f172a;
+        }
+
+        body.dark-mode .mag-badge {
+            background: rgba(255, 255, 255, 0.12);
+            color: #38bdf8;
+        }
+
+        .mag-slider {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(0, 0, 0, 0.09);
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        body.dark-mode .mag-slider {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .mag-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #0f172a;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+            transition: transform 0.1s ease;
+        }
+
+        body.dark-mode .mag-slider::-webkit-slider-thumb {
+            background: #38bdf8;
+        }
+
+        .mag-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .mag-presets {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin-top: 2px;
+        }
+
+        .mag-preset-btn {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 6px;
+            font-size: 9.5px;
+            font-weight: 600;
+            color: #475569;
+            padding: 4px 0;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .mag-preset-btn:hover {
+            background: rgba(0, 0, 0, 0.09);
+            color: #0f172a;
+        }
+
+        body.dark-mode .mag-preset-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.10);
+            color: #cbd5e1;
+        }
+
+        body.dark-mode .mag-preset-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }
+
+        .btn-copy-magnet {
+            width: 100%;
+            margin-top: 3px;
+            background: #0f172a;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .btn-copy-magnet:hover {
+            background: #1e293b;
+            transform: translateY(-0.5px);
+        }
+
+        body.dark-mode .btn-copy-magnet {
+            background: #ff2a2a;
+            color: #ffffff;
+        }
+
+        body.dark-mode .btn-copy-magnet:hover {
+            background: #ff4747;
+        }
     </style>
 </head>
 <body>
@@ -1051,6 +1289,70 @@
 <div id="scroll-status" style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:40; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:8px 18px; border-radius:999px; border:1px solid rgba(0,0,0,0.08); font-size:12px; font-weight:600; color:#64748b; box-shadow:0 8px 24px rgba(0,0,0,0.06); pointer-events:auto; user-select:none; transition:all 0.2s ease;">
     <span id="scroll-percent">Scroll to unroll filament • 0%</span>
     <button id="reset-scroll-btn" onclick="animateRollTo(0.0, 1500)" style="background:#0f172a; color:#ffffff; border:none; padding:5px 12px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; display:none; transition:transform 0.15s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">↺ Back to Spool</button>
+</div>
+
+<!-- Floating Glassmorphic Hero Particle Magnet Calibration Bar -->
+<div id="magnet-ctrl" class="glass-magnet-panel">
+    <div class="magnet-header">
+        <div class="magnet-title-wrap">
+            <span class="magnet-tag">HERO DISPERSION // MAGNETICS</span>
+            <span class="magnet-title">🧲 Particle Magnet Tuning</span>
+        </div>
+        <button id="magnet-toggle-btn" class="magnet-btn-toggle" onclick="toggleMagnetPanel()" title="Minimize / Expand Panel">—</button>
+    </div>
+
+    <div id="magnet-body" class="magnet-body">
+        <!-- Slider 1: Magnet Strength -->
+        <div class="mag-row">
+            <div class="mag-label-row">
+                <span class="mag-label">Pull Strength</span>
+                <span id="badge-mag-strength" class="mag-badge">0.45</span>
+            </div>
+            <input type="range" id="slider-mag-strength" min="0.00" max="1.50" step="0.05" value="0.45" class="mag-slider">
+        </div>
+
+        <!-- Slider 2: Magnet Radius -->
+        <div class="mag-row">
+            <div class="mag-label-row">
+                <span class="mag-label">Reach Radius</span>
+                <span id="badge-mag-radius" class="mag-badge">140px</span>
+            </div>
+            <input type="range" id="slider-mag-radius" min="40" max="350" step="5" value="140" class="mag-slider">
+        </div>
+
+        <!-- Slider 3: Particle Size -->
+        <div class="mag-row">
+            <div class="mag-label-row">
+                <span class="mag-label">Particle Size</span>
+                <span id="badge-mag-size" class="mag-badge">1.8px</span>
+            </div>
+            <input type="range" id="slider-mag-size" min="1.0" max="3.0" step="0.1" value="1.8" class="mag-slider">
+        </div>
+
+        <!-- Slider 4: Dispersion Spread -->
+        <div class="mag-row">
+            <div class="mag-label-row">
+                <span class="mag-label">Dispersion Spread</span>
+                <span id="badge-mag-spread" class="mag-badge">1.0x</span>
+            </div>
+            <input type="range" id="slider-mag-spread" min="0.5" max="2.5" step="0.1" value="1.0" class="mag-slider">
+        </div>
+
+        <!-- Quick Presets -->
+        <div class="mag-presets">
+            <button type="button" class="mag-preset-btn" onclick="applyMagnetPreset(0.20, 100, 1.6, 0.8)">Subtle</button>
+            <button type="button" class="mag-preset-btn" onclick="applyMagnetPreset(0.45, 140, 1.8, 1.0)">Balanced</button>
+            <button type="button" class="mag-preset-btn" onclick="applyMagnetPreset(0.80, 200, 1.9, 1.2)">Strong</button>
+            <button type="button" class="mag-preset-btn" onclick="applyMagnetPreset(1.15, 240, 2.0, 1.4)">Liquid</button>
+        </div>
+
+        <!-- Copy Values Button -->
+        <div class="mag-actions">
+            <button id="btn-copy-magnet" type="button" class="btn-copy-magnet" onclick="copyMagnetValues()">
+                <span>📋 Copy Values</span>
+            </button>
+        </div>
+    </div>
 </div>
 
 <div id="studio-ctrl" class="minimized" style="display:none;">
@@ -2163,20 +2465,6 @@ window.animateRollTo = function (destP, duration = 1500) {
     isTransitioning = true;
 };
 
-// Mouse wheel trigger: scrolling down smoothly unrolls to 100% over 1.5 seconds
-let lastWheelTrigger = 0;
-window.addEventListener('wheel', (e) => {
-    const now = performance.now();
-    if (now - lastWheelTrigger < 400) return; // debounce
-
-    if (e.deltaY > 15 && currentProgress < 0.95) {
-        lastWheelTrigger = now;
-        window.animateRollTo(1.0, 1500);
-    } else if (e.deltaY < -15 && currentProgress > 0.05) {
-        lastWheelTrigger = now;
-        window.animateRollTo(0.0, 1500);
-    }
-}, { passive: true });
 
 function handleScroll() {
     if (isTransitioning) return;
@@ -3150,6 +3438,122 @@ if (window.HeroDispersion && typeof window.HeroDispersion.init === 'function') {
         heroId: 'hero-brand'
     });
 }
+
+// ══════════════════════════════════════════════════════════════
+// HERO PARTICLE MAGNET CALIBRATION BAR CONTROLLER
+// ══════════════════════════════════════════════════════════════
+window.toggleMagnetPanel = function () {
+    const panel = document.getElementById('magnet-ctrl');
+    const btn = document.getElementById('magnet-toggle-btn');
+    if (!panel) return;
+    panel.classList.toggle('minimized');
+    if (btn) btn.textContent = panel.classList.contains('minimized') ? '+' : '—';
+};
+
+window.applyMagnetPreset = function (str, rad, size, sprd) {
+    if (str !== undefined) {
+        const sEl = document.getElementById('slider-mag-strength');
+        const bEl = document.getElementById('badge-mag-strength');
+        if (sEl) sEl.value = str;
+        if (bEl) bEl.textContent = Number(str).toFixed(2);
+        if (window.HeroDispersion && typeof window.HeroDispersion.setMagnetStrength === 'function') {
+            window.HeroDispersion.setMagnetStrength(str);
+        }
+    }
+    if (rad !== undefined) {
+        const sEl = document.getElementById('slider-mag-radius');
+        const bEl = document.getElementById('badge-mag-radius');
+        if (sEl) sEl.value = rad;
+        if (bEl) bEl.textContent = `${rad}px`;
+        if (window.HeroDispersion && typeof window.HeroDispersion.setMagnetRadius === 'function') {
+            window.HeroDispersion.setMagnetRadius(rad);
+        }
+    }
+    if (size !== undefined) {
+        const sEl = document.getElementById('slider-mag-size');
+        const bEl = document.getElementById('badge-mag-size');
+        if (sEl) sEl.value = size;
+        if (bEl) bEl.textContent = `${Number(size).toFixed(1)}px`;
+        if (window.HeroDispersion && typeof window.HeroDispersion.setParticleSize === 'function') {
+            window.HeroDispersion.setParticleSize(size);
+        }
+    }
+    if (sprd !== undefined) {
+        const sEl = document.getElementById('slider-mag-spread');
+        const bEl = document.getElementById('badge-mag-spread');
+        if (sEl) sEl.value = sprd;
+        if (bEl) bEl.textContent = `${Number(sprd).toFixed(1)}x`;
+        if (window.HeroDispersion && typeof window.HeroDispersion.setSpreadScale === 'function') {
+            window.HeroDispersion.setSpreadScale(sprd);
+        }
+    }
+};
+
+window.copyMagnetValues = function () {
+    const s = document.getElementById('slider-mag-strength')?.value || '0.45';
+    const r = document.getElementById('slider-mag-radius')?.value || '140';
+    const sz = document.getElementById('slider-mag-size')?.value || '1.8';
+    const sp = document.getElementById('slider-mag-spread')?.value || '1.0';
+    const text = `Strength: ${s}, Radius: ${r}px, ParticleSize: ${sz}px, Spread: ${sp}x`;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text);
+    }
+    const btn = document.getElementById('btn-copy-magnet');
+    if (btn) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<span>✓ Copied to Clipboard!</span>';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+    }
+};
+
+function initMagnetSliders() {
+    const sStr = document.getElementById('slider-mag-strength');
+    const sRad = document.getElementById('slider-mag-radius');
+    const sSz = document.getElementById('slider-mag-size');
+    const sSp = document.getElementById('slider-mag-spread');
+
+    if (sStr) {
+        sStr.addEventListener('input', (e) => {
+            const v = parseFloat(e.target.value);
+            const b = document.getElementById('badge-mag-strength');
+            if (b) b.textContent = v.toFixed(2);
+            if (window.HeroDispersion && typeof window.HeroDispersion.setMagnetStrength === 'function') {
+                window.HeroDispersion.setMagnetStrength(v);
+            }
+        });
+    }
+    if (sRad) {
+        sRad.addEventListener('input', (e) => {
+            const v = parseFloat(e.target.value);
+            const b = document.getElementById('badge-mag-radius');
+            if (b) b.textContent = `${v}px`;
+            if (window.HeroDispersion && typeof window.HeroDispersion.setMagnetRadius === 'function') {
+                window.HeroDispersion.setMagnetRadius(v);
+            }
+        });
+    }
+    if (sSz) {
+        sSz.addEventListener('input', (e) => {
+            const v = parseFloat(e.target.value);
+            const b = document.getElementById('badge-mag-size');
+            if (b) b.textContent = `${v.toFixed(1)}px`;
+            if (window.HeroDispersion && typeof window.HeroDispersion.setParticleSize === 'function') {
+                window.HeroDispersion.setParticleSize(v);
+            }
+        });
+    }
+    if (sSp) {
+        sSp.addEventListener('input', (e) => {
+            const v = parseFloat(e.target.value);
+            const b = document.getElementById('badge-mag-spread');
+            if (b) b.textContent = `${v.toFixed(1)}x`;
+            if (window.HeroDispersion && typeof window.HeroDispersion.setSpreadScale === 'function') {
+                window.HeroDispersion.setSpreadScale(v);
+            }
+        });
+    }
+}
+initMagnetSliders();
 })();
 </script>
 </body>
