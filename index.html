@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3D Filament Spool — Studio Roll View</title>
+    <script>
+        (function() {
+            try {
+                var s = localStorage.getItem('stan_theme');
+                var d = s ? s === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (d) {
+                    document.documentElement.classList.add('dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -14,6 +25,14 @@
             scrollbar-width: thin;
             scrollbar-color: #d1d5db #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            transition: background-color 0.35s ease;
+        }
+
+        html.dark,
+        body.dark-mode {
+            background: #0c0e14;
+            color: #f8fafc;
+            scrollbar-color: #334155 #0c0e14;
         }
 
         body {
@@ -23,6 +42,7 @@
             margin: 0;
             padding: 0;
             width: 100%;
+            transition: background-color 0.35s ease, color 0.35s ease;
         }
 
         /* Fixed Fullscreen WebGL Canvas */
@@ -711,6 +731,7 @@
             display: inline-flex;
             align-items: baseline;
             gap: 1px;
+            transition: color 0.35s ease;
         }
 
         .delta-symbol-nav {
@@ -728,18 +749,109 @@
             color: #000000;
             letter-spacing: -0.02em;
             margin-left: 6px;
+            transition: color 0.35s ease;
         }
 
         .crimson-dot {
-            color: #dc2626; /* Pure Crimson Red */
+            color: #991b1b; /* Blood-like deep crimson red in light mode */
             display: inline-block;
             font-weight: 800;
+            transition: color 0.35s ease, text-shadow 0.35s ease;
+        }
+
+        /* Dark Mode Logo & Typography Overrides */
+        body.dark-mode .nav-brand-stan,
+        body.dark-mode .nav-brand-studio,
+        body.dark-mode .hero-stan,
+        body.dark-mode .hero-studio {
+            color: #ffffff;
+        }
+
+        body.dark-mode .crimson-dot {
+            color: #ff2b2b; /* Bright radiant scarlet red in dark mode for maximum pop & visibility */
+            text-shadow: 0 0 12px rgba(255, 43, 43, 0.50);
         }
 
         .nav-right {
             display: flex;
             align-items: center;
             gap: 12px;
+        }
+
+        /* Minimalist Tactile Glass Theme Switcher */
+        .theme-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #0f172a;
+            cursor: pointer;
+            outline: none;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 0;
+            position: relative;
+        }
+
+        .theme-toggle-btn:hover {
+            background: rgba(0, 0, 0, 0.08);
+            transform: translateY(-0.5px);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+        }
+
+        .theme-toggle-btn:active {
+            transform: translateY(0.5px);
+        }
+
+        body.dark-mode .theme-toggle-btn {
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        body.dark-mode .theme-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+        }
+
+        body.dark-mode .liquid-glass-nav {
+            background: var(--glass-bg, rgba(16, 20, 28, 0.45));
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 
+                0 16px 40px -4px rgba(0, 0, 0, 0.5),
+                0 2px 6px rgba(0, 0, 0, 0.3),
+                inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        body.dark-mode .hero-scroll-cue {
+            background: #ffffff;
+            color: #0b0d11;
+        }
+
+        body.dark-mode .hero-scroll-cue svg {
+            stroke: #0b0d11;
+        }
+
+        body.dark-mode .hero-scroll-cue:hover {
+            background: #f1f5f9;
+        }
+
+        body.dark-mode #scroll-status {
+            background: rgba(18, 22, 30, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #94a3b8;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        }
+
+        body.dark-mode #reset-scroll-btn {
+            background: #ff2b2b;
+            color: #ffffff;
         }
 
         /* Tactile Minimalist Glass Trigger (Zero neon, pure luxury) */
@@ -804,6 +916,7 @@
             gap: 2px;
             margin: 0;
             padding: 0;
+            transition: color 0.35s ease;
         }
 
         .delta-symbol-hero {
@@ -826,6 +939,7 @@
             margin-top: 6px; /* ZERO awkward gap between STAN and studio. */
             padding: 0;
             display: block;
+            transition: color 0.35s ease;
         }
 
         .hero-scroll-cue {
@@ -873,6 +987,28 @@
         </a>
     </div>
     <div class="nav-right">
+        <!-- Interactive Theme Switcher (Dark / Light Mode) -->
+        <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Dark / Light Mode" aria-label="Toggle Theme">
+            <span class="theme-icon theme-icon-moon" style="display: flex; align-items: center; justify-content: center;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </span>
+            <span class="theme-icon theme-icon-sun" style="display: none; align-items: center; justify-content: center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </span>
+        </button>
+
         <!-- Tweak panel trigger (hidden from front end; press Shift+C or call toggleStudioCtrl() in console to reveal) -->
         <button class="nav-action-btn" id="nav-lab-btn" onclick="toggleStudioCtrl()" title="Filament Material Studio" style="display:none;">
             Filament Studio
@@ -1271,7 +1407,8 @@ const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 10
 /* ═══════════════════════════════════════════════════════════════════
    LIGHTING SETUP (CLEAN INDUSTRIAL STUDIO)
    ═══════════════════════════════════════════════════════════════════ */
-scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+scene.add(ambientLight);
 
 const keyLightTarget = new THREE.Object3D();
 keyLightTarget.position.set(-5.6, -0.2, 0.0);
@@ -2751,7 +2888,11 @@ const GLASS_HOVER_CALIBRATION = {
 function updateGlassAndHover() {
     const nav = document.getElementById('liquid-glass-nav');
     if (nav) {
-        nav.style.setProperty('--glass-bg', `rgba(255, 255, 255, ${GLASS_HOVER_CONFIG.opacity})`);
+        const isDark = document.body.classList.contains('dark-mode') || document.documentElement.classList.contains('dark');
+        const bgRgba = isDark 
+            ? `rgba(16, 20, 28, ${Math.max(GLASS_HOVER_CONFIG.opacity * 6, 0.45)})`
+            : `rgba(255, 255, 255, ${GLASS_HOVER_CONFIG.opacity})`;
+        nav.style.setProperty('--glass-bg', bgRgba);
         nav.style.setProperty('--glass-blur', `${GLASS_HOVER_CONFIG.blur}px`);
         
         // Generate SVG noise filter with custom density (baseFrequency)
@@ -2759,7 +2900,7 @@ function updateGlassAndHover() {
         const dataUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
         nav.style.setProperty('--glass-noise-url', dataUrl);
         nav.style.setProperty('--glass-noise-size', `${GLASS_HOVER_CONFIG.noiseSize}px`);
-        nav.style.setProperty('--glass-noise-opacity', GLASS_HOVER_CONFIG.noiseOpacity);
+        nav.style.setProperty('--glass-noise-opacity', isDark ? (GLASS_HOVER_CONFIG.noiseOpacity * 0.75).toFixed(2) : GLASS_HOVER_CONFIG.noiseOpacity);
     }
 
     const codeDisplay = document.getElementById('glass-code-display');
@@ -2865,7 +3006,70 @@ window.copyGlassConfig = function () {
     }
 };
 
-updateGlassAndHover();
+/* ═══════════════════════════════════════════════════════════════════
+   DARK / LIGHT THEME CONTROLLER
+   ═══════════════════════════════════════════════════════════════════ */
+window.applyTheme = function (isDark, persist = true) {
+    if (persist) {
+        try {
+            localStorage.setItem('stan_theme', isDark ? 'dark' : 'light');
+        } catch (e) {}
+    }
+
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark-mode');
+    } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark-mode');
+    }
+
+    // Toggle icons in navbar button
+    const moonIcon = document.querySelector('.theme-icon-moon');
+    const sunIcon = document.querySelector('.theme-icon-sun');
+    if (moonIcon && sunIcon) {
+        moonIcon.style.display = isDark ? 'none' : 'flex';
+        sunIcon.style.display = isDark ? 'flex' : 'none';
+    }
+
+    // Three.js scene background, lighting, & shadow adjustments
+    if (typeof scene !== 'undefined' && scene) {
+        const bgHex = isDark ? 0x0c0e14 : 0xffffff;
+        scene.background.setHex(bgHex);
+        if (typeof renderer !== 'undefined' && renderer) {
+            renderer.setClearColor(bgHex, 1);
+        }
+    }
+    if (typeof ambientLight !== 'undefined' && ambientLight) {
+        ambientLight.intensity = isDark ? 0.55 : 0.45;
+    }
+    if (typeof rimLight !== 'undefined' && rimLight) {
+        rimLight.intensity = isDark ? 1.85 : 1.40;
+    }
+    if (typeof contactShadowMat !== 'undefined' && contactShadowMat) {
+        contactShadowMat.opacity = isDark ? 0.78 : 0.58;
+    }
+
+    // Update frosted glass background dynamic variables
+    updateGlassAndHover();
+};
+
+window.toggleTheme = function () {
+    const isCurrentlyDark = document.body.classList.contains('dark-mode') || document.documentElement.classList.contains('dark');
+    window.applyTheme(!isCurrentlyDark, true);
+};
+
+// Initial Theme Detection and Application
+const savedTheme = (function () {
+    try {
+        const t = localStorage.getItem('stan_theme');
+        if (t === 'dark' || t === 'light') return t === 'dark';
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+        return false;
+    }
+})();
+window.applyTheme(savedTheme, false);
 
 // Initial Code Readout Render
 syncCalibInputsFromState();
