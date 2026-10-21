@@ -900,7 +900,22 @@
             background: transparent;
             border: none;
             box-shadow: none;
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            filter: url(#frost-silica-fracture);
+            transition: color 0.35s ease;
+        }
+
+        /* Dedicated WebGL Frosted Glass & Curl Noise Dispersion Overlay */
+        #hero-dispersion-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            z-index: 31; /* Above DOM hero lockup */
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.08s ease;
         }
 
         .hero-stan {
@@ -1016,6 +1031,14 @@
     </div>
 </header>
 
+<!-- SVG Frosted-Glass High-Frequency Fractal Noise Displacement Filter -->
+<svg class="hero-glass-filter-svg" style="position:absolute; width:0; height:0; pointer-events:none;" aria-hidden="true">
+    <filter id="frost-silica-fracture">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G" id="frost-displacement-map" />
+    </filter>
+</svg>
+
 <!-- Hero Brand Lockup in Empty Right Space (STΔN / studio. / down arrow) -->
 <div class="hero-brand" id="hero-brand">
     <div class="hero-stan">STΔN</div>
@@ -1029,6 +1052,8 @@
 
 <!-- Pure WebGL Viewport on Crisp White -->
 <canvas id="webgl-canvas"></canvas>
+<!-- WebGL Frosted Glass & Curl Noise Particle Dispersion Overlay -->
+<canvas id="hero-dispersion-canvas"></canvas>
 <div class="scroll-spacer"></div>
 
 <!-- Interactive Scroll Status & Quick Reset -->
@@ -1326,6 +1351,8 @@ if (typeof THREE === 'undefined') {
     document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"><\/script>');
 }
 </script>
+<!-- Awwwards-Grade WebGL Frosted Glass & Curl-Noise Hero Dispersion -->
+<script src="lib/hero-dispersion.js"></script>
 
 <script>
 /* ====================================================================
@@ -2324,14 +2351,7 @@ function render() {
         tipCapMesh.visible = false;
     }
 
-    /* Hero Brand Typography Scroll Fade */
-    const heroBrandEl = document.getElementById('hero-brand');
-    if (heroBrandEl) {
-        const heroOpacity = Math.max(0, 1 - p / 0.16);
-        heroBrandEl.style.opacity = heroOpacity.toFixed(3);
-        heroBrandEl.style.pointerEvents = heroOpacity < 0.05 ? 'none' : 'auto';
-        heroBrandEl.style.transform = `translateY(calc(-50% - ${p * 60}px))`;
-    }
+    /* Hero brand dispersion handled via WebGL & Curl Noise in lib/hero-dispersion.js */
 
     /* 6. Dynamic Robotic Studio Camera Tracking & Parallax */
     cameraSpline.getPointAt(p, _camPos);
@@ -3052,6 +3072,11 @@ window.applyTheme = function (isDark, persist = true) {
 
     // Update frosted glass background dynamic variables
     updateGlassAndHover();
+
+    // Update WebGL Hero Dispersion theme
+    if (window.HeroDispersion && typeof window.HeroDispersion.setTheme === 'function') {
+        window.HeroDispersion.setTheme(isDark);
+    }
 };
 
 window.toggleTheme = function () {
@@ -3073,6 +3098,15 @@ window.applyTheme(savedTheme, false);
 
 // Initial Code Readout Render
 syncCalibInputsFromState();
+
+// Initialize WebGL Frosted Glass & 3D Curl-Noise Hero Dispersion
+if (window.HeroDispersion && typeof window.HeroDispersion.init === 'function') {
+    window.HeroDispersion.init({
+        canvasId: 'hero-dispersion-canvas',
+        heroId: 'hero-brand',
+        displacementFilterId: 'frost-displacement-map'
+    });
+}
 })();
 </script>
 </body>
