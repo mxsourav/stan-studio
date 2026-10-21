@@ -753,10 +753,11 @@
         }
 
         .crimson-dot {
-            color: #991b1b; /* Blood-like deep crimson red in light mode */
+            color: #ff0033; /* High-contrast electric scarlet red */
             display: inline-block;
             font-weight: 800;
             transition: color 0.35s ease, text-shadow 0.35s ease;
+            text-shadow: 0 0 10px rgba(255, 0, 51, 0.40);
         }
 
         /* Dark Mode Logo & Typography Overrides */
@@ -768,8 +769,8 @@
         }
 
         body.dark-mode .crimson-dot {
-            color: #ff2b2b; /* Bright radiant scarlet red in dark mode for maximum pop & visibility */
-            text-shadow: 0 0 12px rgba(255, 43, 43, 0.50);
+            color: #ff1a40; /* High-contrast radiant scarlet red in dark mode */
+            text-shadow: 0 0 14px rgba(255, 26, 64, 0.65);
         }
 
         .nav-right {
@@ -1645,7 +1646,7 @@ if (typeof THREE === 'undefined') {
 }
 </script>
 <!-- Awwwards-Grade WebGL Frosted Glass & Curl-Noise Hero Dispersion -->
-<script src="lib/hero-dispersion.js"></script>
+<script src="lib/hero-dispersion.js?v=3.0"></script>
 
 <script>
 /* ====================================================================
