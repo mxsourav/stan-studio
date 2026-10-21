@@ -38,7 +38,7 @@
         body {
             background: #ffffff;
             overflow-x: hidden;
-            min-height: 560vh; /* Smooth, generous scroll runway */
+            min-height: 220vh; /* Smooth, natural scroll runway reaching 100% */
             margin: 0;
             padding: 0;
             width: 100%;
@@ -58,7 +58,7 @@
         }
 
         .scroll-spacer {
-            height: 560vh;
+            height: 220vh;
             width: 100%;
             pointer-events: none;
         }
@@ -900,8 +900,8 @@
             background: transparent;
             border: none;
             box-shadow: none;
-            filter: url(#frost-silica-fracture);
             transition: color 0.35s ease;
+            will-change: transform, opacity, filter;
         }
 
         /* Dedicated WebGL Frosted Glass & Curl Noise Dispersion Overlay */
@@ -915,7 +915,6 @@
             z-index: 31; /* Above DOM hero lockup */
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.08s ease;
         }
 
         .hero-stan {
@@ -1031,19 +1030,11 @@
     </div>
 </header>
 
-<!-- SVG Frosted-Glass High-Frequency Fractal Noise Displacement Filter -->
-<svg class="hero-glass-filter-svg" style="position:absolute; width:0; height:0; pointer-events:none;" aria-hidden="true">
-    <filter id="frost-silica-fracture">
-        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" result="noise" />
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="0" xChannelSelector="R" yChannelSelector="G" id="frost-displacement-map" />
-    </filter>
-</svg>
-
 <!-- Hero Brand Lockup in Empty Right Space (STΔN / studio. / down arrow) -->
 <div class="hero-brand" id="hero-brand">
     <div class="hero-stan">STΔN</div>
     <div class="hero-studio">studio<span class="crimson-dot">.</span></div>
-    <button class="hero-scroll-cue" onclick="window.scrollBy({top: window.innerHeight * 0.8, behavior:'smooth'})" title="Scroll down" aria-label="Scroll down">
+    <button class="hero-scroll-cue" onclick="window.scrollTo({top: document.documentElement.scrollHeight - window.innerHeight, behavior:'smooth'})" title="Scroll to unroll filament (100%)" aria-label="Scroll down">
         <svg viewBox="0 0 24 24">
             <polyline points="7 10 12 15 17 10"></polyline>
         </svg>
@@ -3103,8 +3094,7 @@ syncCalibInputsFromState();
 if (window.HeroDispersion && typeof window.HeroDispersion.init === 'function') {
     window.HeroDispersion.init({
         canvasId: 'hero-dispersion-canvas',
-        heroId: 'hero-brand',
-        displacementFilterId: 'frost-displacement-map'
+        heroId: 'hero-brand'
     });
 }
 })();
