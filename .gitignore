@@ -9,8 +9,18 @@ desktop.ini
 *.swp
 *.swo
 
+# Dependencies
+node_modules/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+
 # Temporary & Log Files
 *.log
 scratch*
 .system_generated/
 .playwright-mcp/
+.agents/
+skills-lock.json

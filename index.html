@@ -51,20 +51,37 @@
             top: 92px;
             right: 32px;
             z-index: 50;
-            width: 320px;
-            background: rgba(255, 255, 255, 0.85);
+            width: 360px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: rgba(255, 255, 255, 0.90);
             backdrop-filter: blur(28px) saturate(180%);
             -webkit-backdrop-filter: blur(28px) saturate(180%);
             border: 1px solid rgba(255, 255, 255, 0.85);
             border-radius: 18px;
             box-shadow: 
-                0 16px 40px rgba(0, 0, 0, 0.06), 
-                0 2px 8px rgba(0, 0, 0, 0.02),
+                0 20px 48px rgba(0, 0, 0, 0.08), 
+                0 4px 12px rgba(0, 0, 0, 0.03),
                 inset 0 1px 1.5px rgba(255, 255, 255, 0.95);
-            padding: 18px 20px;
+            padding: 16px 18px;
             pointer-events: auto;
             user-select: none;
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+
+        #studio-ctrl::-webkit-scrollbar {
+            width: 5px;
+        }
+        #studio-ctrl::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #studio-ctrl::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.14);
+            border-radius: 999px;
+        }
+        #studio-ctrl::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
         }
 
         #studio-ctrl.minimized {
@@ -278,6 +295,326 @@
         }
 
         /* ══════════════════════════════════════════════════════════════
+           3D PLACEMENT & ORIENTATION CALIBRATOR STYLES
+           ══════════════════════════════════════════════════════════════ */
+        .studio-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.04);
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+        }
+        .studio-tab-btn {
+            background: transparent;
+            border: none;
+            padding: 7px 2px;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748b;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .studio-tab-btn.active {
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .studio-pane {
+            display: none;
+        }
+        .studio-pane.active {
+            display: block;
+        }
+
+        /* Independent Frame Selector (Start vs Last Frame) */
+        .calib-frame-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+        .frame-selector-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            user-select: none;
+        }
+        .frame-selector-btn .frame-tag {
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 5px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.06);
+            color: #475569;
+            transition: all 0.15s ease;
+        }
+        .frame-selector-btn:hover {
+            color: #0f172a;
+            background: rgba(255, 255, 255, 0.65);
+        }
+        .frame-selector-btn.active {
+            background: #0f172a;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+        }
+        .frame-selector-btn.active .frame-tag {
+            background: rgba(255, 255, 255, 0.22);
+            color: #ffffff;
+        }
+
+        .calib-presets {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .calib-preset-btn {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 6px 2px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #475569;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+        .calib-preset-btn:hover {
+            background: #0f172a;
+            color: #ffffff;
+            border-color: #0f172a;
+        }
+
+        .calib-group-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            margin: 12px 0 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .calib-group-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        .calib-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .calib-axis {
+            width: 84px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #334155;
+            flex-shrink: 0;
+        }
+        .calib-row input[type="range"] {
+            flex: 1;
+            height: 4px;
+            accent-color: #0f172a;
+            cursor: pointer;
+        }
+        .calib-input-stepper {
+            display: inline-flex;
+            align-items: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .calib-num-input {
+            width: 64px;
+            padding: 3px 18px 3px 5px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: #0f172a;
+            background: #f8fafc;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            border-radius: 6px;
+            text-align: right;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            -moz-appearance: textfield;
+        }
+        .calib-num-input::-webkit-outer-spin-button,
+        .calib-num-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .calib-num-input:focus {
+            border-color: #0f172a;
+            background: #ffffff;
+            box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.1);
+        }
+
+        .calib-stepper-btns {
+            position: absolute;
+            right: 2px;
+            top: 2px;
+            bottom: 2px;
+            width: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .stepper-btn {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.04);
+            border: none;
+            border-radius: 2px;
+            padding: 0;
+            margin: 0.5px 0;
+            font-size: 7px;
+            line-height: 1;
+            color: #475569;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.1s, color 0.1s, transform 0.08s;
+            user-select: none;
+        }
+        .stepper-btn:hover {
+            background: #0f172a;
+            color: #ffffff;
+        }
+        .stepper-btn:active {
+            background: #2563eb;
+            color: #ffffff;
+            transform: scale(0.92);
+        }
+
+        .calib-hint {
+            font-size: 10px;
+            font-weight: 500;
+            color: #64748b;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            border-radius: 7px;
+            padding: 5px 9px;
+            margin-top: 8px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1.35;
+        }
+
+        .calib-code-wrap {
+            background: #090d16;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: 8px;
+            position: relative;
+        }
+        .calib-code-wrap pre {
+            margin: 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 10.5px;
+            line-height: 1.45;
+            color: #38bdf8;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .calib-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .btn-copy-calib {
+            flex: 1;
+            background: #0f172a;
+            color: #ffffff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+        }
+        .btn-copy-calib:hover {
+            background: #1e293b;
+            transform: translateY(-1px);
+        }
+        .btn-copy-calib-sub {
+            background: rgba(15, 23, 42, 0.08);
+            color: #0f172a;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .btn-copy-calib-sub:hover {
+            background: rgba(15, 23, 42, 0.16);
+            color: #000000;
+            transform: translateY(-1px);
+        }
+        .btn-reset-calib {
+            background: rgba(0, 0, 0, 0.05);
+            color: #475569;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-reset-calib:hover {
+            background: rgba(0, 0, 0, 0.09);
+            color: #0f172a;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
            TYPOGRAPHIC BRAND LOGOTYPE (ANTAPANI EXTRA BOLD + SKEUOMORPHISM)
            ══════════════════════════════════════════════════════════════ */
         @font-face {
@@ -302,18 +639,19 @@
             align-items: center;
             justify-content: space-between;
             padding: 0 28px;
+            overflow: hidden;
             
-            /* Genuine Optical Liquid Glass (Zero Fake AI Glow) */
-            background: rgba(255, 255, 255, 0.65);
-            backdrop-filter: blur(28px) saturate(190%) contrast(102%);
-            -webkit-backdrop-filter: blur(28px) saturate(190%) contrast(102%);
+            /* Genuine Optical Frosted Glass (Ultra-Transparent with Dynamic Control) */
+            background: var(--glass-bg, rgba(255, 255, 255, 0.05));
+            backdrop-filter: blur(var(--glass-blur, 11px)) saturate(160%);
+            -webkit-backdrop-filter: blur(var(--glass-blur, 11px)) saturate(160%);
             border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.45);
             box-shadow: 
-                0 16px 38px -8px rgba(0, 0, 0, 0.04),
-                0 2px 8px rgba(0, 0, 0, 0.02),
-                inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.98),
-                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.03);
+                0 12px 32px -4px rgba(0, 0, 0, 0.04),
+                0 2px 6px rgba(0, 0, 0, 0.02),
+                inset 0 1.2px 1.2px 0 rgba(255, 255, 255, 0.85),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.02);
             pointer-events: auto;
             user-select: none;
             transition: box-shadow 0.25s ease, background 0.25s ease;
@@ -321,10 +659,29 @@
 
         .liquid-glass-nav:hover {
             box-shadow: 
-                0 20px 48px -6px rgba(0, 0, 0, 0.06),
-                0 4px 12px rgba(0, 0, 0, 0.03),
-                inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 1),
-                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.03);
+                0 18px 40px -6px rgba(0, 0, 0, 0.06),
+                0 4px 10px rgba(0, 0, 0, 0.02),
+                inset 0 1.2px 1.2px 0 rgba(255, 255, 255, 0.95),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.02);
+        }
+
+        /* Tactile Acid-Etched Frosted Glass Grain Noise Layer */
+        .glass-noise-overlay {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            opacity: var(--glass-noise-opacity, 0.35);
+            mix-blend-mode: overlay;
+            background-image: var(--glass-noise-url, url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.10' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"));
+            background-size: var(--glass-noise-size, 30px);
+            z-index: 0;
+        }
+
+        .liquid-glass-nav .nav-left,
+        .liquid-glass-nav .nav-right {
+            position: relative;
+            z-index: 1;
         }
 
         .nav-left {
@@ -508,6 +865,7 @@
 
 <!-- Genuine Optical Liquid Glassmorphism Top Navigation Bar -->
 <header class="liquid-glass-nav" id="liquid-glass-nav">
+    <div class="glass-noise-overlay" id="glass-noise-overlay"></div>
     <div class="nav-left">
         <a href="#" class="nav-brand" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;" title="STΔN studio.">
             <span class="nav-brand-stan">STΔN</span>
@@ -515,7 +873,8 @@
         </a>
     </div>
     <div class="nav-right">
-        <button class="nav-action-btn" id="nav-lab-btn" onclick="toggleStudioCtrl()" title="Filament Material Studio">
+        <!-- Tweak panel trigger (hidden from front end; press Shift+C or call toggleStudioCtrl() in console to reveal) -->
+        <button class="nav-action-btn" id="nav-lab-btn" onclick="toggleStudioCtrl()" title="Filament Material Studio" style="display:none;">
             Filament Studio
         </button>
     </div>
@@ -542,40 +901,285 @@
     <button id="reset-scroll-btn" onclick="window.scrollTo({top:0, behavior:'smooth'})" style="background:#0f172a; color:#ffffff; border:none; padding:5px 12px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; display:none; transition:transform 0.15s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">↺ Back to Spool</button>
 </div>
 
-<div id="studio-ctrl" class="minimized">
+<div id="studio-ctrl" class="minimized" style="display:none;">
     <div class="ctrl-header">
         <div class="ctrl-title-wrap">
-            <span class="ctrl-tag">STAN STUDIO // PBR LAB</span>
-            <span class="ctrl-title">Filament Material Studio</span>
+            <span class="ctrl-tag">STΔN STUDIO // 3D CALIBRATOR</span>
+            <span class="ctrl-title">Filament Control Center</span>
         </div>
         <button class="ctrl-close" onclick="toggleStudioCtrl(false)" title="Minimize Panel">✕</button>
     </div>
 
-    <!-- Finish Presets -->
-    <div class="ctrl-section-label">
-        <span>Polymer Finish</span>
-    </div>
-    <div class="finish-tabs">
-        <button class="finish-btn active" data-finish="matte">Matte PLA</button>
-        <button class="finish-btn" data-finish="silk">Silk Gloss</button>
-        <button class="finish-btn" data-finish="carbon">Carbon</button>
+    <!-- Tab Switcher -->
+    <div class="studio-tabs">
+        <button class="studio-tab-btn active" data-tab="tab-placement">🎯 Placement</button>
+        <button class="studio-tab-btn" data-tab="tab-material">🎨 Material</button>
+        <button class="studio-tab-btn" data-tab="tab-glass">✨ Glass & FX</button>
     </div>
 
-    <!-- Live Sliders -->
-    <div class="slider-row">
-        <span>Roughness</span>
-        <input type="range" id="slider-roughness" min="0.05" max="0.95" step="0.01" value="0.90">
-        <span class="slider-val" id="val-roughness">0.90</span>
+    <!-- TAB 1: 3D Placement & Orientation Calibrator -->
+    <div id="tab-placement" class="studio-pane active">
+        <!-- Independent Frame Selector (Start vs Last Frame) -->
+        <div class="calib-frame-selector">
+            <button type="button" class="frame-selector-btn active" id="btn-frame-start" onclick="setCalibFrame('start')" title="Switch to editing Initial / First Frame (0% scroll)">
+                <span>🎬</span>
+                <span>Start Frame</span>
+                <span class="frame-tag">0%</span>
+            </button>
+            <button type="button" class="frame-selector-btn" id="btn-frame-end" onclick="setCalibFrame('end')" title="Switch to editing Final / Last Frame (100% scroll)">
+                <span>🏁</span>
+                <span>Last Frame</span>
+                <span class="frame-tag">100%</span>
+            </button>
+        </div>
+
+        <!-- Quick Presets for Active Frame -->
+        <div class="calib-presets">
+            <button type="button" class="calib-preset-btn" onclick="applyFramePreset('default')" title="Reset active frame to calibrated default">Default</button>
+            <button type="button" class="calib-preset-btn" onclick="applyFramePreset('center')">Center</button>
+            <button type="button" class="calib-preset-btn" onclick="applyFramePreset('far-left')">Far Left</button>
+            <button type="button" class="calib-preset-btn" onclick="applyFramePreset('face')">Face-On</button>
+        </div>
+
+        <!-- Position X, Y, Z -->
+        <div class="calib-group-title">
+            <span>Stage Position (X, Y, Z)</span>
+            <span id="calib-active-frame-badge" style="margin-left:auto; font-size:9.5px; font-weight:700; color:#0284c7; background:rgba(2,132,199,0.1); padding:1px 6px; border-radius:4px;">Editing: Start (0%)</span>
+        </div>
+        <div class="calib-row" data-target="calib-num-pos-x">
+            <span class="calib-axis">Pos X (Hoz)</span>
+            <input type="range" id="calib-pos-x" min="-9.0" max="5.0" step="0.05" value="-7.05">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-pos-x" min="-9.0" max="5.0" step="0.05" value="-7.05" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-pos-x" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-pos-x" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="calib-num-pos-y">
+            <span class="calib-axis">Pos Y (Vert)</span>
+            <input type="range" id="calib-pos-y" min="-3.0" max="3.0" step="0.05" value="-0.10">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-pos-y" min="-3.0" max="3.0" step="0.05" value="-0.10" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-pos-y" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-pos-y" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="calib-num-pos-z">
+            <span class="calib-axis">Pos Z (Depth)</span>
+            <input type="range" id="calib-pos-z" min="-4.0" max="4.0" step="0.05" value="0.00">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-pos-z" min="-4.0" max="4.0" step="0.05" value="0.00" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-pos-z" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-pos-z" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rotation Pitch, Yaw, Roll -->
+        <div class="calib-group-title">Spool Angles (Degrees)</div>
+        <div class="calib-row" data-target="calib-num-rot-x">
+            <span class="calib-axis">Pitch X (Tilt)</span>
+            <input type="range" id="calib-rot-x" min="-180" max="180" step="0.5" value="-11.0">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-rot-x" min="-180" max="180" step="0.5" value="-11.0" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-rot-x" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-rot-x" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="calib-num-rot-y">
+            <span class="calib-axis">Yaw Y (Spin)</span>
+            <input type="range" id="calib-rot-y" min="-180" max="180" step="0.5" value="60.5">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-rot-y" min="-180" max="180" step="0.5" value="60.5" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-rot-y" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-rot-y" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="calib-num-rot-z">
+            <span class="calib-axis">Roll Z (Turn)</span>
+            <input type="range" id="calib-rot-z" min="-180" max="180" step="0.5" value="99.0">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-rot-z" min="-180" max="180" step="0.5" value="99.0" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-rot-z" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-rot-z" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scale Control -->
+        <div class="calib-group-title">Spool Scale (Uniform)</div>
+        <div class="calib-row" data-target="calib-num-scale">
+            <span class="calib-axis">Scale Size</span>
+            <input type="range" id="calib-scale" min="0.20" max="1.50" step="0.01" value="0.87">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-scale" min="0.20" max="1.50" step="0.01" value="0.87" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-scale" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-scale" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Precision Hint -->
+        <div class="calib-hint">
+            <span>🖱️</span>
+            <span><strong>Scroll wheel</strong> over any row to fine-tune. Hold <strong>Shift</strong> for micro-steps!</span>
+        </div>
+
+        <!-- Live Code Display Box -->
+        <div class="calib-group-title">
+            <span>Live Placement Config</span>
+            <span id="calib-code-frame-label" style="margin-left:auto; font-size:9.5px; font-weight:700; color:#38bdf8;">Start Frame (0%)</span>
+        </div>
+        <div class="calib-code-wrap">
+            <pre id="calib-code-display"></pre>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="calib-actions">
+            <button type="button" id="btn-copy-both" class="btn-copy-calib" onclick="copyCalibConfig('both')" title="Copy complete configuration with both Start and End frames">
+                📋 Copy Both (Start + End)
+            </button>
+            <button type="button" id="btn-copy-calib" class="btn-copy-calib-sub" onclick="copyCalibConfig('active')" title="Copy current active frame configuration only">
+                📄 Copy Active
+            </button>
+            <button type="button" id="btn-reset-calib" class="btn-reset-calib" onclick="resetCalibConfig()" title="Reset active frame back to calibrated defaults">
+                ↺ Reset
+            </button>
+        </div>
     </div>
-    <div class="slider-row">
-        <span>Clearcoat</span>
-        <input type="range" id="slider-clearcoat" min="0.0" max="1.0" step="0.02" value="0.00">
-        <span class="slider-val" id="val-clearcoat">0.00</span>
+
+    <!-- TAB 2: Material & Color Studio -->
+    <div id="tab-material" class="studio-pane">
+        <!-- Finish Presets -->
+        <div class="ctrl-section-label">
+            <span>Polymer Finish</span>
+        </div>
+        <div class="finish-tabs">
+            <button class="finish-btn active" data-finish="matte">Matte PLA</button>
+            <button class="finish-btn" data-finish="silk">Silk Gloss</button>
+            <button class="finish-btn" data-finish="carbon">Carbon</button>
+        </div>
+
+        <!-- Live Sliders -->
+        <div class="slider-row">
+            <span>Roughness</span>
+            <input type="range" id="slider-roughness" min="0.05" max="0.95" step="0.01" value="0.90">
+            <span class="slider-val" id="val-roughness">0.90</span>
+        </div>
+        <div class="slider-row">
+            <span>Clearcoat</span>
+            <input type="range" id="slider-clearcoat" min="0.0" max="1.0" step="0.02" value="0.00">
+            <span class="slider-val" id="val-clearcoat">0.00</span>
+        </div>
+        <div class="slider-row">
+            <span>Sheen</span>
+            <input type="range" id="slider-sheen" min="0.0" max="1.0" step="0.02" value="0.00">
+            <span class="slider-val" id="val-sheen">0.00</span>
+        </div>
     </div>
-    <div class="slider-row">
-        <span>Sheen</span>
-        <input type="range" id="slider-sheen" min="0.0" max="1.0" step="0.02" value="0.00">
-        <span class="slider-val" id="val-sheen">0.00</span>
+
+    <!-- TAB 3: Frosted Glass & Hover FX Studio -->
+    <div id="tab-glass" class="studio-pane">
+        <!-- Interactive Hover Tilt Intensity -->
+        <div class="ctrl-section-label">
+            <span>Filament Reel Hover Parallax</span>
+        </div>
+        <div class="calib-row" data-target="glass-num-hover">
+            <span class="calib-axis">Hover Tilt</span>
+            <input type="range" id="glass-hover" min="0.2" max="3.5" step="0.1" value="0.7">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-hover" min="0.2" max="3.5" step="0.1" value="0.7" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-hover" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-hover" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Frosted Glass Controls -->
+        <div class="ctrl-section-label" style="margin-top:14px;">
+            <span>Frosted Optical Glass</span>
+        </div>
+        <div class="calib-row" data-target="glass-num-blur">
+            <span class="calib-axis">Blur (px)</span>
+            <input type="range" id="glass-blur" min="0" max="40" step="1" value="11">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-blur" min="0" max="40" step="1" value="11" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-blur" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-blur" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="glass-num-opacity">
+            <span class="calib-axis">Opacity</span>
+            <input type="range" id="glass-opacity" min="0.05" max="0.95" step="0.01" value="0.05">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-opacity" min="0.05" max="0.95" step="0.01" value="0.05" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-opacity" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-opacity" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Frosting Grain & Noise Controls -->
+        <div class="ctrl-section-label" style="margin-top:14px;">
+            <span>Frosting Noise Grain</span>
+        </div>
+        <div class="calib-row" data-target="glass-num-noise-density">
+            <span class="calib-axis">Density</span>
+            <input type="range" id="glass-noise-density" min="0.10" max="2.00" step="0.05" value="0.10">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-noise-density" min="0.10" max="2.00" step="0.05" value="0.10" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-density" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-density" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="glass-num-noise-size">
+            <span class="calib-axis">Grain Size</span>
+            <input type="range" id="glass-noise-size" min="30" max="300" step="5" value="30">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-noise-size" min="30" max="300" step="5" value="30" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-size" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-size" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="glass-num-noise-opacity">
+            <span class="calib-axis">Grain Opac</span>
+            <input type="range" id="glass-noise-opacity" min="0.00" max="0.50" step="0.01" value="0.35">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-noise-opacity" min="0.00" max="0.50" step="0.01" value="0.35" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-opacity" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-opacity" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Code Readout & Copy Button -->
+        <div class="ctrl-section-label" style="margin-top:16px;">
+            <span>Live Glass & Hover Config</span>
+        </div>
+        <pre id="glass-code-display" style="background:#090d16; color:#38bdf8; padding:10px 12px; border-radius:8px; font-size:10px; font-family:monospace; line-height:1.45; overflow-x:auto; user-select:all; margin:6px 0 10px 0; border:1px solid rgba(255,255,255,0.08);"></pre>
+        <div class="calib-actions">
+            <button type="button" class="calib-btn-primary" id="btn-copy-glass" onclick="copyGlassConfig()" style="width:100%;">📋 Copy Glass & FX Config</button>
+        </div>
     </div>
 </div>
 
@@ -662,46 +1266,136 @@ envScene.add(envFill);
 scene.environment = pmrem.fromScene(envScene, 0.04).texture;
 pmrem.dispose();
 
-const camera = new THREE.PerspectiveCamera(33, innerWidth / innerHeight, 0.1, 100);
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
 
 /* ═══════════════════════════════════════════════════════════════════
    LIGHTING SETUP (CLEAN INDUSTRIAL STUDIO)
    ═══════════════════════════════════════════════════════════════════ */
 scene.add(new THREE.AmbientLight(0xffffff, 0.45));
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
-keyLight.position.set(5.5, 9.5, 5.5);
+const keyLightTarget = new THREE.Object3D();
+keyLightTarget.position.set(-5.6, -0.2, 0.0);
+scene.add(keyLightTarget);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.3);
+keyLight.position.set(-4.4, 10.3, 2.2);
+keyLight.target = keyLightTarget;
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.width = 2048;
 keyLight.shadow.mapSize.height = 2048;
 keyLight.shadow.camera.near = 1.0;
-keyLight.shadow.camera.far = 25.0;
-keyLight.shadow.camera.left = -6.0;
-keyLight.shadow.camera.right = 6.0;
-keyLight.shadow.camera.top = 6.0;
-keyLight.shadow.camera.bottom = -6.0;
-keyLight.shadow.bias = -0.0003;
-keyLight.shadow.radius = 4.2;
+keyLight.shadow.camera.far = 24.0;
+keyLight.shadow.camera.left = -5.0;
+keyLight.shadow.camera.right = 5.0;
+keyLight.shadow.camera.top = 5.0;
+keyLight.shadow.camera.bottom = -5.0;
+keyLight.shadow.bias = -0.0001;
+keyLight.shadow.normalBias = 0.035;
+keyLight.shadow.radius = 4.5;
 scene.add(keyLight);
 
-const fillLight = new THREE.DirectionalLight(0xedf3ff, 0.90);
-fillLight.position.set(-6.0, 4.0, -3.0);
+const fillLight = new THREE.DirectionalLight(0xedf3ff, 0.95);
+fillLight.position.set(-9.0, 5.0, -3.0);
 scene.add(fillLight);
 
 const rimLight = new THREE.DirectionalLight(0xffffff, 1.40);
-rimLight.position.set(-3.5, 3.5, 7.5);
+rimLight.position.set(-3.5, 4.0, 7.5);
 scene.add(rimLight);
 
 /* ═══════════════════════════════════════════════════════════════════
-   CLEAN STUDIO FLOOR SHADOW PLANE
+   CLEAN STUDIO FLOOR SHADOW PLANE & SOFT CONTACT SHADOW
    ═══════════════════════════════════════════════════════════════════ */
-const shadowPlaneGeo = new THREE.PlaneGeometry(80, 80);
-const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.14 });
+const FLOOR_Y = -2.58;
+
+// Disable harsh geometric spoke silhouette projection on the studio floor
+const shadowPlaneGeo = new THREE.PlaneGeometry(100, 100);
+const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.0 });
 const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
 shadowPlane.rotation.x = -Math.PI / 2;
-shadowPlane.position.y = -1.10;
-shadowPlane.receiveShadow = true;
+shadowPlane.position.y = FLOOR_Y;
+shadowPlane.receiveShadow = false;
+shadowPlane.visible = false;
 scene.add(shadowPlane);
+
+// Photorealistic Multi-Layer Gaussian Blur Shadow (Cinema 4D / Octane Softbox Contact AO)
+function createContactShadowTexture() {
+    const c = document.createElement('canvas');
+    c.width = 1024;
+    c.height = 1024;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, 1024, 1024);
+
+    const cx = 512, cy = 512;
+    const hasFilter = typeof ctx.filter === 'string';
+
+    if (hasFilter) {
+        // 1. Broad Ambient Gaussian Dispersion (Feathers softly into infinite white floor)
+        ctx.save();
+        ctx.filter = 'blur(65px)';
+        ctx.fillStyle = 'rgba(18, 22, 30, 0.16)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 390, 240, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 2. Mid-Field Cylinder Body Penumbra (Spool wound filament mass)
+        ctx.save();
+        ctx.filter = 'blur(35px)';
+        ctx.fillStyle = 'rgba(14, 18, 26, 0.28)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 280, 165, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 3. Dense Grounding Contact Occlusion (Occlusion near floor)
+        ctx.save();
+        ctx.filter = 'blur(18px)';
+        ctx.fillStyle = 'rgba(10, 14, 20, 0.44)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 15, 185, 105, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 4. Tight Crevice Contact Touch (Deep dark grounding under the lowest rim)
+        ctx.save();
+        ctx.filter = 'blur(9px)';
+        ctx.fillStyle = 'rgba(6, 8, 14, 0.68)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 25, 115, 58, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    } else {
+        const grad = ctx.createRadialGradient(cx, cy, 15, cx, cy, 480);
+        grad.addColorStop(0.00, 'rgba(6, 8, 14, 0.70)');
+        grad.addColorStop(0.12, 'rgba(10, 14, 20, 0.50)');
+        grad.addColorStop(0.30, 'rgba(14, 18, 26, 0.30)');
+        grad.addColorStop(0.55, 'rgba(18, 22, 30, 0.14)');
+        grad.addColorStop(0.80, 'rgba(22, 26, 35, 0.04)');
+        grad.addColorStop(1.00, 'rgba(28, 32, 42, 0.00)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 480, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 8;
+    return tex;
+}
+
+const contactShadowTex = createContactShadowTexture();
+const contactShadowGeo = new THREE.PlaneGeometry(1, 1);
+const contactShadowMat = new THREE.MeshBasicMaterial({
+    map: contactShadowTex,
+    transparent: true,
+    opacity: 0.58,
+    depthWrite: false,
+});
+const contactShadowMesh = new THREE.Mesh(contactShadowGeo, contactShadowMat);
+contactShadowMesh.rotation.x = -Math.PI / 2;
+contactShadowMesh.position.y = FLOOR_Y + 0.002;
+scene.add(contactShadowMesh);
 
 /* ═══════════════════════════════════════════════════════════════════
    PREMIUM PBR MATERIALS (INJECTION-MOLDED ABS & PRECISION MATTE PLA)
@@ -904,11 +1598,65 @@ const matUnrolledStrand = new THREE.MeshPhysicalMaterial({
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   3D STAGE & SPOOL (ANCHORED BEAUTIFULLY ON LEFT OF SCREEN)
+   3D STAGE & SPOOL (CONFIGURABLE VIA 3D CALIBRATOR)
    ═══════════════════════════════════════════════════════════════════ */
+const SPOOL_CALIB_START_DEFAULT = Object.freeze({
+    posX: -7.05,
+    posY: -0.10,
+    posZ: 0.00,
+    rotXDeg: -11.0, // rad: -0.1920
+    rotYDeg: 60.5,  // rad: 1.0559
+    rotZDeg: 99.0,  // rad: 1.7279
+    scale: 0.87
+});
+
+const SPOOL_CALIB_END_DEFAULT = Object.freeze({
+    posX: -6.90,
+    posY: 0.75,
+    posZ: 1.45,
+    rotXDeg: -13.0, // rad: -0.2269
+    rotYDeg: 66.0,  // rad: 1.1519
+    rotZDeg: 78.5,  // rad: 1.3701
+    scale: 1.26
+});
+
+const SPOOL_CALIB_START = { ...SPOOL_CALIB_START_DEFAULT };
+const SPOOL_CALIB_END = { ...SPOOL_CALIB_END_DEFAULT };
+
+const GLASS_HOVER_CONFIG = {
+    hoverIntensity: 0.7,
+    blur: 11,           // px
+    opacity: 0.05,      // 0.0 to 1.0
+    noiseDensity: 0.10, // grain frequency
+    noiseSize: 30,        // px
+    noiseOpacity: 0.35  // 0.0 to 1.0
+};
+
+let activeCalibFrame = 'start'; // 'start' | 'end'
+let calibInteractTimeout = null;
+let isUserInteractingWithCalibrator = false;
+
+function markCalibInteraction() {
+    isUserInteractingWithCalibrator = true;
+    if (calibInteractTimeout) clearTimeout(calibInteractTimeout);
+    calibInteractTimeout = setTimeout(() => {
+        isUserInteractingWithCalibrator = false;
+    }, 600);
+}
+
+function syncFrameSelectorFromScroll(p) {
+    if (isUserInteractingWithCalibrator) return;
+    if (typeof window.setCalibFrame !== 'function') return;
+    if (p <= 0.03 && activeCalibFrame !== 'start') {
+        window.setCalibFrame('start', false);
+    } else if (p >= 0.97 && activeCalibFrame !== 'end') {
+        window.setCalibFrame('end', false);
+    }
+}
+
 const stage = new THREE.Group();
-stage.scale.set(0.58, 0.58, 0.58);
-stage.position.set(-1.85, 0.05, 0.0);
+stage.scale.set(SPOOL_CALIB_START.scale, SPOOL_CALIB_START.scale, SPOOL_CALIB_START.scale);
+stage.position.set(SPOOL_CALIB_START.posX, SPOOL_CALIB_START.posY, SPOOL_CALIB_START.posZ);
 scene.add(stage);
 
 const spoolAnchor = new THREE.Group();
@@ -916,9 +1664,9 @@ spoolAnchor.position.set(-1.40, 0.0, 0.0);
 stage.add(spoolAnchor);
 
 const spoolPose = new THREE.Group();
-spoolPose.rotation.x = -0.22;
-spoolPose.rotation.y = 0.92;
-spoolPose.rotation.z = Math.PI / 2 + 0.14;
+spoolPose.rotation.x = SPOOL_CALIB_START.rotXDeg * Math.PI / 180;
+spoolPose.rotation.y = SPOOL_CALIB_START.rotYDeg * Math.PI / 180;
+spoolPose.rotation.z = SPOOL_CALIB_START.rotZDeg * Math.PI / 180;
 spoolAnchor.add(spoolPose);
 
 const spoolRotor = new THREE.Group();
@@ -1203,13 +1951,13 @@ const INDICES_PER_SEG = RADIAL_SEGS * 6; // Exactly 96 indices per tubular segme
 const TUBE_SEGS = 260;
 let strandGeo = new THREE.TubeGeometry(strandCurve, TUBE_SEGS, S.strandR, RADIAL_SEGS, false);
 const strandMesh = new THREE.Mesh(strandGeo, matUnrolledStrand);
-strandMesh.castShadow = true;
+strandMesh.castShadow = false;
 stage.add(strandMesh); // Placed directly in stage coordinates
 
 // Watertight Solid Polymer Tip Cap (cleanly seals the tube end without any hole or clipping)
 const tipCapGeo = new THREE.SphereGeometry(S.strandR * 1.08, 24, 16);
 const tipCapMesh = new THREE.Mesh(tipCapGeo, matUnrolledStrand);
-tipCapMesh.castShadow = true;
+tipCapMesh.castShadow = false;
 tipCapMesh.visible = false;
 stage.add(tipCapMesh);
 
@@ -1217,19 +1965,19 @@ stage.add(tipCapMesh);
    CINEMATIC MULTI-ANGLE CAMERA CHOREOGRAPHY
    ═══════════════════════════════════════════════════════════════════ */
 const cameraSpline = new THREE.CatmullRomCurve3([
-    new THREE.Vector3( 0.00,  0.35, 5.8), // 0.00: Hero view pinned on far left
-    new THREE.Vector3(-0.25,  0.75, 4.5), // 0.25: Macro peel shot from above
-    new THREE.Vector3(-0.65,  0.15, 4.5), // 0.52: Bore-sight down hollow axle pipe
-    new THREE.Vector3( 0.55, -0.40, 4.6), // 0.75: Wide sweep along unrolling wire
-    new THREE.Vector3( 0.35, -1.45, 4.2), // 1.00: Spool gone; pure wire tracking centered
+    new THREE.Vector3(-2.20,  0.35, 8.5), // 0.00: Hero start with generous breathing margins on all sides
+    new THREE.Vector3(-2.40,  0.40, 8.8), // 0.25: Gentle elevation and lateral tracking as peel begins
+    new THREE.Vector3(-2.60,  0.42, 9.1), // 0.50: Clean bore framing, zero clipping on left/top
+    new THREE.Vector3(-2.70,  0.40, 9.3), // 0.75: Spool comfortably framed on left, wire sweeps right
+    new THREE.Vector3(-2.75,  0.38, 9.5), // 1.00: Final stage with large spool cleanly framed and rolling
 ], false, 'catmullrom', 0.5);
 
 const lookAtSpline = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.90,  0.05, 0.0), // 0.00: Pinned to spool on far left
-    new THREE.Vector3(-0.95,  0.45, 0.2), // 0.25: Focus on peel point & winding traverse
-    new THREE.Vector3(-1.15,  0.05, 0.0), // 0.52: Focus straight down hollow axle pipe
-    new THREE.Vector3(-0.15, -0.35, 0.1), // 0.75: Focus on sweeping wire
-    new THREE.Vector3(-0.45, -1.30, 0.0), // 1.00: Focus on continuing wire loops in viewport center
+    new THREE.Vector3(-3.30,  0.15, 0.0), // 0.00: Centered on spool and strand
+    new THREE.Vector3(-3.40,  0.25, 0.2), // 0.25: Tracking peel point
+    new THREE.Vector3(-3.50,  0.35, 0.4), // 0.50: Centered vertically and horizontally
+    new THREE.Vector3(-3.55,  0.40, 0.6), // 0.75: Continuing smooth track
+    new THREE.Vector3(-3.60,  0.45, 0.7), // 1.00: Last stage resting frame
 ], false, 'catmullrom', 0.5);
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1238,7 +1986,7 @@ const lookAtSpline = new THREE.CatmullRomCurve3([
 let targetProgress = 0;
 let currentProgress = 0;
 let spoolRotationAngle = 0;
-
+let continuousRollAngle = 0;
 const scrollPercentEl = document.getElementById('scroll-percent');
 const resetScrollBtn = document.getElementById('reset-scroll-btn');
 
@@ -1259,6 +2007,18 @@ window.addEventListener('pageshow', () => {
     handleScroll();
 });
 handleScroll();
+
+window.__DEBUG__ = {
+    getTargetProgress: () => targetProgress,
+    getCurrentProgress: () => currentProgress,
+    getActiveFrame: () => activeCalibFrame,
+    getStartCalib: () => SPOOL_CALIB_START,
+    getEndCalib: () => SPOOL_CALIB_END,
+    setTargetProgress: (v) => { targetProgress = v; currentProgress = v; },
+    camera,
+    stage,
+    spoolPose
+};
 
 // Interactive Mouse Parallax
 let mouseX = 0, mouseY = 0;
@@ -1303,6 +2063,10 @@ function render() {
         resetScrollBtn.style.display = p > 0.05 ? 'inline-block' : 'none';
     }
 
+    if (typeof syncFrameSelectorFromScroll === 'function') {
+        syncFrameSelectorFromScroll(p);
+    }
+
     /* 1. Dynamic Spool Radius (Shrinks uniformly as filament is consumed) */
     const wp = Math.pow(p, 0.70);
     const currentR = THREE.MathUtils.lerp(S.maxWindR, S.minWindR, wp);
@@ -1323,21 +2087,47 @@ function render() {
         prevRadius = currentR;
     }
 
-    /* 2. FORWARD CLOCKWISE ROTATION DIRECTION:
-          The spool rolls forward in the direction filament is peeling (-p * Math.PI * 4.6) */
-    const targetSpoolAngle = -p * Math.PI * 4.6;
+    /* 2. FORWARD CLOCKWISE ROTATION WITH CONTINUOUS END-STAGE ROLLING:
+          Rolls forward as filament peels, and smoothly keeps slowly rolling */
+    continuousRollAngle -= 0.005;
+    const targetSpoolAngle = -p * Math.PI * 4.6 + continuousRollAngle;
     spoolRotationAngle += (targetSpoolAngle - spoolRotationAngle) * 0.12;
     spoolRotor.rotation.y = spoolRotationAngle;
 
-    spoolPose.rotation.x = -0.22 + Math.sin(p * Math.PI) * 0.12 + mouseY * 0.02;
-    spoolPose.rotation.y = 0.92 + Math.sin(p * Math.PI * 0.8) * 0.22 + mouseX * 0.04;
-    spoolPose.rotation.z = Math.PI / 2 + 0.14 - Math.sin(p * Math.PI) * 0.06;
+    /* Dynamic Stage Interpolation: Smooth transition from Initial to Last Stage Pose */
+    const curPosX = THREE.MathUtils.lerp(SPOOL_CALIB_START.posX, SPOOL_CALIB_END.posX, p);
+    const curPosY = THREE.MathUtils.lerp(SPOOL_CALIB_START.posY, SPOOL_CALIB_END.posY, p);
+    const curPosZ = THREE.MathUtils.lerp(SPOOL_CALIB_START.posZ, SPOOL_CALIB_END.posZ, p);
+    const curScale = THREE.MathUtils.lerp(SPOOL_CALIB_START.scale, SPOOL_CALIB_END.scale, p);
 
-    /* 3. Spool Exit Animation:
-          Spool stays visible on far-left (0 to 0.82), then accelerates off-screen */
-    const exitProgress = Math.max(0, (p - 0.82) / 0.18);
-    const exitOffset = Math.pow(exitProgress, 1.4) * 6.8;
-    spoolAnchor.position.x = -1.40 - exitOffset;
+    stage.position.set(curPosX, curPosY, curPosZ);
+    stage.scale.set(curScale, curScale, curScale);
+
+    const curRotXDeg = THREE.MathUtils.lerp(SPOOL_CALIB_START.rotXDeg, SPOOL_CALIB_END.rotXDeg, p);
+    const curRotYDeg = THREE.MathUtils.lerp(SPOOL_CALIB_START.rotYDeg, SPOOL_CALIB_END.rotYDeg, p);
+    const curRotZDeg = THREE.MathUtils.lerp(SPOOL_CALIB_START.rotZDeg, SPOOL_CALIB_END.rotZDeg, p);
+
+    const baseRotX = (curRotXDeg * Math.PI) / 180;
+    const baseRotY = (curRotYDeg * Math.PI) / 180;
+    const baseRotZ = (curRotZDeg * Math.PI) / 180;
+
+    /* Enhanced Interactive Kinetic Hover Parallax with Adjustable Multiplier */
+    const hoverMult = (typeof GLASS_HOVER_CONFIG !== 'undefined') ? GLASS_HOVER_CONFIG.hoverIntensity : 1.8;
+    const hoverPitch = mouseY * (0.075 * hoverMult);
+    const hoverYaw = mouseX * (0.135 * hoverMult);
+    const hoverRoll = mouseX * (-0.035 * hoverMult);
+
+    spoolPose.rotation.x = baseRotX + Math.sin(p * Math.PI) * 0.06 + hoverPitch;
+    spoolPose.rotation.y = baseRotY + Math.sin(p * Math.PI) * 0.10 + hoverYaw;
+    spoolPose.rotation.z = baseRotZ - Math.sin(p * Math.PI) * 0.03 + hoverRoll;
+
+    // Subtle 3D floating translation responsive to mouse hover
+    const hoverShiftX = mouseX * (0.12 * hoverMult);
+    const hoverShiftY = -mouseY * (0.08 * hoverMult);
+    spoolPose.position.set(hoverShiftX, hoverShiftY, 0.0);
+
+    /* 3. Spool Stays Anchored in Viewport (Zero off-screen exit) */
+    spoolAnchor.position.x = -1.40;
 
     /* 4. Local Tangent Peel Mechanics (Zero Kinks, C2-Continuous Flow):
           P_anc, P0, P1, P2, P3 are computed in local spool frame along the pure circumferential
@@ -1410,8 +2200,8 @@ function render() {
     cameraSpline.getPointAt(p, _camPos);
     lookAtSpline.getPointAt(p, _lookTarget);
 
-    _camPos.x += mouseX * 0.10;
-    _camPos.y += -mouseY * 0.08;
+    _camPos.x += mouseX * (0.07 * hoverMult);
+    _camPos.y += -mouseY * (0.05 * hoverMult);
 
     camera.position.copy(_camPos);
     camera.lookAt(_lookTarget);
@@ -1419,6 +2209,26 @@ function render() {
     /* 7. Subtle Cinematic Banking */
     const dutchTilt = Math.sin(p * Math.PI) * -0.065;
     camera.rotation.z += dutchTilt;
+
+    /* 8. Studio Dynamic Key Light & Photorealistic Gaussian Contact Shadow Tracking */
+    const _spoolCenter = new THREE.Vector3();
+    spoolPose.getWorldPosition(_spoolCenter);
+
+    keyLightTarget.position.copy(_spoolCenter);
+    keyLight.position.set(_spoolCenter.x + 1.2, _spoolCenter.y + 10.5, _spoolCenter.z + 2.2);
+
+    // Dynamic ground shadow orientation & scale tracking
+    const _cylAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(spoolPose.getWorldQuaternion(new THREE.Quaternion()));
+    const shadowRotationAngle = Math.atan2(-_cylAxis.z, _cylAxis.x);
+    contactShadowMesh.rotation.z = shadowRotationAngle;
+
+    contactShadowMesh.position.x = _spoolCenter.x - 0.16;
+    contactShadowMesh.position.z = _spoolCenter.z - 0.22;
+
+    const shadowWidth = curScale * 4.9;
+    const shadowHeight = curScale * 3.7;
+    contactShadowMesh.scale.set(shadowWidth, shadowHeight, 1.0);
+    contactShadowMat.opacity = 0.62;
 
     renderer.render(scene, camera);
 }
@@ -1502,13 +2312,31 @@ window.setMaterialFinish = function (type) {
 window.toggleStudioCtrl = function (forceState) {
     const ctrl = document.getElementById('studio-ctrl');
     if (!ctrl) return;
-    if (typeof forceState === 'boolean') {
-        if (forceState) ctrl.classList.remove('minimized');
-        else ctrl.classList.add('minimized');
+    const isCurrentlyHidden = (ctrl.style.display === 'none' || ctrl.classList.contains('minimized'));
+    const shouldShow = (typeof forceState === 'boolean') ? forceState : isCurrentlyHidden;
+    if (shouldShow) {
+        ctrl.style.display = 'block';
+        requestAnimationFrame(() => {
+            ctrl.classList.remove('minimized');
+        });
     } else {
-        ctrl.classList.toggle('minimized');
+        ctrl.classList.add('minimized');
+        setTimeout(() => {
+            if (ctrl.classList.contains('minimized')) {
+                ctrl.style.display = 'none';
+            }
+        }, 320);
     }
 };
+window.showStudioCtrl = () => window.toggleStudioCtrl(true);
+window.hideStudioCtrl = () => window.toggleStudioCtrl(false);
+
+// Developer Quick Toggle: Press Shift + C anytime to reveal/hide the tweak bar
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'C' && e.shiftKey && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        window.toggleStudioCtrl();
+    }
+});
 
 // Wire UI Event Listeners
 document.querySelectorAll('.swatch-btn').forEach(btn => {
@@ -1563,6 +2391,484 @@ if (sSlider) {
     });
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// 3D PLACEMENT & ORIENTATION CALIBRATOR LOGIC
+// ═══════════════════════════════════════════════════════════════════
+function getActiveCalibState() {
+    return activeCalibFrame === 'start' ? SPOOL_CALIB_START : SPOOL_CALIB_END;
+}
+
+window.setCalibFrame = function (frame, shouldScroll = true) {
+    if (frame !== 'start' && frame !== 'end') return;
+    activeCalibFrame = frame;
+
+    const btnStart = document.getElementById('btn-frame-start');
+    const btnEnd = document.getElementById('btn-frame-end');
+    if (btnStart) btnStart.classList.toggle('active', frame === 'start');
+    if (btnEnd) btnEnd.classList.toggle('active', frame === 'end');
+
+    if (shouldScroll) {
+        if (frame === 'start') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            const scrollMax = document.documentElement.scrollHeight - window.innerHeight;
+            window.scrollTo({ top: scrollMax, behavior: 'smooth' });
+        }
+    }
+
+    syncCalibInputsFromState();
+};
+
+function formatSingleFrameCode(name, obj) {
+    const radX = (obj.rotXDeg * Math.PI / 180).toFixed(4);
+    const radY = (obj.rotYDeg * Math.PI / 180).toFixed(4);
+    const radZ = (obj.rotZDeg * Math.PI / 180).toFixed(4);
+    return `// 3D Filament Spool Placement & Orientation (${name === 'start' ? 'Start Frame • 0%' : 'Last Frame • 100%'})
+const SPOOL_CALIBRATION = {
+  posX: ${obj.posX.toFixed(2)},
+  posY: ${obj.posY.toFixed(2)},
+  posZ: ${obj.posZ.toFixed(2)},
+  rotXDeg: ${obj.rotXDeg.toFixed(1)}, // rad: ${radX}
+  rotYDeg: ${obj.rotYDeg.toFixed(1)}, // rad: ${radY}
+  rotZDeg: ${obj.rotZDeg.toFixed(1)}, // rad: ${radZ}
+  scale: ${obj.scale.toFixed(2)}
+};`;
+}
+
+function formatBothFramesCode() {
+    const radX = (obj) => (obj.rotXDeg * Math.PI / 180).toFixed(4);
+    const radY = (obj) => (obj.rotYDeg * Math.PI / 180).toFixed(4);
+    const radZ = (obj) => (obj.rotZDeg * Math.PI / 180).toFixed(4);
+
+    return `// 3D Filament Spool Placement & Orientation (Both Frames)
+const SPOOL_CALIBRATION = {
+  start: {
+    posX: ${SPOOL_CALIB_START.posX.toFixed(2)},
+    posY: ${SPOOL_CALIB_START.posY.toFixed(2)},
+    posZ: ${SPOOL_CALIB_START.posZ.toFixed(2)},
+    rotXDeg: ${SPOOL_CALIB_START.rotXDeg.toFixed(1)}, // rad: ${radX(SPOOL_CALIB_START)}
+    rotYDeg: ${SPOOL_CALIB_START.rotYDeg.toFixed(1)}, // rad: ${radY(SPOOL_CALIB_START)}
+    rotZDeg: ${SPOOL_CALIB_START.rotZDeg.toFixed(1)}, // rad: ${radZ(SPOOL_CALIB_START)}
+    scale: ${SPOOL_CALIB_START.scale.toFixed(2)}
+  },
+  end: {
+    posX: ${SPOOL_CALIB_END.posX.toFixed(2)},
+    posY: ${SPOOL_CALIB_END.posY.toFixed(2)},
+    posZ: ${SPOOL_CALIB_END.posZ.toFixed(2)},
+    rotXDeg: ${SPOOL_CALIB_END.rotXDeg.toFixed(1)}, // rad: ${radX(SPOOL_CALIB_END)}
+    rotYDeg: ${SPOOL_CALIB_END.rotYDeg.toFixed(1)}, // rad: ${radY(SPOOL_CALIB_END)}
+    rotZDeg: ${SPOOL_CALIB_END.rotZDeg.toFixed(1)}, // rad: ${radZ(SPOOL_CALIB_END)}
+    scale: ${SPOOL_CALIB_END.scale.toFixed(2)}
+  }
+};`;
+}
+
+function updateCalibCodeDisplay() {
+    const el = document.getElementById('calib-code-display');
+    const badgeEl = document.getElementById('calib-active-frame-badge');
+    const labelEl = document.getElementById('calib-code-frame-label');
+    if (badgeEl) {
+        badgeEl.textContent = activeCalibFrame === 'start' ? 'Editing: Start (0%)' : 'Editing: Last (100%)';
+        badgeEl.style.color = activeCalibFrame === 'start' ? '#0284c7' : '#16a34a';
+        badgeEl.style.background = activeCalibFrame === 'start' ? 'rgba(2,132,199,0.1)' : 'rgba(22,163,74,0.1)';
+    }
+    if (labelEl) {
+        labelEl.textContent = activeCalibFrame === 'start' ? 'Start Frame (0%)' : 'Last Frame (100%)';
+    }
+    if (!el) return;
+    el.textContent = formatBothFramesCode();
+}
+
+function syncCalibInputsFromState() {
+    const state = getActiveCalibState();
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+    };
+    setVal('calib-pos-x', state.posX);
+    setVal('calib-num-pos-x', state.posX.toFixed(2));
+    setVal('calib-pos-y', state.posY);
+    setVal('calib-num-pos-y', state.posY.toFixed(2));
+    setVal('calib-pos-z', state.posZ);
+    setVal('calib-num-pos-z', state.posZ.toFixed(2));
+
+    setVal('calib-rot-x', state.rotXDeg);
+    setVal('calib-num-rot-x', state.rotXDeg.toFixed(1));
+    setVal('calib-rot-y', state.rotYDeg);
+    setVal('calib-num-rot-y', state.rotYDeg.toFixed(1));
+    setVal('calib-rot-z', state.rotZDeg);
+    setVal('calib-num-rot-z', state.rotZDeg.toFixed(1));
+
+    setVal('calib-scale', state.scale);
+    setVal('calib-num-scale', state.scale.toFixed(2));
+
+    updateCalibCodeDisplay();
+}
+
+function onCalibSliderInput() {
+    markCalibInteraction();
+    const state = getActiveCalibState();
+    const getVal = (id, fallback) => {
+        const el = document.getElementById(id);
+        return el ? parseFloat(el.value) : fallback;
+    };
+    state.posX = getVal('calib-pos-x', state.posX);
+    state.posY = getVal('calib-pos-y', state.posY);
+    state.posZ = getVal('calib-pos-z', state.posZ);
+    state.rotXDeg = getVal('calib-rot-x', state.rotXDeg);
+    state.rotYDeg = getVal('calib-rot-y', state.rotYDeg);
+    state.rotZDeg = getVal('calib-rot-z', state.rotZDeg);
+    state.scale = getVal('calib-scale', state.scale);
+
+    // Sync numeric fields
+    const setNum = (id, val, dec) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val.toFixed(dec);
+    };
+    setNum('calib-num-pos-x', state.posX, 2);
+    setNum('calib-num-pos-y', state.posY, 2);
+    setNum('calib-num-pos-z', state.posZ, 2);
+    setNum('calib-num-rot-x', state.rotXDeg, 1);
+    setNum('calib-num-rot-y', state.rotYDeg, 1);
+    setNum('calib-num-rot-z', state.rotZDeg, 1);
+    setNum('calib-num-scale', state.scale, 2);
+
+    updateCalibCodeDisplay();
+}
+
+function onCalibNumberInput() {
+    markCalibInteraction();
+    const state = getActiveCalibState();
+    const getVal = (id, fallback) => {
+        const el = document.getElementById(id);
+        const v = el ? parseFloat(el.value) : fallback;
+        return isNaN(v) ? fallback : v;
+    };
+    state.posX = getVal('calib-num-pos-x', state.posX);
+    state.posY = getVal('calib-num-pos-y', state.posY);
+    state.posZ = getVal('calib-num-pos-z', state.posZ);
+    state.rotXDeg = getVal('calib-num-rot-x', state.rotXDeg);
+    state.rotYDeg = getVal('calib-num-rot-y', state.rotYDeg);
+    state.rotZDeg = getVal('calib-num-rot-z', state.rotZDeg);
+    state.scale = getVal('calib-num-scale', state.scale);
+
+    // Sync range sliders
+    const setSlider = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+    };
+    setSlider('calib-pos-x', state.posX);
+    setSlider('calib-pos-y', state.posY);
+    setSlider('calib-pos-z', state.posZ);
+    setSlider('calib-rot-x', state.rotXDeg);
+    setSlider('calib-rot-y', state.rotYDeg);
+    setSlider('calib-rot-z', state.rotZDeg);
+    setSlider('calib-scale', state.scale);
+
+    updateCalibCodeDisplay();
+}
+
+// Bind Calibrator Sliders and Numeric Inputs
+['calib-pos-x', 'calib-pos-y', 'calib-pos-z', 'calib-rot-x', 'calib-rot-y', 'calib-rot-z', 'calib-scale'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', onCalibSliderInput);
+});
+
+['calib-num-pos-x', 'calib-num-pos-y', 'calib-num-pos-z', 'calib-num-rot-x', 'calib-num-rot-y', 'calib-num-rot-z', 'calib-num-scale'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', onCalibNumberInput);
+        el.addEventListener('change', onCalibNumberInput);
+    }
+});
+
+// Precision Steppers & Mouse-Wheel Controls
+function stepCalibInput(id, direction, factor = 1) {
+    markCalibInteraction();
+    const input = document.getElementById(id);
+    if (!input) return;
+    const step = parseFloat(input.step) || 0.05;
+    const min = input.min !== '' ? parseFloat(input.min) : -Infinity;
+    const max = input.max !== '' ? parseFloat(input.max) : Infinity;
+    const current = parseFloat(input.value) || 0;
+    
+    const delta = step * direction * factor;
+    let next = current + delta;
+    next = Math.min(max, Math.max(min, next));
+    
+    const stepDecimals = (step.toString().split('.')[1] || '').length;
+    const decimals = factor < 1 ? stepDecimals + 1 : stepDecimals;
+    
+    input.value = next.toFixed(decimals);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+let stepperTimer = null;
+let stepperInterval = null;
+function clearStepperTimers() {
+    if (stepperTimer) { clearTimeout(stepperTimer); stepperTimer = null; }
+    if (stepperInterval) { clearInterval(stepperInterval); stepperInterval = null; }
+}
+
+document.querySelectorAll('.stepper-btn').forEach(btn => {
+    const targetId = btn.dataset.target;
+    const dir = parseInt(btn.dataset.dir, 10) || 1;
+    
+    btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const factor = e.shiftKey ? 0.2 : (e.ctrlKey ? 5 : 1);
+        stepCalibInput(targetId, dir, factor);
+        clearStepperTimers();
+        stepperTimer = setTimeout(() => {
+            stepperInterval = setInterval(() => {
+                stepCalibInput(targetId, dir, factor);
+            }, 50);
+        }, 220);
+    });
+
+    btn.addEventListener('mouseup', clearStepperTimers);
+    btn.addEventListener('mouseleave', clearStepperTimers);
+    btn.addEventListener('touchend', clearStepperTimers);
+});
+
+// Mouse Wheel Scrolling on rows & inputs for ultra-precision calibration
+document.querySelectorAll('.calib-row').forEach(row => {
+    row.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const targetId = row.dataset.target;
+        if (!targetId) return;
+        const dir = e.deltaY < 0 ? 1 : -1;
+        const factor = e.shiftKey ? 0.2 : (e.ctrlKey ? 5 : 1);
+        stepCalibInput(targetId, dir, factor);
+    }, { passive: false });
+});
+
+// Presets per active frame
+window.applyFramePreset = function (presetName) {
+    markCalibInteraction();
+    const state = getActiveCalibState();
+    if (activeCalibFrame === 'start') {
+        if (presetName === 'default' || presetName === 'far-left') {
+            Object.assign(state, SPOOL_CALIB_START_DEFAULT);
+        } else if (presetName === 'center') {
+            Object.assign(state, { posX: 0.00, posY: 0.00, posZ: 0.00, rotXDeg: -10.0, rotYDeg: 45.0, rotZDeg: 90.0, scale: 0.65 });
+        } else if (presetName === 'face') {
+            Object.assign(state, { posX: -1.20, posY: 0.00, posZ: 0.00, rotXDeg: 0.0, rotYDeg: 0.0, rotZDeg: 90.0, scale: 0.58 });
+        }
+    } else {
+        if (presetName === 'default' || presetName === 'last-stage') {
+            Object.assign(state, SPOOL_CALIB_END_DEFAULT);
+        } else if (presetName === 'center') {
+            Object.assign(state, { posX: 0.00, posY: 0.20, posZ: 1.50, rotXDeg: -10.0, rotYDeg: 50.0, rotZDeg: 85.0, scale: 1.05 });
+        } else if (presetName === 'far-left') {
+            Object.assign(state, { posX: -6.50, posY: 0.10, posZ: 0.80, rotXDeg: -12.0, rotYDeg: 60.0, rotZDeg: 85.0, scale: 0.90 });
+        } else if (presetName === 'face') {
+            Object.assign(state, { posX: -2.00, posY: 0.10, posZ: 1.00, rotXDeg: 0.0, rotYDeg: 0.0, rotZDeg: 90.0, scale: 0.80 });
+        }
+    }
+    syncCalibInputsFromState();
+};
+
+window.copyCalibConfig = function (target = 'both') {
+    const codeStr = (target === 'both') ? formatBothFramesCode() : formatSingleFrameCode(activeCalibFrame, getActiveCalibState());
+    const btnId = (target === 'both') ? 'btn-copy-both' : 'btn-copy-calib';
+    const defaultText = (target === 'both') ? '📋 Copy Both (Start + End)' : '📄 Copy Active';
+
+    function onCopySuccess() {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '✓ Copied!';
+            btn.style.background = '#16a34a';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.style.background = '';
+            }, 1800);
+        }
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codeStr).then(onCopySuccess).catch(() => {
+            copyFallback(codeStr);
+            onCopySuccess();
+        });
+    } else {
+        copyFallback(codeStr);
+        onCopySuccess();
+    }
+
+    function copyFallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) { }
+        document.body.removeChild(ta);
+    }
+};
+
+window.resetCalibConfig = function () {
+    markCalibInteraction();
+    const state = getActiveCalibState();
+    if (activeCalibFrame === 'start') {
+        Object.assign(state, SPOOL_CALIB_START_DEFAULT);
+    } else {
+        Object.assign(state, SPOOL_CALIB_END_DEFAULT);
+    }
+    syncCalibInputsFromState();
+};
+
+// Studio Tabs Switching
+document.querySelectorAll('.studio-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.studio-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.studio-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const targetId = btn.dataset.tab;
+        const targetPane = document.getElementById(targetId);
+        if (targetPane) targetPane.classList.add('active');
+    });
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   FROSTED GLASS & REEL HOVER CONTROLLER
+   ═══════════════════════════════════════════════════════════════════ */
+function formatGlassCode() {
+    return `// Frosted Glass & Reel Hover Calibration
+const GLASS_HOVER_CALIBRATION = {
+  hoverIntensity: ${GLASS_HOVER_CONFIG.hoverIntensity.toFixed(1)},
+  blur: ${GLASS_HOVER_CONFIG.blur.toFixed(0)},           // px
+  opacity: ${GLASS_HOVER_CONFIG.opacity.toFixed(2)},      // 0.0 to 1.0
+  noiseDensity: ${GLASS_HOVER_CONFIG.noiseDensity.toFixed(2)}, // grain frequency
+  noiseSize: ${GLASS_HOVER_CONFIG.noiseSize.toFixed(0)},        // px
+  noiseOpacity: ${GLASS_HOVER_CONFIG.noiseOpacity.toFixed(2)}  // 0.0 to 1.0
+};`;
+}
+
+function updateGlassAndHover() {
+    const nav = document.getElementById('liquid-glass-nav');
+    if (nav) {
+        nav.style.setProperty('--glass-bg', `rgba(255, 255, 255, ${GLASS_HOVER_CONFIG.opacity})`);
+        nav.style.setProperty('--glass-blur', `${GLASS_HOVER_CONFIG.blur}px`);
+        
+        // Generate SVG noise filter with custom density (baseFrequency)
+        const svg = `<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${GLASS_HOVER_CONFIG.noiseDensity}' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(#n)'/></svg>`;
+        const dataUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+        nav.style.setProperty('--glass-noise-url', dataUrl);
+        nav.style.setProperty('--glass-noise-size', `${GLASS_HOVER_CONFIG.noiseSize}px`);
+        nav.style.setProperty('--glass-noise-opacity', GLASS_HOVER_CONFIG.noiseOpacity);
+    }
+
+    const codeDisplay = document.getElementById('glass-code-display');
+    if (codeDisplay) {
+        codeDisplay.textContent = formatGlassCode();
+    }
+}
+
+function onGlassInput() {
+    markCalibInteraction();
+    const getVal = (id, fallback) => {
+        const el = document.getElementById(id);
+        const v = el ? parseFloat(el.value) : fallback;
+        return isNaN(v) ? fallback : v;
+    };
+    GLASS_HOVER_CONFIG.hoverIntensity = getVal('glass-num-hover', GLASS_HOVER_CONFIG.hoverIntensity);
+    GLASS_HOVER_CONFIG.blur = getVal('glass-num-blur', GLASS_HOVER_CONFIG.blur);
+    GLASS_HOVER_CONFIG.opacity = getVal('glass-num-opacity', GLASS_HOVER_CONFIG.opacity);
+    GLASS_HOVER_CONFIG.noiseDensity = getVal('glass-num-noise-density', GLASS_HOVER_CONFIG.noiseDensity);
+    GLASS_HOVER_CONFIG.noiseSize = getVal('glass-num-noise-size', GLASS_HOVER_CONFIG.noiseSize);
+    GLASS_HOVER_CONFIG.noiseOpacity = getVal('glass-num-noise-opacity', GLASS_HOVER_CONFIG.noiseOpacity);
+
+    // Sync sliders
+    const setSlider = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+    };
+    setSlider('glass-hover', GLASS_HOVER_CONFIG.hoverIntensity);
+    setSlider('glass-blur', GLASS_HOVER_CONFIG.blur);
+    setSlider('glass-opacity', GLASS_HOVER_CONFIG.opacity);
+    setSlider('glass-noise-density', GLASS_HOVER_CONFIG.noiseDensity);
+    setSlider('glass-noise-size', GLASS_HOVER_CONFIG.noiseSize);
+    setSlider('glass-noise-opacity', GLASS_HOVER_CONFIG.noiseOpacity);
+
+    updateGlassAndHover();
+}
+
+function onGlassSliderInput(e) {
+    markCalibInteraction();
+    const id = e.target.id;
+    const val = parseFloat(e.target.value);
+    const numId = id.replace('glass-', 'glass-num-');
+    const numEl = document.getElementById(numId);
+    if (numEl) numEl.value = val;
+
+    if (id === 'glass-hover') GLASS_HOVER_CONFIG.hoverIntensity = val;
+    else if (id === 'glass-blur') GLASS_HOVER_CONFIG.blur = val;
+    else if (id === 'glass-opacity') GLASS_HOVER_CONFIG.opacity = val;
+    else if (id === 'glass-noise-density') GLASS_HOVER_CONFIG.noiseDensity = val;
+    else if (id === 'glass-noise-size') GLASS_HOVER_CONFIG.noiseSize = val;
+    else if (id === 'glass-noise-opacity') GLASS_HOVER_CONFIG.noiseOpacity = val;
+
+    updateGlassAndHover();
+}
+
+['glass-hover', 'glass-blur', 'glass-opacity', 'glass-noise-density', 'glass-noise-size', 'glass-noise-opacity'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', onGlassSliderInput);
+});
+
+['glass-num-hover', 'glass-num-blur', 'glass-num-opacity', 'glass-num-noise-density', 'glass-num-noise-size', 'glass-num-noise-opacity'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', onGlassInput);
+        el.addEventListener('change', onGlassInput);
+    }
+});
+
+window.copyGlassConfig = function () {
+    const codeStr = formatGlassCode();
+    const btn = document.getElementById('btn-copy-glass');
+    function onCopySuccess() {
+        if (btn) {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '✓ Copied!';
+            btn.style.background = '#16a34a';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.style.background = '';
+            }, 1800);
+        }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codeStr).then(onCopySuccess).catch(() => {
+            copyFallback(codeStr);
+            onCopySuccess();
+        });
+    } else {
+        copyFallback(codeStr);
+        onCopySuccess();
+    }
+
+    function copyFallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) { }
+        document.body.removeChild(ta);
+    }
+};
+
+updateGlassAndHover();
+
+// Initial Code Readout Render
+syncCalibInputsFromState();
 })();
 </script>
 </body>

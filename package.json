@@ -1,0 +1,24 @@
+{
+  "name": "stan-studio",
+  "version": "1.0.0",
+  "description": "> Hyper-realistic, interactive 3D WebGL filament spool experience engineered with Three.js.",
+  "main": "three.min.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mxsourav/stan-studio.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/mxsourav/stan-studio/issues"
+  },
+  "homepage": "https://github.com/mxsourav/stan-studio#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0"
+  }
+}
