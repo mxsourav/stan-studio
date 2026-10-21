@@ -24,3 +24,4 @@ scratch*
 .playwright-mcp/
 .agents/
 skills-lock.json
+graphify-out/
