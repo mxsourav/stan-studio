@@ -1605,40 +1605,40 @@
             <div class="calib-group-title">
                 <span>Motor Axis Limits (Start & End Points)</span>
             </div>
-            <!-- X Axis Limits (Toolhead along Cantilever Rail) -->
+            <!-- X Axis Limits (Toolhead along Cantilever Rail in mm) -->
             <div class="calib-row">
                 <span class="calib-axis" style="color:#ef4444; font-weight:700;">X Start</span>
-                <input type="range" id="p-x-start" min="-25.0" max="30.0" step="0.5" value="-16.0">
-                <input type="number" id="p-num-x-start" class="calib-num" min="-25.0" max="30.0" step="0.5" value="-16.0">
+                <input type="range" id="p-x-start" min="0.0" max="120.0" step="0.5" value="14.0">
+                <input type="number" id="p-num-x-start" class="calib-num" min="0.0" max="120.0" step="0.5" value="14.0">
             </div>
             <div class="calib-row">
                 <span class="calib-axis" style="color:#ef4444; font-weight:700;">X End</span>
-                <input type="range" id="p-x-end" min="-25.0" max="30.0" step="0.5" value="26.0">
-                <input type="number" id="p-num-x-end" class="calib-num" min="-25.0" max="30.0" step="0.5" value="26.0">
+                <input type="range" id="p-x-end" min="0.0" max="120.0" step="0.5" value="90.0">
+                <input type="number" id="p-num-x-end" class="calib-num" min="0.0" max="120.0" step="0.5" value="90.0">
             </div>
 
-            <!-- Y Axis Limits (Heatbed Carriage Front/Back) -->
+            <!-- Y Axis Limits (Heatbed Carriage Front/Back in mm) -->
             <div class="calib-row">
                 <span class="calib-axis" style="color:#10b981; font-weight:700;">Y Start</span>
-                <input type="range" id="p-y-start" min="-30.0" max="30.0" step="0.5" value="-20.0">
-                <input type="number" id="p-num-y-start" class="calib-num" min="-30.0" max="30.0" step="0.5" value="-20.0">
+                <input type="range" id="p-y-start" min="0.0" max="130.0" step="0.5" value="35.0">
+                <input type="number" id="p-num-y-start" class="calib-num" min="0.0" max="130.0" step="0.5" value="35.0">
             </div>
             <div class="calib-row">
                 <span class="calib-axis" style="color:#10b981; font-weight:700;">Y End</span>
-                <input type="range" id="p-y-end" min="-30.0" max="30.0" step="0.5" value="20.0">
-                <input type="number" id="p-num-y-end" class="calib-num" min="-30.0" max="30.0" step="0.5" value="20.0">
+                <input type="range" id="p-y-end" min="0.0" max="130.0" step="0.5" value="100.0">
+                <input type="number" id="p-num-y-end" class="calib-num" min="0.0" max="130.0" step="0.5" value="100.0">
             </div>
 
-            <!-- Z Axis Limits (Vertical Gantry Height) -->
+            <!-- Z Axis Limits (Vertical Gantry Height in mm) -->
             <div class="calib-row">
                 <span class="calib-axis" style="color:#3b82f6; font-weight:700;">Z Start</span>
-                <input type="range" id="p-z-start" min="-5.0" max="38.0" step="0.5" value="0.0">
-                <input type="number" id="p-num-z-start" class="calib-num" min="-5.0" max="38.0" step="0.5" value="0.0">
+                <input type="range" id="p-z-start" min="-20.0" max="90.0" step="0.5" value="-10.0">
+                <input type="number" id="p-num-z-start" class="calib-num" min="-20.0" max="90.0" step="0.5" value="-10.0">
             </div>
             <div class="calib-row">
                 <span class="calib-axis" style="color:#3b82f6; font-weight:700;">Z End</span>
-                <input type="range" id="p-z-end" min="-5.0" max="38.0" step="0.5" value="33.0">
-                <input type="number" id="p-num-z-end" class="calib-num" min="-5.0" max="38.0" step="0.5" value="33.0">
+                <input type="range" id="p-z-end" min="-20.0" max="90.0" step="0.5" value="70.0">
+                <input type="number" id="p-num-z-end" class="calib-num" min="-20.0" max="90.0" step="0.5" value="70.0">
             </div>
 
             <!-- Live Manual Motor Test Sliders (0% Start → 100% End) -->
@@ -2003,7 +2003,7 @@ if (typeof THREE === 'undefined') {
 <script src="lib/hero-dispersion.js?v=4.4"></script>
 <!-- Bambu Lab A1 Mini Kinematics & Studio Engine -->
 <script src="lib/GLTFLoader.js"></script>
-<script src="lib/bambu-printer.js?v=5.0"></script>
+<script src="lib/bambu-printer.js?v=6.0"></script>
 
 <script>
 /* ====================================================================
@@ -3919,9 +3919,9 @@ function initBambuPrinter() {
         const spd = (cfg && cfg.speed !== undefined) ? cfg.speed : 1.8;
 
         const lim = (cfg && cfg.axisLimits) ? cfg.axisLimits : {
-            xStart: -16.0, xEnd: 26.0,
-            yStart: -20.0, yEnd: 20.0,
-            zStart: 0.0, zEnd: 33.0
+            xStart: 14.0, xEnd: 90.0,
+            yStart: 35.0, yEnd: 100.0,
+            zStart: -10.0, zEnd: 70.0
         };
         const mp = (cfg && cfg.motorPct) ? cfg.motorPct : { x: 50, y: 50, z: 20 };
 
@@ -4110,12 +4110,12 @@ const BAMBU_PRINTER_CONFIG = {
     scale: ${cfg.scale.toFixed(2)}
   },
   axisLimits: {
-    xStart: ${(lim.xStart ?? -16.0).toFixed(1)},
-    xEnd: ${(lim.xEnd ?? 26.0).toFixed(1)},
-    yStart: ${(lim.yStart ?? -20.0).toFixed(1)},
-    yEnd: ${(lim.yEnd ?? 20.0).toFixed(1)},
-    zStart: ${(lim.zStart ?? 0.0).toFixed(1)},
-    zEnd: ${(lim.zEnd ?? 33.0).toFixed(1)}
+    xStart: ${(lim.xStart ?? 14.0).toFixed(1)},
+    xEnd: ${(lim.xEnd ?? 90.0).toFixed(1)},
+    yStart: ${(lim.yStart ?? 35.0).toFixed(1)},
+    yEnd: ${(lim.yEnd ?? 100.0).toFixed(1)},
+    zStart: ${(lim.zStart ?? -10.0).toFixed(1)},
+    zEnd: ${(lim.zEnd ?? 70.0).toFixed(1)}
   },
   speed: ${cfg.speed.toFixed(2)}
 };`;
