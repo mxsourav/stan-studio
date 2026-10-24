@@ -1608,37 +1608,37 @@
             <!-- X Axis Limits (Toolhead along Cantilever Rail) -->
             <div class="calib-row">
                 <span class="calib-axis" style="color:#ef4444; font-weight:700;">X Start</span>
-                <input type="range" id="p-x-start" min="-18.0" max="5.0" step="0.2" value="-8.5">
-                <input type="number" id="p-num-x-start" class="calib-num" min="-18.0" max="5.0" step="0.2" value="-8.5">
+                <input type="range" id="p-x-start" min="-25.0" max="30.0" step="0.5" value="-16.0">
+                <input type="number" id="p-num-x-start" class="calib-num" min="-25.0" max="30.0" step="0.5" value="-16.0">
             </div>
             <div class="calib-row">
                 <span class="calib-axis" style="color:#ef4444; font-weight:700;">X End</span>
-                <input type="range" id="p-x-end" min="5.0" max="28.0" step="0.2" value="18.0">
-                <input type="number" id="p-num-x-end" class="calib-num" min="5.0" max="28.0" step="0.2" value="18.0">
+                <input type="range" id="p-x-end" min="-25.0" max="30.0" step="0.5" value="26.0">
+                <input type="number" id="p-num-x-end" class="calib-num" min="-25.0" max="30.0" step="0.5" value="26.0">
             </div>
 
             <!-- Y Axis Limits (Heatbed Carriage Front/Back) -->
             <div class="calib-row">
                 <span class="calib-axis" style="color:#10b981; font-weight:700;">Y Start</span>
-                <input type="range" id="p-y-start" min="-20.0" max="0.0" step="0.2" value="-12.0">
-                <input type="number" id="p-num-y-start" class="calib-num" min="-20.0" max="0.0" step="0.2" value="-12.0">
+                <input type="range" id="p-y-start" min="-30.0" max="30.0" step="0.5" value="-20.0">
+                <input type="number" id="p-num-y-start" class="calib-num" min="-30.0" max="30.0" step="0.5" value="-20.0">
             </div>
             <div class="calib-row">
                 <span class="calib-axis" style="color:#10b981; font-weight:700;">Y End</span>
-                <input type="range" id="p-y-end" min="0.0" max="20.0" step="0.2" value="12.0">
-                <input type="number" id="p-num-y-end" class="calib-num" min="0.0" max="20.0" step="0.2" value="12.0">
+                <input type="range" id="p-y-end" min="-30.0" max="30.0" step="0.5" value="20.0">
+                <input type="number" id="p-num-y-end" class="calib-num" min="-30.0" max="30.0" step="0.5" value="20.0">
             </div>
 
             <!-- Z Axis Limits (Vertical Gantry Height) -->
             <div class="calib-row">
                 <span class="calib-axis" style="color:#3b82f6; font-weight:700;">Z Start</span>
-                <input type="range" id="p-z-start" min="-5.0" max="8.0" step="0.2" value="0.0">
-                <input type="number" id="p-num-z-start" class="calib-num" min="-5.0" max="8.0" step="0.2" value="0.0">
+                <input type="range" id="p-z-start" min="-5.0" max="38.0" step="0.5" value="0.0">
+                <input type="number" id="p-num-z-start" class="calib-num" min="-5.0" max="38.0" step="0.5" value="0.0">
             </div>
             <div class="calib-row">
                 <span class="calib-axis" style="color:#3b82f6; font-weight:700;">Z End</span>
-                <input type="range" id="p-z-end" min="5.0" max="30.0" step="0.2" value="22.0">
-                <input type="number" id="p-num-z-end" class="calib-num" min="5.0" max="30.0" step="0.2" value="22.0">
+                <input type="range" id="p-z-end" min="-5.0" max="38.0" step="0.5" value="33.0">
+                <input type="number" id="p-num-z-end" class="calib-num" min="-5.0" max="38.0" step="0.5" value="33.0">
             </div>
 
             <!-- Live Manual Motor Test Sliders (0% Start → 100% End) -->
@@ -2003,7 +2003,7 @@ if (typeof THREE === 'undefined') {
 <script src="lib/hero-dispersion.js?v=4.4"></script>
 <!-- Bambu Lab A1 Mini Kinematics & Studio Engine -->
 <script src="lib/GLTFLoader.js"></script>
-<script src="lib/bambu-printer.js?v=4.0"></script>
+<script src="lib/bambu-printer.js?v=5.0"></script>
 
 <script>
 /* ====================================================================
@@ -3919,9 +3919,9 @@ function initBambuPrinter() {
         const spd = (cfg && cfg.speed !== undefined) ? cfg.speed : 1.8;
 
         const lim = (cfg && cfg.axisLimits) ? cfg.axisLimits : {
-            xStart: -8.5, xEnd: 18.0,
-            yStart: -12.0, yEnd: 12.0,
-            zStart: 0.0, zEnd: 22.0
+            xStart: -16.0, xEnd: 26.0,
+            yStart: -20.0, yEnd: 20.0,
+            zStart: 0.0, zEnd: 33.0
         };
         const mp = (cfg && cfg.motorPct) ? cfg.motorPct : { x: 50, y: 50, z: 20 };
 
@@ -4011,13 +4011,33 @@ const BAMBU_PRINTER_CONFIG = {
 
     bindControl('p-scale', 'p-num-scale', (v) => studio.setScale(v));
 
-    // Axis Limits bindings (Calibrate Start & End Points for each axis)
-    bindControl('p-x-start', 'p-num-x-start', (v) => studio.setAxisLimits({ xStart: v }));
-    bindControl('p-x-end', 'p-num-x-end', (v) => studio.setAxisLimits({ xEnd: v }));
-    bindControl('p-y-start', 'p-num-y-start', (v) => studio.setAxisLimits({ yStart: v }));
-    bindControl('p-y-end', 'p-num-y-end', (v) => studio.setAxisLimits({ yEnd: v }));
-    bindControl('p-z-start', 'p-num-z-start', (v) => studio.setAxisLimits({ zStart: v }));
-    bindControl('p-z-end', 'p-num-z-end', (v) => studio.setAxisLimits({ zEnd: v }));
+    // Axis Limits bindings (Calibrate Start & End Points for each axis with live visual positioning)
+    const onAxisLimitChange = (axis, isStart, val) => {
+        if (studio.isPrinting) {
+            studio.isPrinting = false; // Pause automatically so user can inspect manual motor calibration
+            if (pauseBtn) {
+                pauseBtn.textContent = '▶ Resume';
+                pauseBtn.style.color = '#16a34a';
+            }
+        }
+        if (axis === 'x') {
+            studio.setAxisLimits(isStart ? { xStart: val } : { xEnd: val });
+            studio.setManualMotorPercent(isStart ? 0 : 100, undefined, undefined);
+        } else if (axis === 'y') {
+            studio.setAxisLimits(isStart ? { yStart: val } : { yEnd: val });
+            studio.setManualMotorPercent(undefined, isStart ? 0 : 100, undefined);
+        } else if (axis === 'z') {
+            studio.setAxisLimits(isStart ? { zStart: val } : { zEnd: val });
+            studio.setManualMotorPercent(undefined, undefined, isStart ? 0 : 100);
+        }
+    };
+
+    bindControl('p-x-start', 'p-num-x-start', (v) => onAxisLimitChange('x', true, v));
+    bindControl('p-x-end', 'p-num-x-end', (v) => onAxisLimitChange('x', false, v));
+    bindControl('p-y-start', 'p-num-y-start', (v) => onAxisLimitChange('y', true, v));
+    bindControl('p-y-end', 'p-num-y-end', (v) => onAxisLimitChange('y', false, v));
+    bindControl('p-z-start', 'p-num-z-start', (v) => onAxisLimitChange('z', true, v));
+    bindControl('p-z-end', 'p-num-z-end', (v) => onAxisLimitChange('z', false, v));
 
     // Manual Motor Test bindings (0% Start → 100% End)
     const onMotorTest = (axis, val) => {
@@ -4090,12 +4110,12 @@ const BAMBU_PRINTER_CONFIG = {
     scale: ${cfg.scale.toFixed(2)}
   },
   axisLimits: {
-    xStart: ${(lim.xStart ?? -8.5).toFixed(1)},
-    xEnd: ${(lim.xEnd ?? 18.0).toFixed(1)},
-    yStart: ${(lim.yStart ?? -12.0).toFixed(1)},
-    yEnd: ${(lim.yEnd ?? 12.0).toFixed(1)},
+    xStart: ${(lim.xStart ?? -16.0).toFixed(1)},
+    xEnd: ${(lim.xEnd ?? 26.0).toFixed(1)},
+    yStart: ${(lim.yStart ?? -20.0).toFixed(1)},
+    yEnd: ${(lim.yEnd ?? 20.0).toFixed(1)},
     zStart: ${(lim.zStart ?? 0.0).toFixed(1)},
-    zEnd: ${(lim.zEnd ?? 22.0).toFixed(1)}
+    zEnd: ${(lim.zEnd ?? 33.0).toFixed(1)}
   },
   speed: ${cfg.speed.toFixed(2)}
 };`;
