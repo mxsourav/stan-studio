@@ -20,6 +20,7 @@ node_modules/
 # Temporary & Log Files
 *.log
 scratch*
+3d_printer_-_bambu_lab_a1_mini.glb
 .system_generated/
 .playwright-mcp/
 .agents/

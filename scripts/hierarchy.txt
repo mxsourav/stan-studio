@@ -1,0 +1,356 @@
+Total nodes: 348, Total meshes: 133, Total materials: 5
+Material [0] 'Toolhead': baseColor=[1.0, 1.0, 1.0, 1.0], metallic=0.15, roughness=0.45
+Material [1] 'Motor': baseColor=[1.0, 1.0, 1.0, 1.0], metallic=0.15, roughness=0.45
+Material [2] 'Heatbed': baseColor=[1.0, 1.0, 1.0, 1.0], metallic=0.15, roughness=0.45
+Material [3] 'Z-Axis': baseColor=[1.0, 1.0, 1.0, 1.0], metallic=0.15, roughness=0.45
+Material [4] 'Body': baseColor=[1.0, 1.0, 1.0, 1.0], metallic=0.15, roughness=0.45
+
+--- NODES TREE ROOT ---
+[0] 'Sketchfab_model'
+  [1] 'd59eeddcd4124536b5277909b19c22c3.fbx'
+    [2] 'RootNode'
+      [3] 'FBX'
+        [4] 'Toolhead'
+          [5] 'Subdivision_Surface'
+            [6] 'Toolhead_2'
+              [7] 'CableClip'
+                [8] 'CableClip_Toolhead_0' mesh=0 mats=['0:Toolhead']
+              [9] 'Screws'
+                [10] 'Socket_Screw_01_2'
+                  [11] 'Socket_Screw_01_2_Toolhead_0' mesh=1 mats=['0:Toolhead']
+                [12] 'Symmetrie'
+                  [13] 'Socket_Screw_01_2_1'
+                    [14] 'Socket_Screw_01_2_1_Toolhead_0' mesh=2 mats=['0:Toolhead']
+                  [15] 'Socket_Screw_01_2_2'
+                    [16] 'Socket_Screw_01_2_2_Toolhead_0' mesh=3 mats=['0:Toolhead']
+                [17] 'Symmetrie_2'
+                  [18] 'Gruppe_1'
+                    [19] 'Socket_Screw_01_1_1'
+                      [20] 'Socket_Screw_01_1_1_Toolhead_0' mesh=4 mats=['0:Toolhead']
+                    [21] 'Socket_Screw_01_1'
+                      [22] 'Socket_Screw_01_1_Toolhead_0' mesh=5 mats=['0:Toolhead']
+                    [23] 'Socket_Screw_01_1_2'
+                      [24] 'Socket_Screw_01_1_2_Toolhead_0' mesh=6 mats=['0:Toolhead']
+                  [25] 'Gruppe'
+                    [26] 'Socket_Screw_01_1_3'
+                      [27] 'Socket_Screw_01_1_3_Toolhead_0' mesh=7 mats=['0:Toolhead']
+                    [28] 'Socket_Screw_01'
+                      [29] 'Socket_Screw_01_Toolhead_0' mesh=8 mats=['0:Toolhead']
+                    [30] 'Socket_Screw_01_2_3'
+                      [31] 'Socket_Screw_01_2_3_Toolhead_0' mesh=9 mats=['0:Toolhead']
+                [32] 'Symmetrie_2_2'
+                  [33] 'Symmetrie_1'
+                    [34] 'Socket_Screw_01_1_1_2'
+                      [35] 'Socket_Screw_01_1_1_2_Toolhead_0' mesh=10 mats=['0:Toolhead']
+                    [36] 'Socket_Screw_01_1_4'
+                      [37] 'Socket_Screw_01_1_4_Toolhead_0' mesh=11 mats=['0:Toolhead']
+                  [38] 'Symmetrie_3'
+                    [39] 'Socket_Screw_01_1_5'
+                      [40] 'Socket_Screw_01_1_5_Toolhead_0' mesh=12 mats=['0:Toolhead']
+                    [41] 'Socket_Screw_01_3'
+                      [42] 'Socket_Screw_01_3_Toolhead_0' mesh=13 mats=['0:Toolhead']
+                [43] 'Socket_Screw_01_1_6'
+                  [44] 'Socket_Screw_01_1_6_Toolhead_0' mesh=14 mats=['0:Toolhead']
+              [45] 'Zylinder'
+                [46] 'Zylinder_Toolhead_0' mesh=15 mats=['0:Toolhead']
+              [47] 'RubberNozzle'
+                [48] 'RubberNozzle_Toolhead_0' mesh=16 mats=['0:Toolhead']
+                [49] 'Rubber'
+                  [50] 'Rubber_Toolhead_0' mesh=17 mats=['0:Toolhead']
+                  [51] 'Nozzle'
+                    [52] 'Nozzle_Toolhead_0' mesh=18 mats=['0:Toolhead']
+              [53] 'FanBlock'
+                [54] 'FanBlock_Toolhead_0' mesh=19 mats=['0:Toolhead']
+                [55] 'Fan'
+                  [56] 'Fan_Toolhead_0' mesh=20 mats=['0:Toolhead']
+              [57] 'Input'
+                [58] 'Input_Toolhead_0' mesh=21 mats=['0:Toolhead']
+              [59] 'RailConnection'
+                [60] 'RailConnection_Toolhead_0' mesh=22 mats=['0:Toolhead']
+                [61] 'RailCon'
+                  [62] 'RailCon_Toolhead_0' mesh=23 mats=['0:Toolhead']
+                [63] 'Screw'
+                  [64] 'Screw_Toolhead_0' mesh=24 mats=['0:Toolhead']
+              [65] 'TopSection'
+                [66] 'Nozzle_2'
+                  [67] 'Nozzle_2_Toolhead_0' mesh=25 mats=['0:Toolhead']
+                [68] 'TopPiece'
+                  [69] 'W��rfel_1'
+                    [70] 'W��rfel_1_Toolhead_0' mesh=26 mats=['0:Toolhead']
+                    [71] 'Extrudieren'
+                      [72] 'Extrudieren_Toolhead_0' mesh=27 mats=['0:Toolhead']
+                [73] 'Extrudieren_remesh'
+                  [74] 'Extrudieren_remesh_Toolhead_0' mesh=28 mats=['0:Toolhead']
+              [75] 'Backplate'
+                [76] 'Backplate_Toolhead_0' mesh=29 mats=['0:Toolhead']
+              [77] 'MainFrame'
+                [78] 'MainFrame_Toolhead_0' mesh=30 mats=['0:Toolhead']
+              [79] 'MidSection'
+                [80] 'MidSection_Toolhead_0' mesh=31 mats=['0:Toolhead']
+              [81] 'Toggle'
+                [82] 'Toggle_Toolhead_0' mesh=32 mats=['0:Toolhead']
+              [83] 'Part_Cooling_Fan'
+                [84] 'Part_Cooling_Fan_Toolhead_0' mesh=33 mats=['0:Toolhead']
+                [85] 'Symmetrie_4'
+                  [86] 'Gruppe_1_2'
+                    [87] 'Machine_Screw___Flat_02_1_1'
+                      [88] 'Machine_Screw___Flat_02_1_1_Toolhead_0' mesh=34 mats=['0:Toolhead']
+                    [89] 'Machine_Screw___Flat_02_1'
+                      [90] 'Machine_Screw___Flat_02_1_Toolhead_0' mesh=35 mats=['0:Toolhead']
+                  [91] 'Gruppe_2'
+                    [92] 'Machine_Screw___Flat_02_1_2'
+                      [93] 'Machine_Screw___Flat_02_1_2_Toolhead_0' mesh=36 mats=['0:Toolhead']
+                    [94] 'Machine_Screw___Flat_02'
+                      [95] 'Machine_Screw___Flat_02_Toolhead_0' mesh=37 mats=['0:Toolhead']
+                [96] 'Fan_2'
+                  [97] 'Fan_2_Toolhead_0' mesh=38 mats=['0:Toolhead']
+              [98] 'Front_Cover'
+                [99] 'Front_Cover_Toolhead_0' mesh=39 mats=['0:Toolhead']
+              [100] 'Inside'
+                [101] 'Inside_Toolhead_0' mesh=40 mats=['0:Toolhead']
+              [102] 'Glas'
+                [103] 'Glas_Toolhead_0' mesh=41 mats=['0:Toolhead']
+        [104] 'Motor'
+          [105] 'Screws_2'
+            [106] 'Socket_Screw_01_1_7'
+              [107] 'Socket_Screw_01_1_7_Motor_0' mesh=42 mats=['1:Motor']
+            [108] 'Socket_Screw_01_1_Instanz'
+              [109] 'Socket_Screw_01_1_8'
+                [110] 'Socket_Screw_01_1_8_Motor_0' mesh=43 mats=['1:Motor']
+            [111] 'Socket_Screw_01_4'
+              [112] 'Socket_Screw_01_4_Motor_0' mesh=44 mats=['1:Motor']
+            [113] 'Socket_Screw_01_Instanz'
+              [114] 'Socket_Screw_01_5'
+                [115] 'Socket_Screw_01_5_Motor_0' mesh=45 mats=['1:Motor']
+            [116] 'Socket_Screw_01_1_9'
+              [117] 'Socket_Screw_01_1_9_Motor_0' mesh=46 mats=['1:Motor']
+            [118] 'Socket_Screw_01_6'
+              [119] 'Socket_Screw_01_6_Motor_0' mesh=47 mats=['1:Motor']
+            [120] 'Socket_Screw_01_7'
+              [121] 'Socket_Screw_01_7_Motor_0' mesh=48 mats=['1:Motor']
+            [122] 'Socket_Screw_01_1_10'
+              [123] 'Socket_Screw_01_1_10_Motor_0' mesh=49 mats=['1:Motor']
+            [124] 'Socket_Screw_01_Instanz_4'
+              [125] 'Socket_Screw_01_Instanz_4_Motor_0' mesh=50 mats=['1:Motor']
+            [126] 'Socket_Screw_01_Instanz_3'
+              [127] 'Socket_Screw_01_Instanz_3_Motor_0' mesh=51 mats=['1:Motor']
+            [128] 'Socket_Screw_01_Instanz_2'
+              [129] 'Socket_Screw_01_Instanz_2_Motor_0' mesh=52 mats=['1:Motor']
+            [130] 'Socket_Screw_01_Instanz_1'
+              [131] 'Socket_Screw_01_Instanz_1_Motor_0' mesh=53 mats=['1:Motor']
+            [132] 'Socket_Screw_01_Instanz_2_2'
+              [133] 'Socket_Screw_01_Instanz_2_2_Motor_0' mesh=54 mats=['1:Motor']
+            [134] 'Socket_Screw_01_Instanz_14'
+              [135] 'Socket_Screw_01_Instanz_14_Motor_0' mesh=55 mats=['1:Motor']
+            [136] 'Socket_Screw_01_Instanz_13'
+              [137] 'Socket_Screw_01_Instanz_13_Motor_0' mesh=56 mats=['1:Motor']
+          [138] 'Subdivision_Surface_2'
+            [139] 'RailMain'
+              [140] 'RailMain_Motor_0' mesh=57 mats=['1:Motor']
+              [141] 'CableTrans'
+                [142] 'CableTrans_Motor_0' mesh=58 mats=['1:Motor']
+              [143] 'CableSOlid'
+                [144] 'CableSOlid_Motor_0' mesh=59 mats=['1:Motor']
+              [145] 'W��rfel'
+                [146] 'W��rfel_Motor_0' mesh=60 mats=['1:Motor']
+              [147] 'End'
+                [148] 'End_Motor_0' mesh=61 mats=['1:Motor']
+              [149] 'Wiper'
+                [150] 'Ebene_1'
+                  [151] 'Ebene_1_Motor_0' mesh=62 mats=['1:Motor']
+                [152] 'Scrapper'
+                  [153] 'Scrapper_Motor_0' mesh=63 mats=['1:Motor']
+                  [154] 'W��rfel_2'
+                    [155] 'W��rfel_2_Motor_0' mesh=64 mats=['1:Motor']
+              [156] 'Rail'
+                [157] 'Rail_Motor_0' mesh=65 mats=['1:Motor']
+          [158] 'Subdivision_Surface_2_2'
+            [159] 'Motor_2'
+              [160] 'Cam_1'
+                [161] 'Cam_1_Motor_0' mesh=66 mats=['1:Motor']
+                [162] 'R��hre'
+                  [163] 'R��hre_Motor_0' mesh=67 mats=['1:Motor']
+                  [164] 'Lens'
+                    [165] 'Lens_Motor_0' mesh=68 mats=['1:Motor']
+                [166] 'Cam_2'
+                  [167] 'Cam_2_Motor_0' mesh=69 mats=['1:Motor']
+                [168] 'Lens_2'
+                  [169] 'Lens_2_Motor_0' mesh=70 mats=['1:Motor']
+              [170] 'FilamentClip'
+                [171] 'FilamentClip_Motor_0' mesh=71 mats=['1:Motor']
+                [172] 'Stopper'
+                  [173] 'Stopper_Motor_0' mesh=72 mats=['1:Motor']
+              [174] 'Cable'
+                [175] 'Cable_Motor_0' mesh=73 mats=['1:Motor']
+              [176] 'Connector'
+                [177] 'Connector_Motor_0' mesh=74 mats=['1:Motor']
+              [178] 'Lever'
+                [179] 'Lever_Motor_0' mesh=75 mats=['1:Motor']
+              [180] 'Connector_2'
+                [181] 'Connector_2_Motor_0' mesh=76 mats=['1:Motor']
+              [182] 'MotorBody'
+                [183] 'MotorBody_Motor_0' mesh=77 mats=['1:Motor']
+        [184] 'Heatbed'
+          [185] 'Y_Axis'
+            [186] 'Subdivision_Surface_3'
+              [187] 'Subdivision_Surface_3_Heatbed_0' mesh=78 mats=['2:Heatbed']
+          [188] 'Heatbed_2'
+            [189] 'Subdivision_Surface_4'
+              [190] 'Sweep'
+                [191] 'Sweep_Heatbed_0' mesh=79 mats=['2:Heatbed']
+              [192] 'PEI_Plate'
+                [193] 'PEI_Plate_Heatbed_0' mesh=80 mats=['2:Heatbed']
+              [194] 'CablePlug'
+                [195] 'CablePlug_Heatbed_0' mesh=81 mats=['2:Heatbed']
+              [196] 'W��rfel_3'
+                [197] 'W��rfel_3_Heatbed_0' mesh=82 mats=['2:Heatbed']
+                [198] 'Spring'
+                  [199] 'Spring_Heatbed_0' mesh=83 mats=['2:Heatbed']
+              [200] 'Wiper2'
+                [201] 'Wiper2_Heatbed_0' mesh=84 mats=['2:Heatbed']
+              [202] 'Wiper1'
+                [203] 'Wiper1_Heatbed_0' mesh=85 mats=['2:Heatbed']
+              [204] 'Verbinden'
+                [205] 'Heatplate_2'
+                  [206] 'Heatplate_2_Heatbed_0' mesh=86 mats=['2:Heatbed']
+        [207] 'Z_Axis'
+          [208] 'Screws_3'
+            [209] 'Socket_Screw_01_Instanz_1_2'
+              [210] 'Socket_Screw_01_8'
+                [211] 'Socket_Screw_01_8_Z-Axis_0' mesh=87 mats=['3:Z-Axis']
+            [212] 'Socket_Screw_01_Instanz_3_2'
+              [213] 'Socket_Screw_01_9'
+                [214] 'Socket_Screw_01_9_Z-Axis_0' mesh=88 mats=['3:Z-Axis']
+            [215] 'Socket_Screw_01_Instanz_12'
+              [216] 'Socket_Screw_01_Instanz_12_Z-Axis_0' mesh=89 mats=['3:Z-Axis']
+            [217] 'Socket_Screw_01_Instanz_11'
+              [218] 'Socket_Screw_01_Instanz_11_Z-Axis_0' mesh=90 mats=['3:Z-Axis']
+            [219] 'Socket_Screw_01_Instanz_10'
+              [220] 'Socket_Screw_01_Instanz_10_Z-Axis_0' mesh=91 mats=['3:Z-Axis']
+            [221] 'Socket_Screw_01_Instanz_9'
+              [222] 'Socket_Screw_01_Instanz_9_Z-Axis_0' mesh=92 mats=['3:Z-Axis']
+            [223] 'Socket_Screw_01_Instanz_8'
+              [224] 'Socket_Screw_01_Instanz_8_Z-Axis_0' mesh=93 mats=['3:Z-Axis']
+            [225] 'Socket_Screw_01_Instanz_7'
+              [226] 'Socket_Screw_01_Instanz_7_Z-Axis_0' mesh=94 mats=['3:Z-Axis']
+            [227] 'Socket_Screw_01_Instanz_6'
+              [228] 'Socket_Screw_01_Instanz_6_Z-Axis_0' mesh=95 mats=['3:Z-Axis']
+            [229] 'Socket_Screw_01_Instanz_5'
+              [230] 'Socket_Screw_01_Instanz_5_Z-Axis_0' mesh=96 mats=['3:Z-Axis']
+          [231] 'Subdivision_Surface_2_3'
+            [232] 'Subdivision_Surface_2_3_Z-Axis_0' mesh=97 mats=['3:Z-Axis']
+            [233] 'Z_Rail'
+              [234] 'Z_Rail_Z-Axis_0' mesh=98 mats=['3:Z-Axis']
+              [235] 'W��rfel_1_2'
+                [236] 'W��rfel_1_2_Z-Axis_0' mesh=99 mats=['3:Z-Axis']
+              [237] 'W��rfel_1_3'
+                [238] 'W��rfel_1_3_Z-Axis_0' mesh=100 mats=['3:Z-Axis']
+            [239] 'W��rfel_4'
+              [240] 'W��rfel_4_Z-Axis_0' mesh=101 mats=['3:Z-Axis']
+            [241] 'W��rfel_5'
+              [242] 'W��rfel_5_Z-Axis_0' mesh=102 mats=['3:Z-Axis']
+            [243] 'W��rfel_1_4'
+              [244] 'W��rfel_1_4_Z-Axis_0' mesh=103 mats=['3:Z-Axis']
+        [245] 'BodyUV'
+          [246] 'BottomScrews'
+            [247] 'Gruppe_4'
+              [248] 'Socket_Screw_01_10'
+                [249] 'Socket_Screw_01_10_Body_0' mesh=104 mats=['4:Body']
+            [250] 'Gruppe_6'
+              [251] 'Socket_Screw_01_11'
+                [252] 'Socket_Screw_01_11_Body_0' mesh=105 mats=['4:Body']
+            [253] 'Gruppe_7'
+              [254] 'Socket_Screw_01_12'
+                [255] 'Socket_Screw_01_12_Body_0' mesh=106 mats=['4:Body']
+            [256] 'Gruppe_3'
+              [257] 'Socket_Screw_01_13'
+                [258] 'Socket_Screw_01_13_Body_0' mesh=107 mats=['4:Body']
+            [259] 'Gruppe_1_3'
+              [260] 'Gruppe_Instanz'
+                [261] 'Socket_Screw_01_14'
+                  [262] 'Socket_Screw_01_14_Body_0' mesh=108 mats=['4:Body']
+              [263] 'Gruppe_Instanz_1'
+                [264] 'Socket_Screw_01_15'
+                  [265] 'Socket_Screw_01_15_Body_0' mesh=109 mats=['4:Body']
+              [266] 'Gruppe_7_Instanz'
+                [267] 'Gruppe_7_2'
+                  [268] 'Socket_Screw_01_16'
+                    [269] 'Socket_Screw_01_16_Body_0' mesh=110 mats=['4:Body']
+              [270] 'Gruppe_7_Instanz_1'
+                [271] 'Gruppe_7_3'
+                  [272] 'Socket_Screw_01_17'
+                    [273] 'Socket_Screw_01_17_Body_0' mesh=111 mats=['4:Body']
+              [274] 'Gruppe_7_Instanz_2'
+                [275] 'Gruppe_7_4'
+                  [276] 'Socket_Screw_01_18'
+                    [277] 'Socket_Screw_01_18_Body_0' mesh=112 mats=['4:Body']
+              [278] 'Gruppe_6_Instanz'
+                [279] 'Gruppe_6_2'
+                  [280] 'Socket_Screw_01_19'
+                    [281] 'Socket_Screw_01_19_Body_0' mesh=113 mats=['4:Body']
+              [282] 'Gruppe_6_Instanz_1'
+                [283] 'Gruppe_6_3'
+                  [284] 'Socket_Screw_01_20'
+                    [285] 'Socket_Screw_01_20_Body_0' mesh=114 mats=['4:Body']
+              [286] 'Gruppe_6_Instanz_2'
+                [287] 'Gruppe_6_4'
+                  [288] 'Socket_Screw_01_21'
+                    [289] 'Socket_Screw_01_21_Body_0' mesh=115 mats=['4:Body']
+              [290] 'Gruppe_4_Instanz_3'
+                [291] 'Gruppe_4_2'
+                  [292] 'Socket_Screw_01_22'
+                    [293] 'Socket_Screw_01_22_Body_0' mesh=116 mats=['4:Body']
+              [294] 'Gruppe_4_Instanz_2'
+                [295] 'Gruppe_4_3'
+                  [296] 'Socket_Screw_01_23'
+                    [297] 'Socket_Screw_01_23_Body_0' mesh=117 mats=['4:Body']
+              [298] 'Gruppe_4_Instanz_1'
+                [299] 'Gruppe_4_4'
+                  [300] 'Socket_Screw_01_24'
+                    [301] 'Socket_Screw_01_24_Body_0' mesh=118 mats=['4:Body']
+              [302] 'Gruppe_4_Instanz'
+                [303] 'Gruppe_4_5'
+                  [304] 'Socket_Screw_01_25'
+                    [305] 'Socket_Screw_01_25_Body_0' mesh=119 mats=['4:Body']
+              [306] 'Gruppe_4_Instanz_4'
+                [307] 'Gruppe_4_6'
+                  [308] 'Socket_Screw_01_26'
+                    [309] 'Socket_Screw_01_26_Body_0' mesh=120 mats=['4:Body']
+              [310] 'Gruppe_4_Instanz_5'
+                [311] 'Gruppe_4_7'
+                  [312] 'Socket_Screw_01_27'
+                    [313] 'Socket_Screw_01_27_Body_0' mesh=121 mats=['4:Body']
+          [314] 'Subdivision_Surface_5'
+            [315] 'Gruppe_4_8'
+              [316] 'Gruppe_2_2'
+                [317] 'Gruppe_2_Instanz'
+                  [318] 'Extrudieren_2'
+                    [319] 'Extrudieren_2_2'
+                      [320] 'Extrudieren_2_2_Body_0' mesh=122 mats=['4:Body']
+                [321] 'Gruppe_2_Instanz_2'
+                  [322] 'Extrudieren_2_3'
+                    [323] 'Extrudieren_2_4'
+                      [324] 'Extrudieren_2_4_Body_0' mesh=123 mats=['4:Body']
+                [325] 'Gruppe_2_Instanz_3'
+                  [326] 'Extrudieren_2_5'
+                    [327] 'Extrudieren_2_6'
+                      [328] 'Extrudieren_2_6_Body_0' mesh=124 mats=['4:Body']
+                [329] 'Gruppe_2_3'
+                  [330] 'Extrudieren_2_7'
+                    [331] 'Extrudieren_2_8'
+                      [332] 'Extrudieren_2_8_Body_0' mesh=125 mats=['4:Body']
+              [333] 'Base'
+                [334] 'Base_Body_0' mesh=126 mats=['4:Body']
+              [335] 'PowerButton'
+                [336] 'PowerButton_Body_0' mesh=127 mats=['4:Body']
+              [337] 'W��rfel_1_5'
+                [338] 'W��rfel_1_5_Body_0' mesh=128 mats=['4:Body']
+              [339] 'W��rfel_9'
+                [340] 'W��rfel_9_Body_0' mesh=129 mats=['4:Body']
+              [341] 'W��rfel_6'
+                [342] 'W��rfel_6_Body_0' mesh=130 mats=['4:Body']
+                [343] 'Display'
+                  [344] 'Display_Body_0' mesh=131 mats=['4:Body']
+          [345] 'Boole_alt'
+            [346] 'Subdivision_Surface_1'
+              [347] 'Subdivision_Surface_1_Body_0' mesh=132 mats=['4:Body']

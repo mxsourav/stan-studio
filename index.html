@@ -987,6 +987,434 @@
             stroke-linejoin: round;
         }
 
+        /* ══════════════════════════════════════════════════════════════
+           BAMBU LAB A1 MINI PRINTER SHOWCASE & INTERACTIVE STUDIO
+           ══════════════════════════════════════════════════════════════ */
+        /* ══════════════════════════════════════════════════════════════
+           BAMBU LAB A1 MINI PRINTER SHOWCASE & INTERACTIVE STUDIO
+           ══════════════════════════════════════════════════════════════ */
+        .printer-showcase-section {
+            position: relative;
+            z-index: 35;
+            min-height: 100vh;
+            background: #ffffff;
+            padding: 80px 40px 120px 40px;
+            box-sizing: border-box;
+            border-top: none;
+            transition: background-color 0.35s ease;
+        }
+
+        html.dark .printer-showcase-section,
+        body.dark-mode .printer-showcase-section {
+            background: #0c0e14;
+            border-top: none;
+        }
+
+        /* Seamless Loading Spinner Overlay for 3D Printer Model */
+        .printer-loader-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            z-index: 25;
+            transition: opacity 0.4s ease;
+            text-align: center;
+            padding: 24px;
+        }
+
+        html.dark .printer-loader-overlay,
+        body.dark-mode .printer-loader-overlay {
+            background: rgba(15, 23, 42, 0.92);
+        }
+
+        .printer-spinner {
+            width: 38px;
+            height: 38px;
+            border: 3px solid rgba(239, 68, 68, 0.2);
+            border-top-color: #ef4444;
+            border-radius: 50%;
+            animation: printerSpin 0.85s linear infinite;
+        }
+
+        @keyframes printerSpin {
+            to { transform: rotate(360deg); }
+        }
+
+        .printer-loader-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+            line-height: 1.5;
+            max-width: 480px;
+        }
+
+        html.dark .printer-loader-text,
+        body.dark-mode .printer-loader-text {
+            color: #94a3b8;
+        }
+
+        .printer-section-header {
+            max-width: 1320px;
+            margin: 0 auto 36px auto;
+            text-align: left;
+        }
+
+        .printer-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.20);
+            padding: 4px 12px;
+            border-radius: 999px;
+            margin-bottom: 14px;
+        }
+
+        .printer-badge-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+            animation: pulseDot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .printer-section-title {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 40px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            margin: 0 0 10px 0;
+            transition: color 0.35s ease;
+        }
+
+        html.dark .printer-section-title,
+        body.dark-mode .printer-section-title {
+            color: #f8fafc;
+        }
+
+        .printer-section-desc {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #64748b;
+            max-width: 680px;
+            margin: 0;
+            transition: color 0.35s ease;
+        }
+
+        html.dark .printer-section-desc,
+        body.dark-mode .printer-section-desc {
+            color: #94a3b8;
+        }
+
+        .printer-studio-container {
+            max-width: 1320px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 28px;
+            align-items: start;
+        }
+
+        @media (max-width: 860px) {
+            .printer-studio-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .printer-canvas-wrap {
+            position: relative;
+            width: 100%;
+            height: 640px;
+            background: radial-gradient(circle at 50% 50%, rgba(241, 245, 249, 0.6) 0%, rgba(226, 232, 240, 0.4) 100%);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.05);
+            transition: background 0.35s ease, border-color 0.35s ease;
+        }
+
+        html.dark .printer-canvas-wrap,
+        body.dark-mode .printer-canvas-wrap {
+            background: radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+        }
+
+        #printer-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+
+        #printer-canvas:active {
+            cursor: grabbing;
+        }
+
+        .printer-hud {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-item {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 10px;
+            padding: 6px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+        }
+
+        html.dark .hud-item,
+        body.dark-mode .hud-item {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .hud-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+        }
+
+        .hud-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            font-family: monospace;
+        }
+
+        html.dark .hud-value,
+        body.dark-mode .hud-value {
+            color: #f8fafc;
+        }
+
+        .hud-value.active-pulse {
+            color: #ef4444;
+        }
+
+        .printer-canvas-hint {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 999px;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            z-index: 10;
+        }
+
+        html.dark .printer-canvas-hint,
+        body.dark-mode .printer-canvas-hint {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+        }
+
+        .printer-reset-cam-btn {
+            background: #0f172a;
+            color: #ffffff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.15s ease;
+        }
+
+        html.dark .printer-reset-cam-btn,
+        body.dark-mode .printer-reset-cam-btn {
+            background: #ffffff;
+            color: #0f172a;
+        }
+
+        .printer-reset-cam-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .printer-ctrl-card {
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+            padding: 20px 22px;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.06);
+            user-select: none;
+            transition: background 0.35s ease, border-color 0.35s ease;
+        }
+
+        html.dark .printer-ctrl-card,
+        body.dark-mode .printer-ctrl-card {
+            background: rgba(15, 23, 42, 0.90);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+        }
+
+        .printer-ctrl-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        html.dark .printer-ctrl-header,
+        body.dark-mode .printer-ctrl-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .printer-ctrl-tag {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            color: #ef4444;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .printer-ctrl-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        html.dark .printer-ctrl-title,
+        body.dark-mode .printer-ctrl-title {
+            color: #f8fafc;
+        }
+
+        .printer-ctrl-reset {
+            background: transparent;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            color: #64748b;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        html.dark .printer-ctrl-reset,
+        body.dark-mode .printer-ctrl-reset {
+            border-color: rgba(255, 255, 255, 0.15);
+            color: #94a3b8;
+        }
+
+        .printer-ctrl-reset:hover {
+            color: #0f172a;
+            border-color: #0f172a;
+        }
+
+        html.dark .printer-ctrl-reset:hover,
+        body.dark-mode .printer-ctrl-reset:hover {
+            color: #ffffff;
+            border-color: #ffffff;
+        }
+
+        .printer-speed-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            margin-bottom: 12px;
+        }
+
+        .speed-btn {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #475569;
+            padding: 6px 0;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        html.dark .speed-btn,
+        body.dark-mode .speed-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+        }
+
+        .speed-btn.active {
+            background: #0f172a;
+            color: #ffffff;
+            border-color: #0f172a;
+        }
+
+        html.dark .speed-btn.active,
+        body.dark-mode .speed-btn.active {
+            background: #ffffff;
+            color: #0f172a;
+            border-color: #ffffff;
+        }
+
+        .speed-btn.pause-btn {
+            flex: 1.4;
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.25);
+            color: #ef4444;
+        }
+
+        .printer-code-display {
+            background: #090d16;
+            color: #38bdf8;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-family: monospace;
+            line-height: 1.45;
+            overflow-x: auto;
+            user-select: all;
+            margin: 6px 0 10px 0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
     </style>
 </head>
 <body>
@@ -1046,6 +1474,174 @@
 <!-- WebGL Frosted Glass & Curl Noise Particle Dispersion Overlay -->
 <canvas id="hero-dispersion-canvas"></canvas>
 <div class="scroll-spacer"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     BAMBU LAB A1 MINI 3D PRINTER DEDICATED SHOWCASE SECTION
+     Positioned below hero scroll runway; accessed by scrolling down
+     ═══════════════════════════════════════════════════════════════════ -->
+<section id="printer-showcase" class="printer-showcase-section">
+    <div class="printer-section-header">
+        <div class="printer-badge">
+            <span class="printer-badge-dot"></span>
+            STAN 3D STUDIO // KINEMATICS ENGINE
+        </div>
+        <h2 class="printer-section-title">Bambu Lab A1 Mini Studio</h2>
+        <p class="printer-section-desc">
+            Interactive real-time 3D printer calibration and precision kinematics simulation. Orbit, pan, calibrate position, angle, and scale, and test live printing speeds.
+        </p>
+    </div>
+
+    <div class="printer-studio-container">
+        <!-- 3D WebGL Viewport Card -->
+        <div class="printer-canvas-wrap">
+            <canvas id="printer-canvas"></canvas>
+
+            <!-- Loading Spinner & CORS Fallback Notice Overlay -->
+            <div id="printer-loader-overlay" class="printer-loader-overlay">
+                <div class="printer-spinner"></div>
+                <div class="printer-loader-text" id="printer-loader-text">Loading Bambu Lab A1 Mini Studio...</div>
+            </div>
+
+            <!-- Live G-code Telemetry HUD -->
+            <div class="printer-hud">
+                <div class="hud-item">
+                    <span class="hud-label">TOOLHEAD X</span>
+                    <span class="hud-value" id="hud-x">0.0 mm</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">BED Y</span>
+                    <span class="hud-value" id="hud-y">0.0 mm</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">GANTRY Z</span>
+                    <span class="hud-value" id="hud-z">0.20 mm</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">LAYER</span>
+                    <span class="hud-value" id="hud-layer">1 / 50</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">TOOLPATH</span>
+                    <span class="hud-value active-pulse" id="hud-mode">Perimeter Hex</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">HOTEND</span>
+                    <span class="hud-value" id="hud-nozzle">215 °C</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">BED TEMP</span>
+                    <span class="hud-value" id="hud-bed">65 °C</span>
+                </div>
+            </div>
+
+            <!-- Viewport Interaction Hint & Reset Button -->
+            <div class="printer-canvas-hint">
+                <span>🖱️ Drag to Orbit • Scroll to Zoom</span>
+                <button class="printer-reset-cam-btn" id="btn-reset-printer-cam" type="button">Reset View</button>
+            </div>
+        </div>
+
+        <!-- Comprehensive Calibration Controls Card -->
+        <div class="printer-ctrl-card">
+            <div class="printer-ctrl-header">
+                <div>
+                    <span class="printer-ctrl-tag">CALIBRATION CONSOLE</span>
+                    <span class="printer-ctrl-title">Printer Stage Controls</span>
+                </div>
+                <button class="printer-ctrl-reset" id="btn-reset-printer-transform" type="button">Reset</button>
+            </div>
+
+            <!-- Position X, Y, Z -->
+            <div class="calib-group-title">
+                <span>Stage Position (X, Y, Z)</span>
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Pos X</span>
+                <input type="range" id="p-pos-x" min="-12.0" max="12.0" step="0.05" value="0.0">
+                <input type="number" id="p-num-pos-x" class="calib-num" min="-12.0" max="12.0" step="0.05" value="0.0">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Pos Y</span>
+                <input type="range" id="p-pos-y" min="-10.0" max="10.0" step="0.05" value="-1.2">
+                <input type="number" id="p-num-pos-y" class="calib-num" min="-10.0" max="10.0" step="0.05" value="-1.2">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Pos Z</span>
+                <input type="range" id="p-pos-z" min="-12.0" max="12.0" step="0.05" value="0.0">
+                <input type="number" id="p-num-pos-z" class="calib-num" min="-12.0" max="12.0" step="0.05" value="0.0">
+            </div>
+
+            <!-- Rotation X, Y, Z (Deg) -->
+            <div class="calib-group-title">
+                <span>Stage Rotation (X, Y, Z Deg)</span>
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Rot X°</span>
+                <input type="range" id="p-rot-x" min="-180" max="180" step="1" value="0">
+                <input type="number" id="p-num-rot-x" class="calib-num" min="-180" max="180" step="1" value="0">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Rot Y°</span>
+                <input type="range" id="p-rot-y" min="-180" max="180" step="1" value="-28">
+                <input type="number" id="p-num-rot-y" class="calib-num" min="-180" max="180" step="1" value="-28">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Rot Z°</span>
+                <input type="range" id="p-rot-z" min="-180" max="180" step="1" value="0">
+                <input type="number" id="p-num-rot-z" class="calib-num" min="-180" max="180" step="1" value="0">
+            </div>
+
+            <!-- Scale -->
+            <div class="calib-group-title">
+                <span>Printer Scale</span>
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Scale</span>
+                <input type="range" id="p-scale" min="1.0" max="12.0" step="0.1" value="4.8">
+                <input type="number" id="p-num-scale" class="calib-num" min="1.0" max="12.0" step="0.1" value="4.8">
+            </div>
+
+            <!-- Gantry Arm Position (X, Y, Z mm) -->
+            <div class="calib-group-title">
+                <span>Gantry Arm Position (X, Y, Z mm)</span>
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Arm X</span>
+                <input type="range" id="p-arm-x" min="-25.0" max="25.0" step="0.5" value="0.0">
+                <input type="number" id="p-num-arm-x" class="calib-num" min="-25.0" max="25.0" step="0.5" value="0.0">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Arm Y</span>
+                <input type="range" id="p-arm-y" min="-10.0" max="80.0" step="0.5" value="0.0">
+                <input type="number" id="p-num-arm-y" class="calib-num" min="-10.0" max="80.0" step="0.5" value="0.0">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Arm Z</span>
+                <input type="range" id="p-arm-z" min="-25.0" max="25.0" step="0.5" value="0.0">
+                <input type="number" id="p-num-arm-z" class="calib-num" min="-25.0" max="25.0" step="0.5" value="0.0">
+            </div>
+
+            <!-- Kinematics Speed & Pause -->
+            <div class="calib-group-title">
+                <span>Kinematics Speed</span>
+            </div>
+            <div class="printer-speed-buttons">
+                <button type="button" class="speed-btn" data-speed="0.5">0.5x</button>
+                <button type="button" class="speed-btn" data-speed="1.0">1.0x</button>
+                <button type="button" class="speed-btn active" data-speed="1.8">1.8x</button>
+                <button type="button" class="speed-btn" data-speed="3.0">3.0x</button>
+                <button type="button" class="speed-btn pause-btn" id="btn-printer-pause">⏸ Pause</button>
+            </div>
+
+            <!-- Live Code Readout & Copy Button -->
+            <div class="calib-group-title">
+                <span>Live Configuration Code</span>
+            </div>
+            <pre class="printer-code-display" id="printer-code-readout"></pre>
+            <button type="button" class="calib-btn-primary" id="btn-copy-printer-config" style="width:100%;">📋 Copy Printer Config</button>
+        </div>
+    </div>
+</section>
 
 <!-- Interactive Scroll Status & Quick Reset -->
 <div id="scroll-status" style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:40; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:8px 18px; border-radius:999px; border:1px solid rgba(0,0,0,0.08); font-size:12px; font-weight:600; color:#64748b; box-shadow:0 8px 24px rgba(0,0,0,0.06); pointer-events:auto; user-select:none; transition:all 0.2s ease;">
@@ -1345,6 +1941,9 @@ if (typeof THREE === 'undefined') {
 </script>
 <!-- Awwwards-Grade WebGL Frosted Glass & Curl-Noise Hero Dispersion -->
 <script src="lib/hero-dispersion.js?v=4.4"></script>
+<!-- Bambu Lab A1 Mini Kinematics & Studio Engine -->
+<script src="lib/GLTFLoader.js"></script>
+<script src="lib/bambu-printer.js?v=3.5"></script>
 
 <script>
 /* ====================================================================
@@ -2164,12 +2763,19 @@ window.animateRollTo = function (destP, duration = 1500) {
     isTransitioning = true;
 };
 
+function getHeroRunway() {
+    const scrollSpacer = document.querySelector('.scroll-spacer');
+    if (scrollSpacer && scrollSpacer.offsetHeight > window.innerHeight) {
+        return scrollSpacer.offsetHeight - window.innerHeight;
+    }
+    return Math.max(window.innerHeight * 1.6, 900);
+}
 
 function handleScroll() {
     if (isTransitioning) return;
-    const scrollMax = document.documentElement.scrollHeight - window.innerHeight;
-    if (scrollMax > 0) {
-        const raw = window.pageYOffset / scrollMax;
+    const runway = getHeroRunway();
+    if (runway > 0) {
+        const raw = window.pageYOffset / runway;
         targetProgress = Math.min(1.0, Math.max(0.0, isNaN(raw) ? 0 : raw));
     } else {
         targetProgress = 0;
@@ -2227,9 +2833,9 @@ function render() {
         currentProgress = transStartP + (transTargetP - transStartP) * easedT;
         targetProgress = currentProgress;
 
-        const scrollMax = document.documentElement.scrollHeight - window.innerHeight;
-        if (scrollMax > 0) {
-            window.scrollTo(0, currentProgress * scrollMax);
+        const runway = getHeroRunway();
+        if (runway > 0) {
+            window.scrollTo(0, currentProgress * runway);
         }
 
         if (t >= 1.0) {
@@ -2250,12 +2856,29 @@ function render() {
     mouseX += (targetMouseX - mouseX) * 0.05;
     mouseY += (targetMouseY - mouseY) * 0.05;
 
+    const runway = getHeroRunway();
+    const excessScroll = Math.max(0, window.pageYOffset - runway);
+
     const pct = Math.round(p * 100);
     if (scrollPercentEl) {
         scrollPercentEl.textContent = p >= 0.99 ? 'Unrolling Complete • 100%' : `Scroll to unroll filament • ${pct}%`;
     }
     if (resetScrollBtn) {
         resetScrollBtn.style.display = p > 0.05 ? 'inline-block' : 'none';
+    }
+
+    // Smoothly fade out scroll status pill when scrolling down into printer showcase
+    const scrollStatusEl = document.getElementById('scroll-status');
+    if (scrollStatusEl) {
+        if (excessScroll > 40) {
+            scrollStatusEl.style.opacity = '0';
+            scrollStatusEl.style.pointerEvents = 'none';
+            scrollStatusEl.style.transform = 'translateX(-50%) translateY(24px)';
+        } else {
+            scrollStatusEl.style.opacity = '1';
+            scrollStatusEl.style.pointerEvents = 'auto';
+            scrollStatusEl.style.transform = 'translateX(-50%) translateY(0)';
+        }
     }
 
     if (typeof syncFrameSelectorFromScroll === 'function') {
@@ -2291,9 +2914,17 @@ function render() {
 
     /* Dynamic Stage Interpolation: Smooth transition from Initial to Last Stage Pose */
     const curPosX = THREE.MathUtils.lerp(SPOOL_CALIB_START.posX, SPOOL_CALIB_END.posX, p);
-    const curPosY = THREE.MathUtils.lerp(SPOOL_CALIB_START.posY, SPOOL_CALIB_END.posY, p);
+    let curPosY = THREE.MathUtils.lerp(SPOOL_CALIB_START.posY, SPOOL_CALIB_END.posY, p);
     const curPosZ = THREE.MathUtils.lerp(SPOOL_CALIB_START.posZ, SPOOL_CALIB_END.posZ, p);
     const curScale = THREE.MathUtils.lerp(SPOOL_CALIB_START.scale, SPOOL_CALIB_END.scale, p);
+
+    // Continuous 3D exit: smoothly scroll the spool upward out of the viewport in 3D
+    // when the user scrolls past the hero runway into the printer section,
+    // completely eliminating any horizontal 2D slicing or cutting!
+    if (excessScroll > 0) {
+        const exitRatio = Math.min(1.5, excessScroll / (window.innerHeight * 0.85));
+        curPosY += exitRatio * 8.5;
+    }
 
     stage.position.set(curPosX, curPosY, curPosZ);
     stage.scale.set(curScale, curScale, curScale);
@@ -2443,6 +3074,9 @@ window.setFilamentColor = function (hex) {
     matWoundFilament.color.copy(col);
     if (typeof matSideCoil !== 'undefined') matSideCoil.color.copy(col);
     matUnrolledStrand.color.copy(col);
+    if (window.printerStudio && typeof window.printerStudio.setFilamentColor === 'function') {
+        window.printerStudio.setFilamentColor(col);
+    }
 
     const hexStr = '#' + col.getHexString().toUpperCase();
     const hexLabel = document.getElementById('active-hex-label');
@@ -2599,8 +3233,8 @@ window.setCalibFrame = function (frame, shouldScroll = true) {
         if (frame === 'start') {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
-            const scrollMax = document.documentElement.scrollHeight - window.innerHeight;
-            window.scrollTo({ top: scrollMax, behavior: 'smooth' });
+            const runway = getHeroRunway();
+            window.scrollTo({ top: runway, behavior: 'smooth' });
         }
     }
 
@@ -3108,6 +3742,11 @@ window.applyTheme = function (isDark, persist = true) {
     if (window.HeroDispersion && typeof window.HeroDispersion.setTheme === 'function') {
         window.HeroDispersion.setTheme(isDark);
     }
+
+    // Update Bambu Lab A1 Mini Studio theme
+    if (window.printerStudio && typeof window.printerStudio.setTheme === 'function') {
+        window.printerStudio.setTheme(isDark);
+    }
 };
 
 window.toggleTheme = function () {
@@ -3137,6 +3776,262 @@ if (window.HeroDispersion && typeof window.HeroDispersion.init === 'function') {
         heroId: 'hero-brand'
     });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// BAMBU LAB A1 MINI PRINTER STUDIO CONTROLLER & LIVE CALIBRATION UI
+// ═══════════════════════════════════════════════════════════════════
+function initBambuPrinter() {
+    const pCanvas = document.getElementById('printer-canvas');
+    if (!pCanvas || typeof BambuPrinterStudio === 'undefined') return;
+
+    const hudX = document.getElementById('hud-x');
+    const hudY = document.getElementById('hud-y');
+    const hudZ = document.getElementById('hud-z');
+    const hudLayer = document.getElementById('hud-layer');
+    const hudMode = document.getElementById('hud-mode');
+    const codeReadout = document.getElementById('printer-code-readout');
+    const loaderOverlay = document.getElementById('printer-loader-overlay');
+    const loaderText = document.getElementById('printer-loader-text');
+
+    // Local file:// protocol CORS warning
+    if (window.location.protocol === 'file:' && loaderText) {
+        loaderText.innerHTML = '⚠️ <strong style="color:#ef4444;">Local File Notice:</strong> Browsers block 3D GLB model fetch via <code>file://</code>.<br>Please open via <a href="http://localhost:3847" style="color:#38bdf8; text-decoration:underline; font-weight:700;">http://localhost:3847</a> (Python dev server active).';
+    }
+
+    const studio = new BambuPrinterStudio('printer-canvas', {
+        modelPath: 'bambu_a1_mini_standard.glb',
+        posX: 0.0,
+        posY: -1.2,
+        posZ: 0.0,
+        rotX: 0.0,
+        rotY: -28.0,
+        rotZ: 0.0,
+        scale: 4.8,
+        armX: 0.0,
+        armY: 0.0,
+        armZ: 0.0,
+        speed: 1.8,
+        onTelemetry: (t) => {
+            if (hudX) hudX.textContent = `${t.xMm.toFixed(1)} mm`;
+            if (hudY) hudY.textContent = `${t.yMm.toFixed(1)} mm`;
+            if (hudZ) hudZ.textContent = `${t.zMm.toFixed(2)} mm`;
+            if (hudLayer) hudLayer.textContent = `${t.layer} / 50`;
+            if (hudMode) hudMode.textContent = t.mode;
+        },
+        onProgress: (pct) => {
+            if (loaderText && window.location.protocol !== 'file:') {
+                loaderText.textContent = `Loading Bambu Lab A1 Mini Studio... ${pct}%`;
+            }
+        },
+        onLoaded: () => {
+            if (loaderOverlay) {
+                loaderOverlay.style.opacity = '0';
+                loaderOverlay.style.pointerEvents = 'none';
+                setTimeout(() => { if (loaderOverlay.parentNode) loaderOverlay.parentNode.removeChild(loaderOverlay); }, 450);
+            }
+            syncPrinterUIFromState();
+        }
+    });
+
+    window.printerStudio = studio;
+
+    function syncPrinterUIFromState() {
+        if (!window.printerStudio) return;
+        const cfg = window.printerStudio.getConfig();
+
+        const syncField = (sliderId, numId, val) => {
+            const s = document.getElementById(sliderId);
+            const n = document.getElementById(numId);
+            if (s) s.value = val;
+            if (n) n.value = val;
+        };
+
+        const pX = (cfg && cfg.posX !== undefined) ? cfg.posX : 0;
+        const pY = (cfg && cfg.posY !== undefined) ? cfg.posY : -1.2;
+        const pZ = (cfg && cfg.posZ !== undefined) ? cfg.posZ : 0;
+        const rX = (cfg && cfg.rotX !== undefined) ? cfg.rotX : 0;
+        const rY = (cfg && cfg.rotY !== undefined) ? cfg.rotY : -28;
+        const rZ = (cfg && cfg.rotZ !== undefined) ? cfg.rotZ : 0;
+        const sc = (cfg && cfg.scale !== undefined) ? cfg.scale : 4.8;
+        const aX = (cfg && cfg.armX !== undefined) ? cfg.armX : 0;
+        const aY = (cfg && cfg.armY !== undefined) ? cfg.armY : 0;
+        const aZ = (cfg && cfg.armZ !== undefined) ? cfg.armZ : 0;
+        const spd = (cfg && cfg.speed !== undefined) ? cfg.speed : 1.8;
+
+        syncField('p-pos-x', 'p-num-pos-x', pX);
+        syncField('p-pos-y', 'p-num-pos-y', pY);
+        syncField('p-pos-z', 'p-num-pos-z', pZ);
+        syncField('p-rot-x', 'p-num-rot-x', rX);
+        syncField('p-rot-y', 'p-num-rot-y', rY);
+        syncField('p-rot-z', 'p-num-rot-z', rZ);
+        syncField('p-scale', 'p-num-scale', sc);
+
+        // Gantry Arm Position (X, Y, Z)
+        syncField('p-arm-x', 'p-num-arm-x', aX);
+        syncField('p-arm-y', 'p-num-arm-y', aY);
+        syncField('p-arm-z', 'p-num-arm-z', aZ);
+
+        if (codeReadout) {
+            codeReadout.textContent = `// Bambu Lab A1 Mini Studio Calibration
+const BAMBU_PRINTER_CONFIG = {
+  stage: {
+    posX: ${pX.toFixed(2)},
+    posY: ${pY.toFixed(2)},
+    posZ: ${pZ.toFixed(2)},
+    rotXDeg: ${rX.toFixed(1)},
+    rotYDeg: ${rY.toFixed(1)},
+    rotZDeg: ${rZ.toFixed(1)},
+    scale: ${sc.toFixed(2)}
+  },
+  arm: {
+    xMm: ${aX.toFixed(1)},
+    yMm: ${aY.toFixed(1)},
+    zMm: ${aZ.toFixed(1)}
+  },
+  speed: ${spd.toFixed(2)}
+};`;
+        }
+    }
+
+    const bindControl = (sliderId, numId, updateFn) => {
+        const slider = document.getElementById(sliderId);
+        const num = document.getElementById(numId);
+
+        if (slider) {
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                if (num) num.value = val;
+                updateFn(val);
+                syncPrinterUIFromState();
+            });
+        }
+        if (num) {
+            num.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val)) {
+                    if (slider) slider.value = val;
+                    updateFn(val);
+                    syncPrinterUIFromState();
+                }
+            });
+        }
+    };
+
+    // Stage bindings
+    bindControl('p-pos-x', 'p-num-pos-x', (v) => studio.setPosition(v, undefined, undefined));
+    bindControl('p-pos-y', 'p-num-pos-y', (v) => studio.setPosition(undefined, v, undefined));
+    bindControl('p-pos-z', 'p-num-pos-z', (v) => studio.setPosition(undefined, undefined, v));
+
+    bindControl('p-rot-x', 'p-num-rot-x', (v) => studio.setRotation(v, undefined, undefined));
+    bindControl('p-rot-y', 'p-num-rot-y', (v) => studio.setRotation(undefined, v, undefined));
+    bindControl('p-rot-z', 'p-num-rot-z', (v) => studio.setRotation(undefined, undefined, v));
+
+    bindControl('p-scale', 'p-num-scale', (v) => studio.setScale(v));
+
+    // Gantry Arm bindings
+    bindControl('p-arm-x', 'p-num-arm-x', (v) => studio.setArmPosition(v, undefined, undefined));
+    bindControl('p-arm-y', 'p-num-arm-y', (v) => studio.setArmPosition(undefined, v, undefined));
+    bindControl('p-arm-z', 'p-num-arm-z', (v) => studio.setArmPosition(undefined, undefined, v));
+
+    const btnResetCam = document.getElementById('btn-reset-printer-cam');
+    if (btnResetCam) {
+        btnResetCam.addEventListener('click', () => studio.resetView());
+    }
+
+    const btnResetTrans = document.getElementById('btn-reset-printer-transform');
+    if (btnResetTrans) {
+        btnResetTrans.addEventListener('click', () => {
+            studio.resetTransform();
+            syncPrinterUIFromState();
+        });
+    }
+
+    document.querySelectorAll('.speed-btn[data-speed]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.speed-btn[data-speed]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const spd = parseFloat(btn.dataset.speed);
+            studio.setSpeed(spd);
+            syncPrinterUIFromState();
+        });
+    });
+
+    const pauseBtn = document.getElementById('btn-printer-pause');
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', () => {
+            const isPrinting = studio.toggleAnimation();
+            pauseBtn.textContent = isPrinting ? '⏸ Pause' : '▶ Resume';
+            pauseBtn.style.color = isPrinting ? '#ef4444' : '#16a34a';
+        });
+    }
+
+    window.copyPrinterConfig = function () {
+        if (!studio) return;
+        const cfg = studio.getConfig();
+        const codeStr = `// Bambu Lab A1 Mini Studio Calibration
+const BAMBU_PRINTER_CONFIG = {
+  stage: {
+    posX: ${cfg.posX.toFixed(2)},
+    posY: ${cfg.posY.toFixed(2)},
+    posZ: ${cfg.posZ.toFixed(2)},
+    rotXDeg: ${cfg.rotX.toFixed(1)},
+    rotYDeg: ${cfg.rotY.toFixed(1)},
+    rotZDeg: ${cfg.rotZ.toFixed(1)},
+    scale: ${cfg.scale.toFixed(2)}
+  },
+  arm: {
+    xMm: ${cfg.armX.toFixed(1)},
+    yMm: ${cfg.armY.toFixed(1)},
+    zMm: ${cfg.armZ.toFixed(1)}
+  },
+  speed: ${cfg.speed.toFixed(2)}
+};`;
+
+        const btn = document.getElementById('btn-copy-printer-config');
+        function onCopySuccess() {
+            if (btn) {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '✓ Copied!';
+                btn.style.background = '#16a34a';
+                setTimeout(() => {
+                    btn.innerHTML = orig;
+                    btn.style.background = '';
+                }, 1800);
+            }
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(codeStr).then(onCopySuccess).catch(() => {
+                copyFallback(codeStr);
+                onCopySuccess();
+            });
+        } else {
+            copyFallback(codeStr);
+            onCopySuccess();
+        }
+
+        function copyFallback(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            try { document.execCommand('copy'); } catch (e) { }
+            document.body.removeChild(ta);
+        }
+    };
+
+    const copyBtn = document.getElementById('btn-copy-printer-config');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', window.copyPrinterConfig);
+    }
+
+    syncPrinterUIFromState();
+}
+
+initBambuPrinter();
 
 })();
 </script>
