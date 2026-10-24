@@ -1601,9 +1601,69 @@
                 <input type="number" id="p-num-scale" class="calib-num" min="1.0" max="12.0" step="0.1" value="4.8">
             </div>
 
+            <!-- Motor Axis Travel Limits (Calibrate Max/Min Range for each axis) -->
+            <div class="calib-group-title">
+                <span>Motor Axis Limits (Start & End Points)</span>
+            </div>
+            <!-- X Axis Limits (Toolhead along Cantilever Rail) -->
+            <div class="calib-row">
+                <span class="calib-axis" style="color:#ef4444; font-weight:700;">X Start</span>
+                <input type="range" id="p-x-start" min="-18.0" max="5.0" step="0.2" value="-8.5">
+                <input type="number" id="p-num-x-start" class="calib-num" min="-18.0" max="5.0" step="0.2" value="-8.5">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis" style="color:#ef4444; font-weight:700;">X End</span>
+                <input type="range" id="p-x-end" min="5.0" max="28.0" step="0.2" value="18.0">
+                <input type="number" id="p-num-x-end" class="calib-num" min="5.0" max="28.0" step="0.2" value="18.0">
+            </div>
+
+            <!-- Y Axis Limits (Heatbed Carriage Front/Back) -->
+            <div class="calib-row">
+                <span class="calib-axis" style="color:#10b981; font-weight:700;">Y Start</span>
+                <input type="range" id="p-y-start" min="-20.0" max="0.0" step="0.2" value="-12.0">
+                <input type="number" id="p-num-y-start" class="calib-num" min="-20.0" max="0.0" step="0.2" value="-12.0">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis" style="color:#10b981; font-weight:700;">Y End</span>
+                <input type="range" id="p-y-end" min="0.0" max="20.0" step="0.2" value="12.0">
+                <input type="number" id="p-num-y-end" class="calib-num" min="0.0" max="20.0" step="0.2" value="12.0">
+            </div>
+
+            <!-- Z Axis Limits (Vertical Gantry Height) -->
+            <div class="calib-row">
+                <span class="calib-axis" style="color:#3b82f6; font-weight:700;">Z Start</span>
+                <input type="range" id="p-z-start" min="-5.0" max="8.0" step="0.2" value="0.0">
+                <input type="number" id="p-num-z-start" class="calib-num" min="-5.0" max="8.0" step="0.2" value="0.0">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis" style="color:#3b82f6; font-weight:700;">Z End</span>
+                <input type="range" id="p-z-end" min="5.0" max="30.0" step="0.2" value="22.0">
+                <input type="number" id="p-num-z-end" class="calib-num" min="5.0" max="30.0" step="0.2" value="22.0">
+            </div>
+
+            <!-- Live Manual Motor Test Sliders (0% Start → 100% End) -->
+            <div class="calib-group-title">
+                <span>Manual Motor Test (0% Start → 100% End)</span>
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Motor X %</span>
+                <input type="range" id="p-motor-x" min="0" max="100" step="1" value="50">
+                <input type="number" id="p-num-motor-x" class="calib-num" min="0" max="100" step="1" value="50">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Motor Y %</span>
+                <input type="range" id="p-motor-y" min="0" max="100" step="1" value="50">
+                <input type="number" id="p-num-motor-y" class="calib-num" min="0" max="100" step="1" value="50">
+            </div>
+            <div class="calib-row">
+                <span class="calib-axis">Motor Z %</span>
+                <input type="range" id="p-motor-z" min="0" max="100" step="1" value="20">
+                <input type="number" id="p-num-motor-z" class="calib-num" min="0" max="100" step="1" value="20">
+            </div>
+
             <!-- Gantry Arm Position (X, Y, Z mm) -->
             <div class="calib-group-title">
-                <span>Gantry Arm Position (X, Y, Z mm)</span>
+                <span>Arm Offset Trim (X, Y, Z mm)</span>
             </div>
             <div class="calib-row">
                 <span class="calib-axis">Arm X</span>
@@ -3858,6 +3918,13 @@ function initBambuPrinter() {
         const aZ = (cfg && cfg.armZ !== undefined) ? cfg.armZ : 0;
         const spd = (cfg && cfg.speed !== undefined) ? cfg.speed : 1.8;
 
+        const lim = (cfg && cfg.axisLimits) ? cfg.axisLimits : {
+            xStart: -8.5, xEnd: 18.0,
+            yStart: -12.0, yEnd: 12.0,
+            zStart: 0.0, zEnd: 22.0
+        };
+        const mp = (cfg && cfg.motorPct) ? cfg.motorPct : { x: 50, y: 50, z: 20 };
+
         syncField('p-pos-x', 'p-num-pos-x', pX);
         syncField('p-pos-y', 'p-num-pos-y', pY);
         syncField('p-pos-z', 'p-num-pos-z', pZ);
@@ -3866,7 +3933,20 @@ function initBambuPrinter() {
         syncField('p-rot-z', 'p-num-rot-z', rZ);
         syncField('p-scale', 'p-num-scale', sc);
 
-        // Gantry Arm Position (X, Y, Z)
+        // Motor Axis Travel Limits
+        syncField('p-x-start', 'p-num-x-start', lim.xStart);
+        syncField('p-x-end', 'p-num-x-end', lim.xEnd);
+        syncField('p-y-start', 'p-num-y-start', lim.yStart);
+        syncField('p-y-end', 'p-num-y-end', lim.yEnd);
+        syncField('p-z-start', 'p-num-z-start', lim.zStart);
+        syncField('p-z-end', 'p-num-z-end', lim.zEnd);
+
+        // Manual Motor Test Percentages
+        syncField('p-motor-x', 'p-num-motor-x', mp.x);
+        syncField('p-motor-y', 'p-num-motor-y', mp.y);
+        syncField('p-motor-z', 'p-num-motor-z', mp.z);
+
+        // Gantry Arm Position Offset Trim
         syncField('p-arm-x', 'p-num-arm-x', aX);
         syncField('p-arm-y', 'p-num-arm-y', aY);
         syncField('p-arm-z', 'p-num-arm-z', aZ);
@@ -3883,10 +3963,13 @@ const BAMBU_PRINTER_CONFIG = {
     rotZDeg: ${rZ.toFixed(1)},
     scale: ${sc.toFixed(2)}
   },
-  arm: {
-    xMm: ${aX.toFixed(1)},
-    yMm: ${aY.toFixed(1)},
-    zMm: ${aZ.toFixed(1)}
+  axisLimits: {
+    xStart: ${lim.xStart.toFixed(1)},
+    xEnd: ${lim.xEnd.toFixed(1)},
+    yStart: ${lim.yStart.toFixed(1)},
+    yEnd: ${lim.yEnd.toFixed(1)},
+    zStart: ${lim.zStart.toFixed(1)},
+    zEnd: ${lim.zEnd.toFixed(1)}
   },
   speed: ${spd.toFixed(2)}
 };`;
@@ -3928,7 +4011,33 @@ const BAMBU_PRINTER_CONFIG = {
 
     bindControl('p-scale', 'p-num-scale', (v) => studio.setScale(v));
 
-    // Gantry Arm bindings
+    // Axis Limits bindings (Calibrate Start & End Points for each axis)
+    bindControl('p-x-start', 'p-num-x-start', (v) => studio.setAxisLimits({ xStart: v }));
+    bindControl('p-x-end', 'p-num-x-end', (v) => studio.setAxisLimits({ xEnd: v }));
+    bindControl('p-y-start', 'p-num-y-start', (v) => studio.setAxisLimits({ yStart: v }));
+    bindControl('p-y-end', 'p-num-y-end', (v) => studio.setAxisLimits({ yEnd: v }));
+    bindControl('p-z-start', 'p-num-z-start', (v) => studio.setAxisLimits({ zStart: v }));
+    bindControl('p-z-end', 'p-num-z-end', (v) => studio.setAxisLimits({ zEnd: v }));
+
+    // Manual Motor Test bindings (0% Start → 100% End)
+    const onMotorTest = (axis, val) => {
+        if (studio.isPrinting) {
+            studio.isPrinting = false; // Pause automatically so user can inspect manual motor calibration
+            if (pauseBtn) {
+                pauseBtn.textContent = '▶ Resume';
+                pauseBtn.style.color = '#16a34a';
+            }
+        }
+        if (axis === 'x') studio.setManualMotorPercent(val, undefined, undefined);
+        if (axis === 'y') studio.setManualMotorPercent(undefined, val, undefined);
+        if (axis === 'z') studio.setManualMotorPercent(undefined, undefined, val);
+    };
+
+    bindControl('p-motor-x', 'p-num-motor-x', (v) => onMotorTest('x', v));
+    bindControl('p-motor-y', 'p-num-motor-y', (v) => onMotorTest('y', v));
+    bindControl('p-motor-z', 'p-num-motor-z', (v) => onMotorTest('z', v));
+
+    // Gantry Arm offset bindings
     bindControl('p-arm-x', 'p-num-arm-x', (v) => studio.setArmPosition(v, undefined, undefined));
     bindControl('p-arm-y', 'p-num-arm-y', (v) => studio.setArmPosition(undefined, v, undefined));
     bindControl('p-arm-z', 'p-num-arm-z', (v) => studio.setArmPosition(undefined, undefined, v));
@@ -3968,6 +4077,7 @@ const BAMBU_PRINTER_CONFIG = {
     window.copyPrinterConfig = function () {
         if (!studio) return;
         const cfg = studio.getConfig();
+        const lim = cfg.axisLimits || {};
         const codeStr = `// Bambu Lab A1 Mini Studio Calibration
 const BAMBU_PRINTER_CONFIG = {
   stage: {
@@ -3979,10 +4089,13 @@ const BAMBU_PRINTER_CONFIG = {
     rotZDeg: ${cfg.rotZ.toFixed(1)},
     scale: ${cfg.scale.toFixed(2)}
   },
-  arm: {
-    xMm: ${cfg.armX.toFixed(1)},
-    yMm: ${cfg.armY.toFixed(1)},
-    zMm: ${cfg.armZ.toFixed(1)}
+  axisLimits: {
+    xStart: ${(lim.xStart ?? -8.5).toFixed(1)},
+    xEnd: ${(lim.xEnd ?? 18.0).toFixed(1)},
+    yStart: ${(lim.yStart ?? -12.0).toFixed(1)},
+    yEnd: ${(lim.yEnd ?? 12.0).toFixed(1)},
+    zStart: ${(lim.zStart ?? 0.0).toFixed(1)},
+    zEnd: ${(lim.zEnd ?? 22.0).toFixed(1)}
   },
   speed: ${cfg.speed.toFixed(2)}
 };`;
