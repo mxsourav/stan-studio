@@ -1250,6 +1250,122 @@
             color: #94a3b8;
         }
 
+        
+        /* ─── Interactive High-Tech Studio Dock (Micro LiDAR, Thermal IR, Stepper Audio) ─── */
+        .printer-action-dock {
+            position: absolute;
+            bottom: 60px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 15;
+            pointer-events: auto;
+        }
+
+        .action-dock-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            user-select: none;
+        }
+
+        html.dark .action-dock-btn,
+        body.dark-mode .action-dock-btn {
+            background: rgba(15, 23, 42, 0.88);
+            border-color: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-dock-btn:hover {
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+            color: #0f172a;
+        }
+
+        html.dark .action-dock-btn:hover,
+        body.dark-mode .action-dock-btn:hover {
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .action-dock-btn.active {
+            border-color: rgba(6, 182, 212, 0.5);
+            background: rgba(6, 182, 212, 0.12);
+            color: #0891b2;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.25);
+        }
+
+        html.dark .action-dock-btn.active,
+        body.dark-mode .action-dock-btn.active {
+            border-color: rgba(34, 211, 238, 0.5);
+            background: rgba(6, 182, 212, 0.20);
+            color: #22d3ee;
+            box-shadow: 0 0 14px rgba(34, 211, 238, 0.30);
+        }
+
+        .action-dock-btn.active-thermal {
+            border-color: rgba(249, 115, 22, 0.5) !important;
+            background: rgba(249, 115, 22, 0.15) !important;
+            color: #ea580c !important;
+            box-shadow: 0 0 14px rgba(249, 115, 22, 0.35) !important;
+        }
+
+        html.dark .action-dock-btn.active-thermal,
+        body.dark-mode .action-dock-btn.active-thermal {
+            border-color: rgba(251, 146, 60, 0.6) !important;
+            color: #fb923c !important;
+        }
+
+        .action-dock-btn.active-audio {
+            border-color: rgba(99, 102, 241, 0.5) !important;
+            background: rgba(99, 102, 241, 0.15) !important;
+            color: #4f46e5 !important;
+            box-shadow: 0 0 14px rgba(99, 102, 241, 0.35) !important;
+        }
+
+        html.dark .action-dock-btn.active-audio,
+        body.dark-mode .action-dock-btn.active-audio {
+            border-color: rgba(129, 140, 248, 0.6) !important;
+            color: #a5b4fc !important;
+        }
+
+        .dock-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #94a3b8;
+            transition: all 0.2s ease;
+        }
+
+        .action-dock-btn.active .dock-dot {
+            background: #06b6d4;
+            box-shadow: 0 0 8px #06b6d4;
+        }
+
+        .action-dock-btn.active-thermal .dock-dot {
+            background: #f97316;
+            box-shadow: 0 0 8px #f97316;
+        }
+
+        .action-dock-btn.active-audio .dock-dot {
+            background: #6366f1;
+            box-shadow: 0 0 8px #6366f1;
+        }
+
         .printer-reset-cam-btn {
             background: #0f172a;
             color: #ffffff;
@@ -1263,7 +1379,123 @@
         }
 
         html.dark .printer-reset-cam-btn,
-        body.dark-mode .printer-reset-cam-btn {
+        body.dark-mode 
+        /* ─── Interactive High-Tech Studio Dock (Micro LiDAR, Thermal IR, Stepper Audio) ─── */
+        .printer-action-dock {
+            position: absolute;
+            bottom: 60px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 15;
+            pointer-events: auto;
+        }
+
+        .action-dock-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            user-select: none;
+        }
+
+        html.dark .action-dock-btn,
+        body.dark-mode .action-dock-btn {
+            background: rgba(15, 23, 42, 0.88);
+            border-color: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-dock-btn:hover {
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+            color: #0f172a;
+        }
+
+        html.dark .action-dock-btn:hover,
+        body.dark-mode .action-dock-btn:hover {
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .action-dock-btn.active {
+            border-color: rgba(6, 182, 212, 0.5);
+            background: rgba(6, 182, 212, 0.12);
+            color: #0891b2;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.25);
+        }
+
+        html.dark .action-dock-btn.active,
+        body.dark-mode .action-dock-btn.active {
+            border-color: rgba(34, 211, 238, 0.5);
+            background: rgba(6, 182, 212, 0.20);
+            color: #22d3ee;
+            box-shadow: 0 0 14px rgba(34, 211, 238, 0.30);
+        }
+
+        .action-dock-btn.active-thermal {
+            border-color: rgba(249, 115, 22, 0.5) !important;
+            background: rgba(249, 115, 22, 0.15) !important;
+            color: #ea580c !important;
+            box-shadow: 0 0 14px rgba(249, 115, 22, 0.35) !important;
+        }
+
+        html.dark .action-dock-btn.active-thermal,
+        body.dark-mode .action-dock-btn.active-thermal {
+            border-color: rgba(251, 146, 60, 0.6) !important;
+            color: #fb923c !important;
+        }
+
+        .action-dock-btn.active-audio {
+            border-color: rgba(99, 102, 241, 0.5) !important;
+            background: rgba(99, 102, 241, 0.15) !important;
+            color: #4f46e5 !important;
+            box-shadow: 0 0 14px rgba(99, 102, 241, 0.35) !important;
+        }
+
+        html.dark .action-dock-btn.active-audio,
+        body.dark-mode .action-dock-btn.active-audio {
+            border-color: rgba(129, 140, 248, 0.6) !important;
+            color: #a5b4fc !important;
+        }
+
+        .dock-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #94a3b8;
+            transition: all 0.2s ease;
+        }
+
+        .action-dock-btn.active .dock-dot {
+            background: #06b6d4;
+            box-shadow: 0 0 8px #06b6d4;
+        }
+
+        .action-dock-btn.active-thermal .dock-dot {
+            background: #f97316;
+            box-shadow: 0 0 8px #f97316;
+        }
+
+        .action-dock-btn.active-audio .dock-dot {
+            background: #6366f1;
+            box-shadow: 0 0 8px #6366f1;
+        }
+
+        .printer-reset-cam-btn {
             background: #ffffff;
             color: #0f172a;
         }
@@ -1532,6 +1764,29 @@
                     <span class="hud-label">BED TEMP</span>
                     <span class="hud-value" id="hud-bed">65 °C</span>
                 </div>
+                <div class="hud-item" id="hud-item-vision">
+                    <span class="hud-label" id="hud-vision-label">LIDAR BED MESH</span>
+                    <span class="hud-value active-pulse" id="hud-vision-value" style="color:#06b6d4;">SCANNING ±0.012mm</span>
+                </div>
+            </div>
+
+            <!-- Interactive High-Tech Studio Dock (Micro LiDAR, Thermal IR, Stepper Audio) -->
+            <div class="printer-action-dock">
+                <button type="button" class="action-dock-btn active" id="btn-dock-lidar" title="Toggle Bambu Micro LiDAR Dual-Laser Scanner">
+                    <span class="dock-dot"></span>
+                    <span class="dock-icon">🔬</span>
+                    <span class="dock-text">Micro LiDAR</span>
+                </button>
+                <button type="button" class="action-dock-btn" id="btn-dock-thermal" title="Toggle FLIR Thermal IR Heatmap Vision">
+                    <span class="dock-dot"></span>
+                    <span class="dock-icon">🌡️</span>
+                    <span class="dock-text">Thermal IR</span>
+                </button>
+                <button type="button" class="action-dock-btn" id="btn-dock-audio" title="Toggle CoreXY Stepper Motor Audio Synthesizer">
+                    <span class="dock-dot"></span>
+                    <span class="dock-icon" id="dock-audio-icon">🔈</span>
+                    <span class="dock-text" id="dock-audio-text">Motor Audio</span>
+                </button>
             </div>
 
             <!-- Viewport Interaction Hint & Reset Button -->
@@ -2003,7 +2258,7 @@ if (typeof THREE === 'undefined') {
 <script src="lib/hero-dispersion.js?v=4.4"></script>
 <!-- Bambu Lab A1 Mini Kinematics & Studio Engine -->
 <script src="lib/GLTFLoader.js"></script>
-<script src="lib/bambu-printer.js?v=6.0"></script>
+<script src="lib/bambu-printer.js?v=7.0"></script>
 
 <script>
 /* ====================================================================
@@ -4159,6 +4414,54 @@ const BAMBU_PRINTER_CONFIG = {
     const copyBtn = document.getElementById('btn-copy-printer-config');
     if (copyBtn) {
         copyBtn.addEventListener('click', window.copyPrinterConfig);
+    }
+
+    // High-Tech Action Dock Buttons (LiDAR, Thermal IR, Stepper Audio)
+    const btnLidar = document.getElementById('btn-dock-lidar');
+    const btnThermal = document.getElementById('btn-dock-thermal');
+    const btnAudio = document.getElementById('btn-dock-audio');
+    const hudVisionLabel = document.getElementById('hud-vision-label');
+    const hudVisionVal = document.getElementById('hud-vision-value');
+
+    if (btnLidar) {
+        btnLidar.addEventListener('click', () => {
+            const active = studio.toggleLidar();
+            btnLidar.classList.toggle('active', active);
+            if (hudVisionLabel && hudVisionVal && !studio.isThermalActive) {
+                hudVisionLabel.textContent = 'LIDAR BED MESH';
+                hudVisionVal.textContent = active ? 'SCANNING ±0.012mm' : 'OFFLINE';
+                hudVisionVal.style.color = active ? '#06b6d4' : '#64748b';
+            }
+        });
+    }
+
+    if (btnThermal) {
+        btnThermal.addEventListener('click', () => {
+            const active = studio.toggleThermal();
+            btnThermal.classList.toggle('active-thermal', active);
+            if (hudVisionLabel && hudVisionVal) {
+                if (active) {
+                    hudVisionLabel.textContent = 'FLIR THERMAL';
+                    hudVisionVal.textContent = 'SPOT: 215.4 °C';
+                    hudVisionVal.style.color = '#f97316';
+                } else {
+                    hudVisionLabel.textContent = 'LIDAR BED MESH';
+                    hudVisionVal.textContent = studio.isLidarActive ? 'SCANNING ±0.012mm' : 'OFFLINE';
+                    hudVisionVal.style.color = studio.isLidarActive ? '#06b6d4' : '#64748b';
+                }
+            }
+        });
+    }
+
+    if (btnAudio) {
+        btnAudio.addEventListener('click', () => {
+            const active = studio.toggleAudio();
+            btnAudio.classList.toggle('active-audio', active);
+            const icon = document.getElementById('dock-audio-icon');
+            const text = document.getElementById('dock-audio-text');
+            if (icon) icon.textContent = active ? '🔊' : '🔈';
+            if (text) text.textContent = active ? 'Motor Singing' : 'Motor Audio';
+        });
     }
 
     syncPrinterUIFromState();
