@@ -1203,55 +1203,6 @@ function init3d(){
   new ResizeObserver(resize).observe(el); resize();
   (function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene,camera); })();
 }
-/* ─── STAN studio. engraved branding (negative 3D, zero projection impact) ──
-   A thin white veneer sits 0.3 mm above a darkened cavity plate on the floor
-   top face; the glyph outlines are real holes in the veneer (counters kept as
-   surface islands), so the letters read as recessed dark cuts with crisp
-   self-shadowing. The floor is solid, so no light/projection path changes. */
-let stanFont = null;
-(function loadStanFont(){
-  new THREE.FontLoader().loadAsync('/assets/helvetiker_bold.typeface.json')
-    .then(f => { stanFont = f; if (parts) draw3d(); })
-    .catch(() => {});
-})();
-function mountEngraving(parent){
-  if (!stanFont || !sim) return;
-  const vs = sim.verts; let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
-  vs.forEach(v => { minX = Math.min(minX, v[0]); maxX = Math.max(maxX, v[0]); minY = Math.min(minY, v[1]); maxY = Math.max(maxY, v[1]); });
-  const txt = 'STΔN studio.';
-  const size = 8.2;
-  const glyphs = stanFont.generateShapes(txt, size);
-  const counters = [];
-  glyphs.forEach(g => (g.holes || []).forEach(h => counters.push(h)));
-  const w = maxX - minX;
-  const box = new THREE.Box3().setFromPoints(glyphs.flatMap(s => s.getPoints()));
-  const gw = (box.max.x - box.min.x) || 1;
-  const ven = new THREE.Shape();
-  const vw = Math.min(w * 0.72, gw + 10), vh = size + 6;
-  const vx = (minX + maxX) / 2 - vw / 2, vy = minY + 4;
-  ven.moveTo(vx, vy); ven.lineTo(vx + vw, vy); ven.lineTo(vx + vw, vy + vh); ven.lineTo(vx, vy + vh); ven.closePath();
-  glyphs.forEach(g => {
-    const pts = g.getPoints();
-    const h = new THREE.Path();
-    pts.forEach((pt, i) => i === 0 ? h.moveTo(pt.x, pt.y) : h.lineTo(pt.x, pt.y));
-    h.closePath();
-    ven.holes.push(h);
-  });
-  const veneer = new THREE.ExtrudeGeometry(ven, { depth: 0.3, bevelEnabled: false, curveSegments: 6 });
-  const veneerMesh = new THREE.Mesh(veneer, new THREE.MeshStandardMaterial({ color: 0xf5f5f7, roughness: 0.78, metalness: 0.02 }));
-  veneerMesh.position.z = sim.F + 0.12;
-  parent.add(veneerMesh);
-  const cavity = new THREE.Mesh(new THREE.BoxGeometry(vw, vh, 0.1), new THREE.MeshStandardMaterial({ color: 0x35353b, roughness: 0.9, metalness: 0.0 }));
-  cavity.position.set(vx + vw / 2, vy + vh / 2, sim.F + 0.02);
-  parent.add(cavity);
-  counters.forEach(c => {
-    const island = new THREE.ExtrudeGeometry(new THREE.Shape(c.getPoints()), { depth: 0.3, bevelEnabled: false, curveSegments: 6 });
-    const m = new THREE.Mesh(island, new THREE.MeshStandardMaterial({ color: 0xf5f5f7, roughness: 0.78, metalness: 0.02 }));
-    m.position.z = sim.F + 0.12;
-    parent.add(m);
-  });
-}
-
 function draw3d(){
   while (group.children.length) { const m = group.children.pop(); m.geometry.dispose(); }
   while (extras.children.length) { const o = extras.children.pop(); if (o.geometry) o.geometry.dispose(); }
@@ -1264,7 +1215,6 @@ function draw3d(){
     if (real) mesh.castShadow = kind !== 'tube';                       // the printed panels, floor and picture plate block the light
     group.add(mesh);
   });
-  if (!real) { try { mountEngraving(group); } catch (e) { console.warn('engraving skipped:', e); } }
   if (real){
     // A real lamp on a real wall: a point light at the LED, the actual printed geometry casts the shadow.
     const {hL, F, qmax, verts} = sim, ext = Math.max(...verts.map(v => Math.max(Math.abs(v[0]), Math.abs(v[1])))) * qmax, W = ext*2.1;

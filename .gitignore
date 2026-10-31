@@ -43,6 +43,9 @@ repo-fresh/
 .zcode/
 supabase/.temp/
 *.zip
+stl garbage/
+ANTIGRAVITY_BRAIN.md
+DESIGN_LANGUAGE.md
 
 .vercel
 .env*
