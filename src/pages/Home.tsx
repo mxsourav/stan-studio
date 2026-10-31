@@ -1,44 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RepoHero from '../components/RepoHero';
+import StudioShowcase from '../components/StudioShowcase';
 import Wordmark, { BrandBadge } from '../components/Wordmark';
-import { IconArrowRight, IconBoxSealedFill, IconGridFill, IconRulerFill, IconSparkle } from '../components/icons';
-
-/** Showcase cards — the studio's tool lineup (Apple visionOS frosted glass). */
-const TOOLS = [
-  {
-    id: 'shadow-lamp',
-    title: 'Shadow Lamp Studio',
-    tagline: 'Photo → wall-projected lantern',
-    body: 'Upload any image and the silhouette engine cuts a parametric lantern that casts it onto your wall in warm light.',
-    icon: <IconSparkle size={20} className="text-white" />,
-    live: true,
-  },
-  {
-    id: 'filament-calc',
-    title: 'Filament Calculator',
-    tagline: 'Spool math without the spreadsheet',
-    body: 'Convert between meters, grams and rupees across every material in the drawer — tuned to real spool weights.',
-    icon: <IconBoxSealedFill size={20} className="text-white" />,
-    live: false,
-  },
-  {
-    id: 'print-estimator',
-    title: '3D Print Estimator',
-    tagline: 'Cost & time before the slice',
-    body: 'Drop an STL and get material volume, print hours and machine-rate pricing across PLA, PETG, ABS and ASA.',
-    icon: <IconRulerFill size={20} className="text-white" />,
-    live: false,
-  },
-  {
-    id: 'stl-hub',
-    title: 'Custom STL Hub',
-    tagline: 'Your prints, organized',
-    body: 'A private shelf for validated models, remix history and one-tap reorders from the print floor.',
-    icon: <IconGridFill size={20} className="text-white" />,
-    live: false,
-  },
-];
 
 export default function Home() {
   const navigate = useNavigate();
@@ -97,20 +61,8 @@ export default function Home() {
       {/* Verbatim repo landing hero — spool stage, dust evaporation, roll physics */}
       <RepoHero />
 
-      {/* Showcase cards — glide over the stage once the brand has dissolved */}
-      <section className="relative z-40 bg-[#070708] px-6 pb-10 pt-16">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-5 flex items-end justify-between">
-            <h2 className="text-[22px] font-bold tracking-[-0.02em]">Inside the studio</h2>
-            <span className="font-mono text-[11px] uppercase tracking-widest text-white/35">Toolchain</span>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {TOOLS.map((tool) => (
-              <ToolCard key={tool.id} tool={tool} onOpen={tool.live ? warpToStudio : undefined} />
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Showcase — bento portfolio, spotlight + tilt, live tools in glass modals */}
+      <StudioShowcase onLaunchStudio={warpToStudio} />
 
       <footer className="relative z-40 border-t border-white/[0.06] bg-[#070708] px-6 py-8">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
@@ -137,46 +89,5 @@ export default function Home() {
         />
       )}
     </div>
-  );
-}
-
-function ToolCard({
-  tool,
-  onOpen,
-}: {
-  tool: (typeof TOOLS)[number];
-  onOpen?: (el: HTMLElement | null) => void;
-}) {
-  const ref = useRef<HTMLElement>(null);
-  return (
-    <article
-      ref={ref}
-      className={`glass-card group relative overflow-hidden p-6 ${tool.live ? 'cursor-pointer' : ''}`}
-      onClick={tool.live ? () => onOpen?.(ref.current) : undefined}
-    >
-      <div className="mb-4 flex items-start justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] border-t-white/[0.2] bg-white/[0.06]">
-          {tool.icon}
-        </div>
-        {tool.live ? (
-          <span className="flex items-center gap-1.5 rounded-full border border-white/[0.12] bg-white/[0.08] px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-white/80">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#ff2d55] shadow-[0_0_8px_rgba(255,45,85,0.9)]" />
-            Live preview
-          </span>
-        ) : (
-          <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-white/35">
-            In the queue
-          </span>
-        )}
-      </div>
-      <h3 className="text-[16px] font-semibold tracking-[-0.01em]">{tool.title}</h3>
-      <p className="mt-0.5 text-[12px] font-medium text-white/45">{tool.tagline}</p>
-      <p className="mt-2.5 text-[13px] leading-relaxed text-white/55">{tool.body}</p>
-      {tool.live && (
-        <span className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-white transition group-hover:gap-2.5">
-          Open Studio <IconArrowRight size={15} />
-        </span>
-      )}
-    </article>
   );
 }

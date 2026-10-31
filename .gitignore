@@ -43,3 +43,6 @@ repo-fresh/
 .zcode/
 supabase/.temp/
 *.zip
+
+.vercel
+.env*

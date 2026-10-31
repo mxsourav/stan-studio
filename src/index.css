@@ -179,6 +179,17 @@ input[type="range"].stan-slider::-moz-range-thumb {
   animation: rise-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Modal — bento tool panels (Filament Calculator / Print Estimator / queued) */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+}
+.modal-in {
+  animation: modal-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    GLOBAL INVISIBLE SCROLLBARS — wheel/trackpad scrolling is untouched,
    every scrollbar visual is erased site-wide.
