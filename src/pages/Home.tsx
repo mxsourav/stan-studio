@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import RepoHero from '../components/RepoHero';
 import Wordmark, { BrandBadge } from '../components/Wordmark';
 import { IconArrowRight, IconBoxSealedFill, IconGridFill, IconRulerFill, IconSparkle } from '../components/icons';
@@ -91,9 +91,6 @@ export default function Home() {
           >
             Shadow Lamp Studio
           </button>
-          <Link to="/admin" className="rounded-xl px-4 py-1.5 text-white/55 transition hover:text-white/85">
-            Admin
-          </Link>
         </nav>
       </header>
 
