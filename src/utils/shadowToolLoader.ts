@@ -29,7 +29,7 @@ export async function mountShadowTool(
     .join('\n');
   const styleEl = document.createElement('style');
   styleEl.id = 'stan-tool-base';
-  styleEl.textContent = `@layer stan-base { ${scopeCss(styleText, '#stan-tool')} }`;
+  styleEl.textContent = `@layer stan-base { ${scopeCss(styleText, ':is(#stan-tool, #stan-modal-carrier)')} }`;
   document.head.appendChild(styleEl);
 
   // 2. DOM: viewports + busy. The stock sidebar moves into a hidden carrier.
