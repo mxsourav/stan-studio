@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { IconArrowRight, IconBoxSealedFill, IconGridFill, IconRulerFill, IconSparkle } from './icons';
 import FilamentCalculator from './tools/FilamentCalculator';
 import PrintEstimator from './tools/PrintEstimator';
@@ -101,19 +101,69 @@ function StatusBadge({ mode }: { mode: ToolMode }) {
 
 export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el: HTMLElement | null) => void }) {
   const [modalTool, setModalTool] = useState<Tool | null>(null);
+  const [originRect, setOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
   const heroRef = useSpotlight<HTMLElement>();
   const calcRef = useSpotlight<HTMLElement>();
   const estRef = useSpotlight<HTMLElement>();
   const hubRef = useSpotlight<HTMLElement>();
 
+  const handleClose = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    if (panelRef.current && originRect) {
+      const targetRect = panelRef.current.getBoundingClientRect();
+      const deltaX = originRect.left + originRect.width / 2 - (targetRect.left + targetRect.width / 2);
+      const deltaY = originRect.top + originRect.height / 2 - (targetRect.top + targetRect.height / 2);
+      const scaleX = Math.max(0.1, originRect.width / targetRect.width);
+      const scaleY = Math.max(0.1, originRect.height / targetRect.height);
+      panelRef.current.animate(
+        [
+          { transform: 'translate(0px, 0px) scale(1, 1)', borderRadius: '28px', opacity: 1 },
+          { transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`, borderRadius: '18px', opacity: 0 },
+        ],
+        { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' },
+      );
+    }
+    setTimeout(() => {
+      setModalTool(null);
+      setIsClosing(false);
+      setOriginRect(null);
+    }, 280);
+  }, [isClosing, originRect]);
+
   useEffect(() => {
     if (!modalTool) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setModalTool(null);
+      if (e.key === 'Escape') handleClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [modalTool]);
+  }, [modalTool, handleClose]);
+
+  const runExpand = (el: HTMLDivElement | null) => {
+    panelRef.current = el;
+    if (!el || !originRect || isClosing) return;
+    const targetRect = el.getBoundingClientRect();
+    const deltaX = originRect.left + originRect.width / 2 - (targetRect.left + targetRect.width / 2);
+    const deltaY = originRect.top + originRect.height / 2 - (targetRect.top + targetRect.height / 2);
+    const scaleX = Math.max(0.1, originRect.width / targetRect.width);
+    const scaleY = Math.max(0.1, originRect.height / targetRect.height);
+
+    el.animate(
+      [
+        {
+          transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`,
+          borderRadius: '18px',
+          opacity: 0.85,
+        },
+        { transform: 'translate(0px, 0px) scale(1, 1)', borderRadius: '28px', opacity: 1 },
+      ],
+      { duration: 380, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' },
+    );
+  };
 
   const card = (
     tool: Tool,
@@ -122,7 +172,21 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
   ) => (
     <article
       ref={ref}
-      onClick={() => (tool.mode === 'studio' ? onLaunchStudio(document.getElementById(tool.id)) : setModalTool(tool))}
+      onClick={(e) => {
+        if (tool.mode === 'studio') {
+          onLaunchStudio(document.getElementById(tool.id));
+        } else {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setOriginRect({
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+          });
+          setModalTool(tool);
+          setIsClosing(false);
+        }
+      }}
       id={tool.id}
       className={`group relative cursor-pointer overflow-hidden rounded-[18px] sm:rounded-2xl border border-white/[0.12] border-t-white/[0.3] bg-[#0d0d10]/80 backdrop-blur-2xl transition-[border-color,box-shadow] duration-300 hover:border-white/25 hover:shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.35)] ${className}`}
     >
@@ -184,6 +248,12 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
 
   return (
     <section className="relative z-40 bg-[#070708] px-3 sm:px-6 pb-10 pt-12 sm:pt-14">
+      {/* Smooth Apple-grade gradient transition from 3D hero into studio showcase */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-36 sm:-top-52 inset-x-0 h-36 sm:h-52 bg-gradient-to-t from-[#070708] via-[#070708]/85 to-transparent"
+      />
+
       {/* ambient orbs */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-16 h-80 w-[560px] -translate-x-1/2 rounded-full bg-[#ff2d55]/[0.05] blur-[120px]" />
@@ -203,19 +273,24 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
         </div>
       </div>
 
-      {/* Tool modal */}
+      {/* Apple-grade expanding tool modal */}
       {modalTool && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4"
+          className={`fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 transition-opacity duration-300 ${
+            isClosing ? 'opacity-0' : 'opacity-100'
+          }`}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setModalTool(null);
+            if (e.target === e.currentTarget) handleClose();
           }}
         >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div className="modal-in relative w-full max-w-lg max-h-[92vh] overflow-y-auto no-scrollbar rounded-[22px] sm:rounded-[28px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/95 p-4 sm:p-6 shadow-[0_40px_90px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.25)]">
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" />
+          <div
+            ref={runExpand}
+            className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto no-scrollbar rounded-[22px] sm:rounded-[28px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/95 p-4 sm:p-6 shadow-[0_40px_90px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.25)] will-change-transform"
+          >
             <button
               type="button"
-              onClick={() => setModalTool(null)}
+              onClick={handleClose}
               className="absolute right-4 top-4 sm:right-5 sm:top-5 rounded-lg p-1.5 text-white/40 transition hover:bg-white/[0.08] hover:text-white"
               aria-label="Close"
             >
@@ -232,7 +307,7 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
             <h3 className="mt-2 text-[16px] sm:text-[18px] font-semibold tracking-[-0.015em] text-white">{modalTool.title}</h3>
             <p className="text-[11px] sm:text-[12px] font-medium text-white/55">{modalTool.tagline}</p>
 
-            <div className="mt-4">
+            <div className="mt-4 animate-in fade-in duration-300">
               {modalTool.mode === 'calc' && <FilamentCalculator />}
               {modalTool.mode === 'estimator' && <PrintEstimator />}
               {modalTool.mode === 'queue' && (

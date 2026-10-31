@@ -32,18 +32,27 @@ export async function mountShadowTool(
   styleEl.textContent = `@layer stan-base { ${scopeCss(styleText, '#stan-tool')} }`;
   document.head.appendChild(styleEl);
 
-  // 2. DOM: viewports + modals + busy. The stock sidebar and header are never
-  //    shown — the sidebar moves into a hidden carrier so the engine keeps
-  //    reading its inputs by id.
+  // 2. DOM: viewports + busy. The stock sidebar moves into a hidden carrier.
   const domRoot = document.createElement('div');
   domRoot.className = 'stan-tool-dom';
   const main = doc.querySelector('.main') as HTMLElement | null;
   if (main) domRoot.appendChild(main);
-  doc.querySelectorAll('.modal').forEach((m) => domRoot.appendChild(m));
   const busy = doc.getElementById('busy');
   if (busy) domRoot.appendChild(busy);
   domRoot.querySelectorAll('details').forEach((d) => d.remove());
   container.appendChild(domRoot);
+
+  // Mount modals at document.body level so they escape any restricted stacking
+  // context or parent overflow clipping, rendering as true full-screen overlays (z-[100])
+  let modalCarrier = document.getElementById('stan-modal-carrier');
+  if (!modalCarrier) {
+    modalCarrier = document.createElement('div');
+    modalCarrier.id = 'stan-modal-carrier';
+    document.body.appendChild(modalCarrier);
+  } else {
+    modalCarrier.innerHTML = '';
+  }
+  doc.querySelectorAll('.modal').forEach((m) => modalCarrier.appendChild(m));
 
   // Rescue the stock header CTAs: the engine binds their handlers at boot.
   // They are pinned as a glass pill row inside the tool's right column.

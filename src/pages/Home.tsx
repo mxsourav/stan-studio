@@ -51,6 +51,7 @@ export default function Home() {
         <nav className="flex items-center gap-2 text-[12px] sm:text-[13px] font-medium">
           <Link
             to="/about"
+            viewTransition
             className="text-zinc-400 hover:text-white transition-colors px-2 py-1"
           >
             About

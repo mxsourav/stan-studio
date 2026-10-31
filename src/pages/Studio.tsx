@@ -73,6 +73,12 @@ export default function Studio() {
   }, [booted]);
 
   useEffect(() => {
+    return () => {
+      document.getElementById('stan-modal-carrier')?.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     if (bootedRef.current || !containerRef.current) return;
     bootedRef.current = true;
     mountShadowTool(containerRef.current, (bridge) => {

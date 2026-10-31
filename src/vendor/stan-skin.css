@@ -339,13 +339,13 @@
 }
 
 /* ── Modals: dark frosted glass sheets, 28px radius ── */
-:is(html #stan-tool) .modal {
+:is(html #stan-tool, #stan-modal-carrier, body) .modal {
   background: rgba(0, 0, 0, 0.62);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
-:is(html #stan-tool) .sheet,
-:is(html #stan-tool) .wallsheet {
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet,
+:is(html #stan-tool, #stan-modal-carrier, body) .wallsheet {
   background:
     linear-gradient(to bottom, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)),
     rgba(18, 18, 22, 0.92);
@@ -360,32 +360,308 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     inset 0 0 20px rgba(255, 255, 255, 0.03);
 }
-:is(html #stan-tool) .sheet h3,
-:is(html #stan-tool) .sheet b,
-:is(html #stan-tool) .sheet label {
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet h3,
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet b,
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet label {
   color: #ffffff;
 }
-:is(html #stan-tool) .sheet .sub,
-:is(html #stan-tool) .sheet small,
-:is(html #stan-tool) .sheet .dlinfo,
-:is(html #stan-tool) .sheet .legend {
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet .sub,
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet small,
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet .dlinfo,
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet .legend {
   color: rgba(255, 255, 255, 0.5);
 }
-:is(html #stan-tool) .sheet .opt {
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet .opt {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
 }
-:is(html #stan-tool) .sheet .opt:has(input:checked) {
+:is(html #stan-tool, #stan-modal-carrier, body) .sheet .opt:has(input:checked) {
   border-color: rgba(255, 255, 255, 0.45);
   background: rgba(255, 255, 255, 0.08);
 }
-:is(html #stan-tool) .cvpane {
+:is(html #stan-tool, #stan-modal-carrier, body) .cvpane {
   border-radius: 12px;
 }
-:is(html #stan-tool) .cvtag {
+:is(html #stan-tool, #stan-modal-carrier, body) .cvtag {
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   IMAGE-TO-SVG / STENCIL CONVERSION MODAL (#cvModal) — SURGICAL OVERLAY
+   ═══════════════════════════════════════════════════════════════════════ */
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  backdrop-filter: blur(24px) !important;
+  padding: 1rem !important;
+  margin: 0 !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal.open {
+  display: flex !important;
+}
+@media (min-width: 640px) {
+  :is(html #stan-tool, #stan-modal-carrier, body) #cvModal {
+    padding: 1.5rem !important;
+  }
+}
+
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .sheet.wide {
+  width: 100% !important;
+  max-width: 56rem !important; /* max-w-4xl = 896px */
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: 1.5rem !important; /* rounded-3xl = 24px */
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-top-color: rgba(255, 255, 255, 0.25) !important;
+  background: rgba(17, 17, 19, 0.96) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+  backdrop-filter: blur(40px) saturate(200%) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  padding: 1.25rem 1.5rem !important;
+  position: relative !important;
+}
+
+/* Pinned Header */
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cv-head {
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+  margin-bottom: 0.75rem !important;
+  padding-bottom: 0.25rem !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cv-head h3 {
+  font-size: 1.125rem !important; /* 18px */
+  font-weight: 600 !important;
+  margin: 0 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.015em !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cv-head .sub {
+  font-size: 0.8125rem !important; /* 13px */
+  color: rgba(255, 255, 255, 0.55) !important;
+  margin-top: 0.25rem !important;
+  line-height: 1.4 !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cv-close-btn {
+  flex-shrink: 0 !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  border-radius: 0.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  padding: 0 !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cv-close-btn:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+/* Compact Scrollable Body */
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cv-body {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+  padding-right: 4px !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cv-body::-webkit-scrollbar {
+  display: none !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cv-body {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Side-by-Side Preview Containers (h-52 sm:h-60 lg:h-64) */
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cvpanes {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.75rem !important;
+  margin-bottom: 0.75rem !important;
+}
+@media (max-width: 600px) {
+  :is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cvpanes {
+    grid-template-columns: 1fr !important;
+  }
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cvpane {
+  position: relative !important;
+  height: 13.5rem !important; /* ~216px */
+  min-height: 11rem !important;
+  max-height: 15rem !important;
+  overflow: hidden !important;
+  border-radius: 1rem !important; /* rounded-2xl = 16px */
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: #18181b !important; /* bg-zinc-900 */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.5rem !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cvpane img {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+}
+
+/* High-Contrast Floating Corner Badge */
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .cvtag {
+  position: absolute !important;
+  top: 0.75rem !important; /* top-3 = 12px */
+  left: 0.75rem !important; /* left-3 = 12px */
+  z-index: 20 !important;
+  padding: 0.25rem 0.625rem !important; /* px-2.5 py-1 */
+  border-radius: 9999px !important; /* rounded-full */
+  background: rgba(9, 9, 11, 0.9) !important; /* bg-zinc-950/90 */
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #e4e4e7 !important; /* text-zinc-200 */
+  pointer-events: none !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Sliders: Tight 2-Column Grid (grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3) */
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .grid2 {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  column-gap: 1.5rem !important; /* gap-x-6 */
+  row-gap: 0.55rem !important;
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.35rem !important;
+}
+@media (max-width: 600px) {
+  :is(html #stan-tool, #stan-modal-carrier, body) #cvModal .grid2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .f {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.2rem !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .f label {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  font-size: 11.5px !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  font-weight: 500 !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .f label b {
+  font-family: ui-monospace, "SF Mono", monospace !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .f input[type="range"] {
+  width: 100% !important;
+  accent-color: #ffffff !important;
+  height: 4px !important;
+  cursor: pointer !important;
+  margin: 0.2rem 0 !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .f select {
+  width: 100% !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  padding: 0 8px !important;
+}
+
+/* Checkbox group */
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .chk-group {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.5rem 1.25rem !important;
+  margin-top: 0.4rem !important;
+  margin-bottom: 0.2rem !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal label.chk {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  font-size: 11.5px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  cursor: pointer !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal label.chk input[type="checkbox"] {
+  accent-color: #ffffff !important;
+  cursor: pointer !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal #cvStat {
+  font-family: ui-monospace, "SF Mono", monospace !important;
+  font-size: 10.5px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  margin-top: 0.25rem !important;
+}
+
+/* Pinned Footer Bar */
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .acts {
+  flex-shrink: 0 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-top: 0.85rem !important;
+  margin-top: 0.65rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.75rem !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .acts .btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.45rem 1.15rem !important;
+  border-radius: 9999px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .acts .btn.ghost {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .acts .btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .acts .btn#cvGo {
+  background: #ffffff !important;
+  border: 1px solid #ffffff !important;
+  color: #070708 !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .acts .btn#cvGo:hover:not(:disabled) {
+  background: #e4e4e7 !important;
+  color: #000000 !important;
+}
+:is(html #stan-tool, #stan-modal-carrier, body) #cvModal .acts .btn:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
 }
 
 /* ── Busy overlay ── */
@@ -489,8 +765,8 @@
 :is(html #stan-tool) #ordSummary * {
   color: rgb(212, 212, 216) !important;
 }
-:is(html #stan-tool) #ordModal .sheet .btn.green,
-:is(html #stan-tool) #ordModal .sheet .btn.green:hover {
+:is(html #stan-tool, #stan-modal-carrier, body) #ordModal .sheet .btn.green,
+:is(html #stan-tool, #stan-modal-carrier, body) #ordModal .sheet .btn.green:hover {
   background: #ffffff;
   color: #0a0a0c;
   border-color: #ffffff;
@@ -507,7 +783,7 @@
 }
 
 /* ── Order sheet layout: checkout portal sits between summary and Close ── */
-:is(html #stan-tool) #ordModal .sheet {
+:is(html #stan-tool, #stan-modal-carrier, body) #ordModal .sheet {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -516,13 +792,13 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-:is(html #stan-tool) #ordModal .sheet .stan-checkout {
+:is(html #stan-tool, #stan-modal-carrier, body) #ordModal .sheet .stan-checkout {
   order: 40;
 }
-:is(html #stan-tool) #ordModal .sheet .acts {
+:is(html #stan-tool, #stan-modal-carrier, body) #ordModal .sheet .acts {
   order: 50;
 }
-:is(html #stan-tool) #ordModal .sheet .stan-checkout input {
+:is(html #stan-tool, #stan-modal-carrier, body) #ordModal .sheet .stan-checkout input {
   color-scheme: dark;
 }
 
@@ -600,13 +876,13 @@
     padding: 14px;
   }
 
-  :is(html #stan-tool) .sheet {
+  :is(html #stan-tool, #stan-modal-carrier, body) .sheet:not(.wide) {
     width: min(500px, calc(100vw - 20px));
     padding: 16px;
     border-radius: 22px;
   }
 
-  :is(html #stan-tool) #ordModal .sheet {
+  :is(html #stan-tool, #stan-modal-carrier, body) #ordModal .sheet {
     width: min(460px, calc(100vw - 20px));
     max-height: calc(100vh - 32px);
     padding: 16px;

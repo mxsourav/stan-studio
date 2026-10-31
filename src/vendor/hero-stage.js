@@ -1033,14 +1033,7 @@ function render() {
     const curPosZ = THREE.MathUtils.lerp(SPOOL_CALIB_START.posZ, SPOOL_CALIB_END.posZ, p);
     const curScale = THREE.MathUtils.lerp(SPOOL_CALIB_START.scale, SPOOL_CALIB_END.scale, p);
 
-    // Continuous 3D exit: smoothly scroll the spool upward out of the viewport in 3D
-    // when the user scrolls past the hero runway into the printer section,
-    // completely eliminating any horizontal 2D slicing or cutting!
-    if (excessScroll > 0) {
-        const exitRatio = Math.min(1.5, excessScroll / (window.innerHeight * 0.85));
-        curPosY += exitRatio * 8.5;
-    }
-
+    // Anchored 3D stage at final frame: spool remains anchored and rotates smoothly on its axis without shifting up
     stage.position.set(curPosX, curPosY, curPosZ);
     stage.scale.set(curScale, curScale, curScale);
 

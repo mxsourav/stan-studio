@@ -86,7 +86,7 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
               <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-300">Useful Links</h3>
               <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-zinc-400">
                 <li>
-                  <Link to="/about" className="hover:text-white transition-colors">
+                  <Link to="/about" viewTransition className="hover:text-white transition-colors">
                     About Us
                   </Link>
                 </li>
@@ -207,7 +207,7 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
                   </a>
                 </li>
                 <li>
-                  <Link to="/about" className="hover:text-white transition-colors">
+                  <Link to="/about" viewTransition className="hover:text-white transition-colors">
                     Maker Manifesto
                   </Link>
                 </li>

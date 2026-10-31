@@ -8,18 +8,20 @@ export default function About() {
     <div className="min-h-screen bg-[#070708] text-white font-['Plus_Jakarta_Sans',sans-serif]">
       {/* Top Navigation */}
       <header className="glass-subtle fixed inset-x-2.5 sm:inset-x-4 top-2.5 sm:top-4 z-40 flex items-center justify-between rounded-xl sm:rounded-2xl px-3.5 sm:px-5 py-2 sm:py-3">
-        <Link to="/" className="flex items-center transition opacity-90 hover:opacity-100">
+        <Link to="/" viewTransition className="flex items-center transition opacity-90 hover:opacity-100">
           <Wordmark size={16} />
         </Link>
         <nav className="flex items-center gap-3 text-xs sm:text-sm font-medium">
           <Link
             to="/"
+            viewTransition
             className="text-zinc-400 hover:text-white transition-colors"
           >
             Home
           </Link>
           <Link
             to="/studio"
+            viewTransition
             className="segment-pill px-3 sm:px-4 py-1.5 text-xs sm:text-sm"
           >
             <span className="hidden sm:inline">Shadow Lamp Studio</span>
@@ -216,6 +218,7 @@ export default function About() {
             </a>
             <Link
               to="/studio"
+              viewTransition
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/15 bg-white/5 text-white text-xs font-semibold hover:bg-white/10 transition-colors"
             >
               Open Shadow Lamp Studio &rarr;

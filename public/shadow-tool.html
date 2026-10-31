@@ -458,27 +458,44 @@ header h1 a.back:hover{background:#f7f7f7}
 </div>
 <div class="modal" id="cvModal">
   <div class="sheet wide">
-    <h3>Convert your image to SVG</h3>
-    <div class="sub">We trace the dark shape of your picture into an SVG. Adjust it until the result looks right, then press Proceed.</div>
-    <div class="cvpanes">
-      <div class="cvpane"><span class="cvtag">Your image</span><img id="cvOrig" alt="Your image"></div>
-      <div class="cvpane" id="cvResWrap"><span class="cvtag">SVG result</span><img id="cvRes" alt="SVG result"><div class="cvov"><span class="spin"></span><span id="cvMsg">Converting...</span></div></div>
+    <div class="cv-head shrink-0">
+      <div class="cv-head-text">
+        <h3>Convert your image to SVG</h3>
+        <div class="sub">We trace the dark shape of your picture into an SVG. Adjust it until the result looks right, then press Proceed.</div>
+      </div>
+      <button type="button" class="cv-close-btn" id="cvClose" aria-label="Close modal">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
     </div>
-    <div class="grid2" style="margin-top:10px">
-      <div class="f"><label>Threshold <b id="cvThr_v"></b></label><input type="range" id="cvThr" min="3" max="97" step="1" value="41"></div>
-      <div class="f"><label>Smoothing <b id="cvBlur_v"></b></label><input type="range" id="cvBlur" min="0" max="4" step="1" value="4"></div>
-      <div class="f"><label>Path simplify <b id="cvDetail_v"></b></label><input type="range" id="cvDetail" min="0" max="3" step="0.1" value="0.6"></div>
-      <div class="f"><label>Remove specks <b id="cvSpecks_v"></b></label><input type="range" id="cvSpecks" min="0" max="300" step="2" value="300"></div>
+    <div class="cv-body no-scrollbar">
+      <div class="cvpanes">
+        <div class="cvpane"><span class="cvtag">Original</span><img id="cvOrig" alt="Your image"></div>
+        <div class="cvpane" id="cvResWrap"><span class="cvtag">SVG Result</span><img id="cvRes" alt="SVG result"><div class="cvov"><span class="spin"></span><span id="cvMsg">Converting...</span></div></div>
+      </div>
+      <div class="grid2">
+        <div class="f"><label>Threshold <b id="cvThr_v"></b></label><input type="range" id="cvThr" min="3" max="97" step="1" value="41"></div>
+        <div class="f"><label>Smoothing <b id="cvBlur_v"></b></label><input type="range" id="cvBlur" min="0" max="4" step="1" value="4"></div>
+        <div class="f"><label>Path simplify <b id="cvDetail_v"></b></label><input type="range" id="cvDetail" min="0" max="3" step="0.1" value="0.6"></div>
+        <div class="f"><label>Remove specks <b id="cvSpecks_v"></b></label><input type="range" id="cvSpecks" min="0" max="300" step="2" value="300"></div>
+      </div>
+      <div class="grid2">
+        <div class="f"><label>Shading</label><select id="cvShade"><option value="solid" selected>Solid (flat shadow)</option><option value="half">Halftone (real shading)</option></select></div>
+        <div class="f"><label>Dot spacing <b id="cvDot_v"></b></label><input type="range" id="cvDot" min="5" max="20" step="1" value="9"></div>
+      </div>
+      <div class="chk-group">
+        <label class="chk"><input type="checkbox" id="cvAuto">Automatic threshold</label>
+        <label class="chk"><input type="checkbox" id="cvInvert">Invert (trace the light part instead)</label>
+        <label class="chk" id="cvAlphaRow" hidden><input type="checkbox" id="cvAlpha" checked>Use the transparent background as the cut-out</label>
+      </div>
+      <div class="dlinfo" id="cvStat"></div>
     </div>
-    <div class="grid2">
-      <div class="f"><label>Shading</label><select id="cvShade"><option value="solid" selected>Solid (flat shadow)</option><option value="half">Halftone (real shading)</option></select></div>
-      <div class="f"><label>Dot spacing <b id="cvDot_v"></b></label><input type="range" id="cvDot" min="5" max="20" step="1" value="9"></div>
+    <div class="acts shrink-0">
+      <button class="btn ghost" id="cvCancel" type="button">Cancel</button>
+      <button class="btn ghost" id="cvDl" type="button">Download SVG</button>
+      <button class="btn" id="cvGo" type="button" disabled>Proceed</button>
     </div>
-    <label class="chk"><input type="checkbox" id="cvAuto">Automatic threshold</label>
-    <label class="chk"><input type="checkbox" id="cvInvert">Invert (trace the light part instead)</label>
-    <label class="chk" id="cvAlphaRow" hidden><input type="checkbox" id="cvAlpha" checked>Use the transparent background as the cut-out</label>
-    <div class="dlinfo" id="cvStat" style="margin-top:8px"></div>
-    <div class="acts"><button class="btn ghost" id="cvCancel">Cancel</button><button class="btn ghost" id="cvDl">Download SVG</button><button class="btn" id="cvGo" disabled>Proceed</button></div>
   </div>
 </div>
 <div class="modal" id="ordModal">
@@ -1392,6 +1409,7 @@ function cvTrace(){
 ['cvThr','cvBlur','cvDetail','cvSpecks','cvDot'].forEach(id => { $(id).addEventListener('input', cvLabels); $(id).addEventListener('change', cvRun); });
 ['cvAuto','cvInvert','cvAlpha','cvShade'].forEach(id => $(id).addEventListener('change', () => { cvLabels(); cvRun(); }));
 $('cvCancel').onclick = closeCv;
+if ($('cvClose')) $('cvClose').onclick = closeCv;
 $('cvModal').addEventListener('click', e => { if (e.target === $('cvModal')) closeCv(); });
 $('cvDl').onclick = () => { if (!CV.svg) return; const a = document.createElement('a'); a.href = CV.svgUrl; a.download = CV.name + '.svg'; document.body.appendChild(a); a.click(); a.remove(); };
 $('cvGo').onclick = () => { if (!CV.svg) return; const svg = CV.svg, name = CV.name + '.svg', done = CV.done; closeCv(); done(svg, name); };
