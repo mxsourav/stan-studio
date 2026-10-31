@@ -12,13 +12,13 @@
  */
 
 ;(function (root, factory) {
-    if (typeof define === 'function' && define.amd) {
-        define(['three'], factory);
-    } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('three'));
-    } else {
-        root.HeroDispersion = factory(root.THREE);
-    }
+    /* Browser-attach only. The stock AMD/CommonJS detection is removed on
+       purpose: under the production bundler the CommonJS branch evaluates
+       `require('three')` with no require in scope, the chunk throws, and the
+       dynamic import rejects silently — the hero then never boots. This file
+       is imported as a side-effect module after RepoHero assigns
+       window.THREE, so the browser branch is the only one ever needed. */
+    root.HeroDispersion = factory(root.THREE);
 })(typeof self !== 'undefined' ? self : this, function (THREE) {
     'use strict';
 
