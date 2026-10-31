@@ -60,7 +60,7 @@ export async function submitShadowOrder(params: {
   });
   if (insertError) throw new Error(`Order save failed: ${insertError.message}`);
 
-  const message = `Hi STAN studio! I configured a Custom Shadow Lamp. Order ID: #${orderId} | Shape: ${params.config.shape} | Est. Bill: ₹${Math.round(params.bomTotal)}. Ready to confirm!`;
+  const message = `Hi STΔN studio! I configured a Custom Shadow Lamp. Order ID: #${orderId} | Shape: ${params.config.shape} | Est. Bill: ₹${Math.round(params.bomTotal)}. Ready to confirm!`;
   const whatsappUrl = `https://wa.me/${import.meta.env.VITE_WHATSAPP_NUMBER ?? '919999999999'}?text=${encodeURIComponent(message)}`;
   return { orderId, whatsappUrl, whatsappMessage: message };
 }

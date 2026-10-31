@@ -38,7 +38,7 @@ export default function Wordmark({
       <span
         className={`wordmark inline-flex flex-col ${className}`}
         style={{ fontSize: size, lineHeight: 0.95 }}
-        aria-label="STAN studio"
+        aria-label="STΔN studio"
       >
         <span>{BRAND.stan.replace('A', '\u0394')}</span>
         <span style={{ fontSize: size * 0.5, marginTop: size * 0.1 }}>
@@ -49,7 +49,7 @@ export default function Wordmark({
     );
   }
   return (
-    <span className={`wordmark inline-flex items-baseline gap-[0.42em] ${className}`} style={{ fontSize: size }} aria-label="STAN studio">
+    <span className={`wordmark inline-flex items-baseline gap-[0.42em] ${className}`} style={{ fontSize: size }} aria-label="STΔN studio">
       <span>{BRAND.stan.replace('A', '\u0394')}</span>
       <span style={{ fontSize: size * 0.74 }}>
         {BRAND.studio}

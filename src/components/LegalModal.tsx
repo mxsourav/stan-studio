@@ -326,7 +326,7 @@ export default function LegalModal({ isOpen, activeTab, onTabChange, onClose }: 
                   Zero-Account Architecture
                 </div>
                 <p className="text-zinc-300 text-sm leading-relaxed">
-                  STAN studio maintains zero user accounts, zero passwords, and zero profiling databases. We do not track your identity across websites or harvest data for third-party networks.
+                  STΔN studio maintains zero user accounts, zero passwords, and zero profiling databases. We do not track your identity across websites or harvest data for third-party networks.
                 </p>
               </div>
 

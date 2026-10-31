@@ -4,6 +4,7 @@ import RepoHero from '../components/RepoHero';
 import StudioShowcase from '../components/StudioShowcase';
 import Wordmark, { BrandBadge } from '../components/Wordmark';
 import Footer from '../components/Footer';
+import WhyChooseStudio from '../components/WhyChooseStudio';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -71,6 +72,11 @@ export default function Home() {
 
       {/* Showcase — bento portfolio, spotlight + tilt, live tools in glass modals */}
       <StudioShowcase onLaunchStudio={warpToStudio} />
+
+      {/* Why Choose STΔN studio? — 6 Trust & Manufacturing Pillars */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-8">
+        <WhyChooseStudio />
+      </div>
 
       {/* Industrial studio-grade footer with interactive VisionOS legal reader */}
       <Footer onOpenStudio={() => warpToStudio(null)} />

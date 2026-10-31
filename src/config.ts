@@ -6,4 +6,4 @@ export const FILAMENT_RATE_PER_GRAM = Number(import.meta.env.VITE_RATE_PER_GRAM 
 export const LED_HARDWARE_COST = Number(import.meta.env.VITE_LED_COST ?? 80);
 export const BASE_MANUFACTURING_FEE = Number(import.meta.env.VITE_BASE_FEE ?? 195);
 
-export const BRAND = { stan: 'STAN', studio: 'studio' } as const;
+export const BRAND = { stan: 'STΔN', studio: 'studio' } as const;
