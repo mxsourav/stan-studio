@@ -31,7 +31,7 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
 
   return (
     <>
-      <footer className="mt-8 border-t border-white/10 bg-[#070708] text-stone-300 font-['Plus_Jakarta_Sans',sans-serif]">
+      <footer className="relative z-40 mt-8 border-t border-white/10 bg-[#070708] text-stone-300 font-['Plus_Jakarta_Sans',sans-serif]">
         {/* Top Tier: Main Navigation (Exact Techno World Grid & Proportion) */}
         <div className="mx-auto grid max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-8 px-4 sm:px-6 py-10">
           

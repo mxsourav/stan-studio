@@ -74,7 +74,7 @@ export default function Home() {
       <StudioShowcase onLaunchStudio={warpToStudio} />
 
       {/* Why Choose STΔN studio? — 6 Trust & Manufacturing Pillars */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-8">
+      <div className="relative z-40 max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-4">
         <WhyChooseStudio />
       </div>
 
