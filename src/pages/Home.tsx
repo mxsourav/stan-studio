@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import RepoHero from '../components/RepoHero';
 import StudioShowcase from '../components/StudioShowcase';
-import Wordmark, { BrandBadge } from '../components/Wordmark';
+import Wordmark from '../components/Wordmark';
 import Footer from '../components/Footer';
 import WhyChooseStudio from '../components/WhyChooseStudio';
 
@@ -45,8 +45,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#070708] text-white">
       {/* Top navigation */}
       <header className="glass-subtle fixed inset-x-2.5 sm:inset-x-4 top-2.5 sm:top-4 z-40 flex items-center justify-between rounded-xl sm:rounded-2xl px-3.5 sm:px-5 py-2 sm:py-3">
-        <span className="flex items-center gap-2.5 sm:gap-3">
-          <BrandBadge size={26} />
+        <span className="flex items-center">
           <Wordmark size={16} />
         </span>
         <nav className="flex items-center gap-2 text-[12px] sm:text-[13px] font-medium">

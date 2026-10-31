@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import Wordmark, { BrandBadge } from '../components/Wordmark';
+import Wordmark from '../components/Wordmark';
 import CheckoutPortal from '../components/CheckoutPortal';
 import { mountShadowTool, type ToolBridge } from '../utils/shadowToolLoader';
 import '../vendor/stan-skin.css';
@@ -142,8 +142,7 @@ export default function Studio() {
     <div className="min-h-screen overflow-y-auto lg:h-screen lg:overflow-hidden bg-[#070708] text-white">
       {/* Mobile top header: brand + Home link */}
       <header className="flex lg:hidden items-center justify-between px-4 py-3 border-b border-white/[0.08] bg-[#070708]/90 backdrop-blur-2xl sticky top-0 z-30">
-        <span className="flex items-center gap-2.5">
-          <BrandBadge size={26} />
+        <span className="flex items-center">
           <Wordmark size={15} />
         </span>
         <Link to="/" viewTransition className="text-[12px] font-medium text-white/60 transition hover:text-white">
@@ -161,8 +160,7 @@ export default function Studio() {
         <aside className="order-2 relative w-full flex flex-col gap-3 p-3.5 sm:p-5 bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent bg-[#0a0a0c]/60 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/[0.16] border-t-white/[0.35] rounded-[22px] sm:rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)] lg:fixed lg:bottom-4 lg:left-4 lg:top-4 lg:w-[450px] lg:min-w-[440px] lg:overflow-y-auto">
           {/* Desktop-only header inside dock */}
           <div className="hidden lg:flex items-center justify-between px-1 pb-1">
-            <span className="flex items-center gap-2.5">
-              <BrandBadge size={26} />
+            <span className="flex items-center">
               <Wordmark size={14} />
             </span>
             <Link to="/" viewTransition className="text-[11.5px] font-medium text-white/50 transition hover:text-white/85">
@@ -379,8 +377,7 @@ export default function Studio() {
           </section>
         )}
 
-        <div className="mt-auto flex items-center gap-2.5 px-1 pb-1">
-          <BrandBadge size={20} />
+        <div className="mt-auto flex items-center px-1 pb-1">
           <span className="text-[10.5px] leading-snug text-white/35">
             Engine runs 100% locally — the sample figure loads automatically.
           </span>

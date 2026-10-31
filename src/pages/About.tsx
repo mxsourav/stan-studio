@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import Wordmark, { BrandBadge } from '../components/Wordmark';
+import Wordmark from '../components/Wordmark';
 import Footer from '../components/Footer';
 import WhyChooseStudio from '../components/WhyChooseStudio';
 
@@ -8,8 +8,7 @@ export default function About() {
     <div className="min-h-screen bg-[#070708] text-white font-['Plus_Jakarta_Sans',sans-serif]">
       {/* Top Navigation */}
       <header className="glass-subtle fixed inset-x-2.5 sm:inset-x-4 top-2.5 sm:top-4 z-40 flex items-center justify-between rounded-xl sm:rounded-2xl px-3.5 sm:px-5 py-2 sm:py-3">
-        <Link to="/" className="flex items-center gap-2.5 sm:gap-3 transition opacity-90 hover:opacity-100">
-          <BrandBadge size={26} />
+        <Link to="/" className="flex items-center transition opacity-90 hover:opacity-100">
           <Wordmark size={16} />
         </Link>
         <nav className="flex items-center gap-3 text-xs sm:text-sm font-medium">
@@ -59,7 +58,7 @@ export default function About() {
                 From a Kolkata Hostel Room to a Direct Maker Platform
               </h2>
               <p className="text-sm sm:text-base text-zinc-300 leading-relaxed">
-                <strong className="text-white font-medium">ST&Delta;N studio</strong> (<span className="text-zinc-400">Sketch, Test, Adapt, Navigate</span>) was founded out of a student hostel room in Kolkata by a solo engineering student and maker. We built this platform specifically for students, hobbyists, and science/engineering builders who need precision parts&mdash;from custom electronic enclosures and structural frames to project brackets&mdash;without getting crushed by commercial pricing or arbitrary minimum order caps.
+                <strong className="text-white font-medium">ST&Delta;N studio</strong> (<span className="text-zinc-400">Sketch, Test, Adapt, Navigate</span>) was founded out of a student hostel room in Kolkata by a solo maker. We built this platform specifically for students, hobbyists, and science project builders who need precision parts&mdash;from custom electronic enclosures and structural frames to project brackets&mdash;without getting crushed by commercial pricing or arbitrary minimum order caps.
               </p>
             </div>
 
@@ -87,10 +86,9 @@ export default function About() {
             </div>
 
             <div className="pt-6 relative z-10">
-              <div className="flex items-center gap-2">
-                <BrandBadge size={22} />
+              <div className="flex items-center">
                 <div className="text-xs font-mono text-zinc-400">
-                  ST&Delta;N studio<span className="text-[#ff2d55]">.</span> &bull; Engineering Desk
+                  ST&Delta;N studio<span className="text-[#ff2d55]">.</span> &bull; Maker Desk
                 </div>
               </div>
               <div className="text-[11px] text-zinc-500 mt-1">
@@ -110,7 +108,7 @@ export default function About() {
               Beyond Templates: Unlimited Manufacturing &amp; Sourcing Scope
             </h2>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              While our interactive web suite offers parametric shadow lanterns and volumetric estimation, our physical workshop is equipped for full-spectrum additive engineering.
+              While our interactive web suite offers parametric shadow lanterns and volumetric estimation, our physical workshop is equipped for full-spectrum additive digital fabrication.
             </p>
           </div>
 
@@ -147,7 +145,7 @@ export default function About() {
                 Mechanical Tolerances
               </div>
               <h3 className="text-base font-semibold text-white">
-                Custom Engineering Slices
+                Custom Mechanical Slices
               </h3>
               <p className="text-sm text-zinc-400 leading-relaxed">
                 Need press-fit bearing tolerances, reinforced internal gyroid infill, or high-temperature PETG/functional materials? Reach out directly with your requirements and we will calibrate slicer parameters specifically for your mechanical load.
@@ -167,7 +165,7 @@ export default function About() {
                 Need Help Sourcing, Slicing, or Building?
               </h2>
               <p className="text-sm text-zinc-400 leading-relaxed max-w-2xl">
-                Whether you have an existing STL file, a hand-drawn napkin sketch, or need us to hunt down an open-source CAD model for your college project, talk directly with our studio engineer. No sales reps, no automated answering machines.
+                Whether you have an existing STL file, a hand-drawn napkin sketch, or need us to hunt down an open-source CAD model for your college project, talk directly with our studio maker desk. No sales reps, no automated answering machines.
               </p>
               <div className="text-xs text-zinc-500 pt-1">
                 Open for free feasibility chats &middot; Mon&ndash;Sat: 3:00 PM &ndash; 8:00 PM IST
@@ -181,7 +179,7 @@ export default function About() {
                 rel="noreferrer"
                 className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 text-center"
               >
-                Chat with Engineer on WhatsApp
+                Chat with Maker on WhatsApp
               </a>
               <a
                 href="mailto:stanstudio@mxsourav.dev?subject=Student/Maker%20Project%20Inquiry"
@@ -202,7 +200,7 @@ export default function About() {
             Visit the Kolkata Studio or Commission Online
           </h2>
           <p className="text-sm sm:text-base text-zinc-300 leading-relaxed mb-4">
-            At ST&Delta;N studio, we take pride in genuine engineering-grade prints, fair student pricing, and personal care for every build. Whether you collect your parts in person at Maniktala or order online for postal delivery or express courier, our team is committed to getting you the exact physical parts you need promptly.
+            At ST&Delta;N studio, we take pride in genuine maker-grade prints, fair student pricing, and personal care for every build. Whether you collect your parts in person at Maniktala or order online for postal delivery or express courier, our team is committed to getting you the exact physical parts you need promptly.
           </p>
           <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed font-medium">
             If you ever need help locating a specific STL file, slicing complex geometries, or planning modular multi-color assemblies, simply call our desk or reach out on WhatsApp. We will be glad to assist you.

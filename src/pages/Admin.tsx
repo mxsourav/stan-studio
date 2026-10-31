@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import Wordmark, { BrandBadge } from '../components/Wordmark';
+import Wordmark from '../components/Wordmark';
 import {
   adminApiConfigured,
   adminFetchOrders,
@@ -73,7 +73,7 @@ export default function Admin() {
       <div className="flex min-h-screen items-center justify-center bg-[#070708] p-6 text-white">
         <div className="w-[340px] rounded-[28px] border border-white/[0.16] border-t-white/[0.35] bg-white/[0.04] p-7 shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22)] backdrop-blur-2xl">
           <div className="mb-5 flex flex-col items-center gap-1.5 text-center">
-            <BrandBadge size={40} />
+            <Wordmark size={18} />
             <h1 className="mt-1 text-[16px] font-semibold">Print Floor</h1>
             <p className="text-[12px] text-white/45">Enter the studio passkey</p>
           </div>
@@ -153,8 +153,7 @@ function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#070708] text-white">
       <header className="sticky top-4 z-30 mx-4 flex items-center justify-between rounded-2xl border border-white/[0.12] bg-[#0a0a0c]/70 px-5 py-3 backdrop-blur-2xl">
-        <span className="flex items-center gap-2.5">
-          <BrandBadge size={22} />
+        <span className="flex items-center gap-2">
           <Wordmark size={14} />
           <span className="text-[12px] font-medium text-white/40">Print Floor</span>
         </span>

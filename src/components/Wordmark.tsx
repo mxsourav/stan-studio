@@ -1,20 +1,8 @@
 import { BRAND } from '../config';
 
-/** Companion round badge: white Δ on carbon, signal-red dot at the corner. */
-export function BrandBadge({ size = 34, className = '' }: { size?: number; className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden="true" className={className} style={{ flexShrink: 0 }}>
-      <circle cx="24" cy="24" r="22.6" fill="#101013" stroke="rgba(255,255,255,0.28)" strokeWidth="1.6" />
-      <path
-        d="M24 12.5 L35.5 33.5 H12.5 Z"
-        fill="none"
-        stroke="#ffffff"
-        strokeWidth="3.4"
-        strokeLinejoin="round"
-      />
-      <circle cx="37.4" cy="37.4" r="4.2" fill="#FF2D55" />
-    </svg>
-  );
+/** Companion round badge is permanently disabled — our logo is STΔN studio. itself */
+export function BrandBadge(_props?: { size?: number; className?: string }) {
+  return null;
 }
 
 /**

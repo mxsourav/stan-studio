@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { IconXmark } from './icons';
-import Wordmark, { BrandBadge } from './Wordmark';
+import Wordmark from './Wordmark';
 
 export type LegalTabKey = 'terms' | 'fabrication' | 'warranty' | 'shipping' | 'privacy';
 
@@ -45,7 +45,6 @@ export default function LegalModal({ isOpen, activeTab, onTabChange, onClose }: 
         {/* Header bar */}
         <div className="flex items-center justify-between border-b border-white/[0.08] px-5 sm:px-7 py-4 bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <BrandBadge size={24} />
             <Wordmark size={15} />
             <span className="hidden sm:inline-block text-xs text-zinc-500 font-medium pl-2 border-l border-white/10">
               Operational Governance
@@ -91,7 +90,7 @@ export default function LegalModal({ isOpen, activeTab, onTabChange, onClose }: 
                 <h3 className="font-['Playfair_Display',serif] text-xl sm:text-2xl font-normal text-white tracking-tight">
                   Commissioning Workflow &amp; Payment Policy
                 </h3>
-                <p className="text-xs text-zinc-500 mt-1">Direct-to-engineer settlement via WhatsApp</p>
+                <p className="text-xs text-zinc-500 mt-1">Direct maker settlement via WhatsApp</p>
               </div>
 
               <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-3">
@@ -99,7 +98,7 @@ export default function LegalModal({ isOpen, activeTab, onTabChange, onClose }: 
                   Direct Commissioning Model
                 </div>
                 <p className="text-zinc-300 text-sm leading-relaxed">
-                  <span className="text-white font-medium">studio.mxsourav.dev</span> operates as an interactive parametric design workbench and estimation suite rather than an automated retail checkout cart. Submitting a build on the web app generates a unique <strong className="text-white font-semibold">Build Request ID</strong>. To finalize the commission, the client messages our official desk on WhatsApp (<strong className="text-white">+91 8509986008</strong>) with their request ID for engineering verification and payment settlement.
+                  <span className="text-white font-medium">studio.mxsourav.dev</span> operates as an interactive parametric design workbench and estimation suite rather than an automated retail checkout cart. Submitting a build on the web app generates a unique <strong className="text-white font-semibold">Build Request ID</strong>. To finalize the commission, the client messages our official desk on WhatsApp (<strong className="text-white">+91 8509986008</strong>) with their request ID for maker verification and payment settlement.
                 </p>
               </div>
 
@@ -224,7 +223,7 @@ export default function LegalModal({ isOpen, activeTab, onTabChange, onClose }: 
               <div className="space-y-2">
                 <h4 className="font-['Playfair_Display',serif] text-base font-normal text-zinc-100">No Returns or Buyer's-Remorse Refunds</h4>
                 <p className="text-zinc-400 text-sm leading-relaxed">
-                  Because every object is custom-fabricated to bespoke client dimensions and vector silhouettes, general returns and refunds are strictly prohibited. Custom engineering prints cannot be restocked.
+                  Because every object is custom-fabricated to bespoke client dimensions and vector silhouettes, general returns and refunds are strictly prohibited. Custom fabricated prints cannot be restocked.
                 </p>
               </div>
 
