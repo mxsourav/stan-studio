@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { supabase, ADMIN_SECRET_KEY, PORT, ALLOWED_ORIGIN } from './supabase.js';
+import { syncInbox, sendMail, mailConfigured } from './mail.js';
 
 const app = express();
 app.use(express.json({ limit: '4mb' })); // recipes + SVG strings + webp preview
@@ -125,4 +126,71 @@ app.patch('/api/admin/orders/:orderId', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[server] STΔN studio. order pipeline listening on :${PORT}`);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Titan Mail — admin inbox (IMAP sync + SMTP send)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Cached inbox list (light rows — no bodies; bodies load per message)
+app.get('/api/admin/emails', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const { data, error } = await supabase
+    .from('emails')
+    .select('message_id, sender, recipient, subject, is_read, received_at')
+    .order('received_at', { ascending: false })
+    .limit(100);
+  if (error) return res.status(500).json({ ok: false, error: `Emails cache unavailable — run supabase/schema.sql (${error.message})` });
+  res.json({ ok: true, emails: data, mailConfigured: mailConfigured() });
+});
+
+// Fresh IMAP fetch from Titan; returns the parsed messages directly so the
+// panel renders instantly (the Supabase cache upsert happens inside sync).
+app.post('/api/admin/emails/sync', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const limit = Math.min(Number(req.body?.limit) || 30, 100);
+    const emails = await syncInbox(limit);
+    res.json({ ok: true, synced: emails.length, emails });
+  } catch (e) {
+    console.error('[mail] sync failed:', e.message);
+    res.status(502).json({ ok: false, error: `IMAP sync failed: ${e.message}` });
+  }
+});
+
+// Full message (bodies) for the reader pane
+app.get('/api/admin/emails/:messageId', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const { data, error } = await supabase
+    .from('emails')
+    .select('*')
+    .eq('message_id', req.params.messageId)
+    .maybeSingle();
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+  if (!data) return res.status(404).json({ ok: false, error: 'Message not found — sync the inbox first' });
+  res.json({ ok: true, email: data });
+});
+
+app.post('/api/admin/emails/read', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const messageId = req.body?.message_id;
+  if (!messageId) return res.status(400).json({ ok: false, error: 'message_id is required' });
+  const { error } = await supabase.from('emails').update({ is_read: true }).eq('message_id', messageId);
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+  res.json({ ok: true });
+});
+
+app.post('/api/admin/emails/send', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const result = await sendMail({
+      to: req.body?.to,
+      subject: req.body?.subject,
+      text: req.body?.body,
+    });
+    res.json({ ok: true, messageId: result.messageId });
+  } catch (e) {
+    console.error('[mail] send failed:', e.message);
+    res.status(502).json({ ok: false, error: `SMTP send failed: ${e.message}` });
+  }
 });

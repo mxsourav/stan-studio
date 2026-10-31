@@ -83,3 +83,29 @@ with check (true);
 
 -- No SELECT / UPDATE / DELETE policies for anon or authenticated:
 -- reads and updates flow exclusively through the Admin API (service role).
+
+-- ==============================================================================
+-- Mailbox — synced from Titan Mail (Name.com) IMAP by the dedicated backend.
+-- Reads/writes happen exclusively via the Admin API (service role); RLS has no
+-- policies so anon/authenticated clients can never touch email content.
+-- ==============================================================================
+
+create table if not exists public.emails (
+    id          uuid primary key default gen_random_uuid(),
+    message_id  text unique not null,                 -- RFC Message-ID (or provider fallback)
+    sender      text not null default '',
+    recipient   text not null default '',
+    subject     text not null default '(no subject)',
+    body_html   text,
+    body_text   text,
+    is_read     boolean not null default false,
+    received_at timestamptz not null default now(),
+    created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_emails_received_at on public.emails (received_at desc);
+create index if not exists idx_emails_is_read on public.emails (is_read);
+
+alter table public.emails enable row level security;
+
+-- Deliberately NO policies: the mailbox is admin-API only (service role).

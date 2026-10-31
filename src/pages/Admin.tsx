@@ -7,6 +7,15 @@ import {
   adminUpdateStatus,
   type AdminOrder,
 } from '../lib/orderPipeline';
+import {
+  adminFetchEmailBody,
+  adminFetchEmails,
+  adminMarkEmailRead,
+  adminSendEmail,
+  adminSyncEmails,
+  type MailListItem,
+  type MailMessage,
+} from '../lib/mail';
 import { mountShadowTool, type ToolBridge } from '../utils/shadowToolLoader';
 
 /**
@@ -107,6 +116,7 @@ function AdminDashboard() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selected, setSelected] = useState<AdminOrder | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [tab, setTab] = useState<'orders' | 'mailbox'>('orders');
   const configured = adminApiConfigured();
 
   const reload = useCallback(async () => {
@@ -159,10 +169,35 @@ function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 pb-16 pt-8">
-        <h1 className="text-2xl font-bold tracking-[-0.02em]">Order recipes</h1>
-        <p className="mt-1 text-[13px] text-white/45">
-          Every row is a deterministic recipe — rebuild the exact production ZIP from the stored design.
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-[-0.02em]">
+              {tab === 'orders' ? 'Order recipes' : 'Mailbox'}
+            </h1>
+            <p className="mt-1 text-[13px] text-white/45">
+              {tab === 'orders'
+                ? 'Every row is a deterministic recipe — rebuild the exact production ZIP from the stored design.'
+                : 'stanstudio@mxsourav.dev — synced from Titan Mail. Replies send straight from the studio address.'}
+            </p>
+          </div>
+          <div className="flex gap-1 rounded-2xl border border-white/10 bg-black/40 p-1">
+            {([
+              ['orders', 'Orders'],
+              ['mailbox', 'Mailbox'],
+            ] as Array<['orders' | 'mailbox', string]>).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className={`rounded-xl px-4 py-2 text-[12px] font-medium transition ${
+                  tab === key ? 'bg-white/15 text-white shadow-sm' : 'text-white/55 hover:text-white/85'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {!configured && (
           <div className="mt-5 rounded-[22px] border border-amber-200/25 bg-amber-200/[0.06] p-5 text-[13px] leading-relaxed text-amber-100/85">
@@ -177,11 +212,11 @@ function AdminDashboard() {
           </div>
         )}
 
-        {configured && loadError && (
+        {configured && tab === 'orders' && loadError && (
           <p className="mt-4 rounded-2xl bg-red-500/10 px-4 py-3 text-[13px] text-red-300">{loadError}</p>
         )}
 
-        {configured && (
+        {configured && tab === 'orders' && (
           <div className="mt-5 overflow-hidden rounded-[24px] border border-white/[0.12] border-t-white/[0.22] bg-white/[0.03] shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
             <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
               <h2 className="text-[12.5px] font-semibold text-white/85">Incoming</h2>
@@ -287,6 +322,8 @@ function AdminDashboard() {
             )}
           </div>
         )}
+
+        {configured && tab === 'mailbox' && <MailboxPane notify={(m) => setToast(m)} />}
       </main>
 
       {selected && (
@@ -531,3 +568,242 @@ function Inspector({
     </div>
   );
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Mailbox — Titan Mail inbox (IMAP sync) + reply via the studio SMTP address
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const nameOf = (s: string): string => {
+  const m = s.match(/^(.*?)\s*</);
+  return (m ? m[1] : s).replace(/"/g, '').trim() || s;
+};
+const addrOf = (s: string): string => {
+  const m = s.match(/<([^>]+)>/);
+  return (m ? m[1] : s).trim();
+};
+const shortTime = (iso: string): string =>
+  new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+function MailboxPane({ notify }: { notify: (message: string) => void }) {
+  const [list, setList] = useState<MailListItem[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<MailMessage | null>(null);
+  const [loadingBody, setLoadingBody] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState('');
+  const [replySubject, setReplySubject] = useState('');
+  const [replyBody, setReplyBody] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setList(await adminFetchEmails());
+      setListError(null);
+    } catch (error) {
+      setListError(error instanceof Error ? error.message : 'Could not load the mailbox');
+      setList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const sync = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const result = await adminSyncEmails(30);
+      setLastSync(new Date().toLocaleTimeString());
+      notify(`${result.synced} message${result.synced === 1 ? '' : 's'} synced from Titan`);
+      await load();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'IMAP sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  }, [load, notify]);
+
+  const open = useCallback(
+    async (item: MailListItem) => {
+      setLoadingBody(true);
+      setReplyOpen(false);
+      try {
+        const full = await adminFetchEmailBody(item.message_id);
+        setSelected(full);
+        setReplyTo(addrOf(full.sender));
+        setReplySubject(full.subject.startsWith('Re:') ? full.subject : `Re: ${full.subject}`);
+        setReplyBody('');
+        if (!full.is_read) {
+          setList((prev) => prev?.map((m) => (m.message_id === full.message_id ? { ...m, is_read: true } : m)) ?? null);
+          void adminMarkEmailRead(full.message_id).catch(() => {});
+        }
+      } catch (error) {
+        notify(error instanceof Error ? error.message : 'Could not open the message');
+      } finally {
+        setLoadingBody(false);
+      }
+    },
+    [notify],
+  );
+
+  const send = useCallback(async () => {
+    setSending(true);
+    try {
+      await adminSendEmail(replyTo, replySubject, replyBody);
+      notify(`Reply sent to ${replyTo}`);
+      setReplyOpen(false);
+      await load();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Send failed');
+    } finally {
+      setSending(false);
+    }
+  }, [load, notify, replyBody, replySubject, replyTo]);
+
+  const readerHtml =
+    selected?.body_html ||
+    (selected?.body_text ? `<pre style="white-space:pre-wrap;font:13px ui-monospace,monospace;padding:16px;">${selected.body_text.replace(/</g, '&lt;')}</pre>` : '');
+
+  return (
+    <div className="mt-1">
+      {/* Toolbar */}
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void sync()}
+          disabled={syncing}
+          className="rounded-2xl bg-white px-4 py-2.5 text-[12.5px] font-semibold text-black shadow-[0_10px_40px_rgba(255,255,255,0.16)] transition hover:bg-white/90 disabled:cursor-wait disabled:opacity-60"
+        >
+          {syncing ? 'Syncing via IMAP…' : 'Sync Inbox'}
+        </button>
+        <span className="font-mono text-[11px] text-white/40">
+          {list ? `${list.filter((m) => !m.is_read).length} unread · ${list.length} total` : '—'}
+          {lastSync ? ` · last sync ${lastSync}` : ''}
+        </span>
+      </div>
+
+      {listError && (
+        <p className="mb-3 rounded-2xl bg-red-500/10 px-4 py-3 text-[13px] text-red-300">{listError}</p>
+      )}
+
+      {/* Split pane */}
+      <div className="flex h-[68vh] gap-3 overflow-hidden rounded-[24px] border border-white/[0.12] border-t-white/[0.22] bg-white/[0.03]">
+        {/* Left: message list */}
+        <div className="w-[320px] shrink-0 overflow-y-auto border-r border-white/[0.06] p-2">
+          {list === null ? (
+            <p className="p-4 text-[13px] text-white/40">Loading mailbox…</p>
+          ) : list.length === 0 ? (
+            <p className="p-4 text-[13px] leading-relaxed text-white/40">
+              No messages yet — press <span className="font-semibold text-white/70">Sync Inbox</span> to pull the
+              latest from Titan.
+            </p>
+          ) : (
+            list.map((m) => (
+              <button
+                key={m.message_id}
+                type="button"
+                onClick={() => void open(m)}
+                className={`mb-1 flex w-full flex-col gap-0.5 rounded-xl border px-3 py-2.5 text-left transition ${
+                  selected?.message_id === m.message_id
+                    ? 'border-white/40 bg-white/[0.1]'
+                    : 'border-transparent hover:bg-white/[0.05]'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                      m.is_read ? 'bg-white/15' : 'bg-[#FF2D55] shadow-[0_0_8px_rgba(255,45,85,0.7)]'
+                    }`}
+                  />
+                  <span className={`truncate text-[12.5px] ${m.is_read ? 'text-white/65' : 'font-semibold text-white'}`}>
+                    {nameOf(m.sender) || m.sender}
+                  </span>
+                  <span className="ml-auto shrink-0 font-mono text-[10px] text-white/35">
+                    {shortTime(m.received_at)}
+                  </span>
+                </span>
+                <span className={`ml-3.5 truncate text-[12px] ${m.is_read ? 'text-white/45' : 'text-white/80'}`}>
+                  {m.subject}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Right: reader + reply */}
+        <div className="flex min-w-0 flex-1 flex-col p-3">
+          {!selected ? (
+            <div className="flex flex-1 items-center justify-center text-[13px] text-white/35">
+              {loadingBody ? 'Opening message…' : 'Select a message to read it here.'}
+            </div>
+          ) : (
+            <>
+              <div className="mb-2.5 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="truncate text-[15px] font-semibold text-white">{selected.subject}</h3>
+                  <p className="mt-0.5 truncate font-mono text-[11px] text-white/45">
+                    {selected.sender} → {selected.recipient} · {new Date(selected.received_at).toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyOpen((v) => !v)}
+                  className="shrink-0 rounded-xl border border-white/[0.14] bg-white/[0.06] px-3.5 py-1.5 text-[12px] font-medium text-white/85 transition hover:bg-white/[0.12]"
+                >
+                  {replyOpen ? 'Close reply' : 'Reply'}
+                </button>
+              </div>
+
+              <iframe
+                title="Email body"
+                sandbox=""
+                srcDoc={readerHtml}
+                className="min-h-0 w-full flex-1 rounded-2xl border border-white/10 bg-white"
+              />
+
+              {replyOpen && (
+                <div className="mt-2.5 flex flex-col gap-2 rounded-2xl border border-white/[0.12] bg-white/[0.04] p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      value={replyTo}
+                      onChange={(e) => setReplyTo(e.target.value)}
+                      placeholder="To"
+                      className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-[12px] text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
+                    />
+                    <input
+                      value={replySubject}
+                      onChange={(e) => setReplySubject(e.target.value)}
+                      placeholder="Subject"
+                      className="rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-[12px] text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
+                    />
+                  </div>
+                  <textarea
+                    value={replyBody}
+                    onChange={(e) => setReplyBody(e.target.value)}
+                    rows={4}
+                    placeholder={`Reply to ${nameOf(selected.sender)}…`}
+                    className="resize-none rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-[12.5px] text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] text-white/35">Sends from stanstudio@mxsourav.dev via Titan SMTP</span>
+                    <button
+                      type="button"
+                      onClick={() => void send()}
+                      disabled={sending || !replyTo.trim() || !replySubject.trim() || !replyBody.trim()}
+                      className="rounded-xl bg-white px-4 py-2 text-[12px] font-semibold text-black transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {sending ? 'Sending…' : 'Send reply'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+       
