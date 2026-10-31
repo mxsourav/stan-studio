@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Wordmark, { BrandBadge } from '../components/Wordmark';
 import {
@@ -31,6 +31,10 @@ const SESSION_KEY = 'stan-admin-unlocked';
 
 const STATUS_OPTIONS = ['pending', 'confirmed', 'printing', 'shipped', 'cancelled'] as const;
 type Status = (typeof STATUS_OPTIONS)[number];
+
+/** The house frosted-glass surface: float, deep shadow, refractive top edge. */
+const GLASS =
+  'rounded-[24px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/70 backdrop-blur-2xl backdrop-saturate-[180%] shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)]';
 
 declare global {
   interface Window {
@@ -119,7 +123,7 @@ function AdminDashboard() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selected, setSelected] = useState<AdminOrder | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [tab, setTab] = useState<'orders' | 'mailbox'>('orders');
+  const [tab, setTab] = useState<'orders' | 'mailbox' | 'data'>('orders');
   const configured = adminApiConfigured();
 
   const reload = useCallback(async () => {
@@ -172,45 +176,32 @@ function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 pb-16 pt-8">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-[-0.02em]">
-              {tab === 'orders' ? 'Order recipes' : 'Mailbox'}
-            </h1>
-            <p className="mt-1 text-[13px] text-white/45">
-              {tab === 'orders'
-                ? 'Every row is a deterministic recipe — rebuild the exact production ZIP from the stored design.'
-                : 'stanstudio@mxsourav.dev — synced from Titan Mail. Replies send straight from the studio address.'}
-            </p>
-          </div>
-          <div className="flex gap-1 rounded-2xl border border-white/10 bg-black/40 p-1">
-            {([
-              ['orders', 'Orders'],
-              ['mailbox', 'Mailbox'],
-            ] as Array<['orders' | 'mailbox', string]>).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setTab(key)}
-                className={`rounded-xl px-4 py-2 text-[12px] font-medium transition ${
-                  tab === key ? 'bg-white/15 text-white shadow-sm' : 'text-white/55 hover:text-white/85'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        <div className="flex gap-1 rounded-2xl border border-white/10 bg-black/40 p-1 w-fit">
+          {([
+            ['orders', 'Orders'],
+            ['mailbox', 'Mailbox'],
+            ['data', 'Data'],
+          ] as Array<['orders' | 'mailbox' | 'data', string]>).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={`rounded-xl px-5 py-2 text-[12px] font-medium transition ${
+                tab === key ? 'bg-white/15 text-white shadow-sm' : 'text-white/55 hover:text-white/85'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {!configured && (
-          <div className="mt-5 rounded-[22px] border border-amber-200/25 bg-amber-200/[0.06] p-5 text-[13px] leading-relaxed text-amber-100/85">
+          <div className={`${GLASS} mt-5 p-5 text-[13px] leading-relaxed text-amber-100/85`}>
             <p className="font-semibold">Backend not configured</p>
             <p className="mt-1.5 text-white/60">
-              Orders are served by the dedicated backend (anon clients cannot read Supabase directly). Set{' '}
-              <code className="font-mono text-amber-100">VITE_API_BASE</code> to the deployed{' '}
-              <code className="font-mono text-amber-100">server/</code> URL (Vercel env), deploy the backend with{' '}
-              <code className="font-mono text-amber-100">ADMIN_SECRET_KEY</code>, and run{' '}
-              <code className="font-mono text-amber-100">supabase/schema.sql</code> once in the Supabase SQL editor.
+              Set <code className="font-mono text-amber-100">VITE_API_BASE</code> in Vercel to the deployed{' '}
+              <code className="font-mono text-amber-100">server/</code> URL, then run{' '}
+              <code className="font-mono text-amber-100">supabase/schema.sql</code> once.
             </p>
           </div>
         )}
@@ -220,26 +211,24 @@ function AdminDashboard() {
         )}
 
         {configured && tab === 'orders' && (
-          <div className="mt-5 overflow-hidden rounded-[24px] border border-white/[0.12] border-t-white/[0.22] bg-white/[0.03] shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
+          <div className={`${GLASS} mt-5 overflow-hidden`}>
             <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
-              <h2 className="text-[12.5px] font-semibold text-white/85">Incoming</h2>
               <span className="flex items-center gap-3">
-                {orders && <span className="font-mono text-[11px] text-white/40">{orders.length} ORDERS</span>}
-                <button
-                  type="button"
-                  onClick={() => void reload()}
-                  className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-2.5 py-1 text-[11px] text-white/70 transition hover:bg-white/[0.12]"
-                >
-                  Refresh
-                </button>
+                <h2 className="text-[12.5px] font-semibold text-white/85">Orders</h2>
+                {orders && <span className="font-mono text-[11px] text-white/40">{orders.length}</span>}
               </span>
+              <button
+                type="button"
+                onClick={() => void reload()}
+                className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-2.5 py-1 text-[11px] text-white/70 transition hover:bg-white/[0.12]"
+              >
+                Refresh
+              </button>
             </div>
             {orders === null ? (
               <p className="px-5 pb-6 pt-4 text-[13px] text-white/40">Loading orders…</p>
             ) : orders.length === 0 ? (
-              <p className="px-5 pb-6 pt-4 text-[13px] text-white/40">
-                No orders yet — locked designs from the studio land here instantly.
-              </p>
+              <p className="px-5 pb-6 pt-4 text-[13px] text-white/40">No orders yet.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-[13px]">
@@ -327,6 +316,7 @@ function AdminDashboard() {
         )}
 
         {configured && tab === 'mailbox' && <MailboxPane notify={(m) => setToast(m)} />}
+        {configured && tab === 'data' && <DataPane />}
       </main>
 
       {selected && (
@@ -692,16 +682,13 @@ function MailboxPane({ notify }: { notify: (message: string) => void }) {
       )}
 
       {/* Split pane */}
-      <div className="flex h-[68vh] gap-3 overflow-hidden rounded-[24px] border border-white/[0.12] border-t-white/[0.22] bg-white/[0.03]">
+      <div className={`${GLASS} flex h-[68vh] gap-3 overflow-hidden`}>
         {/* Left: message list */}
         <div className="w-[320px] shrink-0 overflow-y-auto border-r border-white/[0.06] p-2">
           {list === null ? (
             <p className="p-4 text-[13px] text-white/40">Loading mailbox…</p>
           ) : list.length === 0 ? (
-            <p className="p-4 text-[13px] leading-relaxed text-white/40">
-              No messages yet — press <span className="font-semibold text-white/70">Sync Inbox</span> to pull the
-              latest from Titan.
-            </p>
+            <p className="p-4 text-[13px] text-white/40">No messages yet.</p>
           ) : (
             list.map((m) => (
               <button
@@ -806,6 +793,179 @@ function MailboxPane({ notify }: { notify: (message: string) => void }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Data — the raw Supabase rows (orders + emails), click a row for its JSON
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const slimJson = (row: Record<string, unknown>): string => {
+  const clone: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(row)) {
+    clone[key] = typeof value === 'string' && value.length > 160 ? `${value.slice(0, 160)}… (${value.length} chars)` : value;
+  }
+  return JSON.stringify(clone, null, 2);
+};
+
+function DataPane() {
+  const [orders, setOrders] = useState<AdminOrder[] | null>(null);
+  const [emails, setEmails] = useState<MailListItem[] | null>(null);
+  const [view, setView] = useState<'orders' | 'emails'>('orders');
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null);
+    setOpenId(null);
+    const [o, e] = await Promise.allSettled([adminFetchOrders(), adminFetchEmails()]);
+    if (o.status === 'fulfilled') setOrders(o.value);
+    else if (view === 'orders') setError(o.reason instanceof Error ? o.reason.message : 'Orders load failed');
+    if (e.status === 'fulfilled') setEmails(e.value);
+    else if (view === 'emails') setError(e.reason instanceof Error ? e.reason.message : 'Emails load failed');
+  }, [view]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const orderRows = orders ?? [];
+  const emailRows = emails ?? [];
+  const isOpen = (id: string) => openId === id;
+  const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
+
+  return (
+    <div className={`${GLASS} mt-5 overflow-hidden`}>
+      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+        <div className="flex gap-1">
+          {([
+            ['orders', 'orders', orderRows.length],
+            ['emails', 'emails', emailRows.length],
+          ] as Array<['orders' | 'emails', string, number]>).map(([key, label, count]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                setView(key);
+                setOpenId(null);
+              }}
+              className={`rounded-lg px-3 py-1.5 font-mono text-[11px] transition ${
+                view === key ? 'bg-white/15 text-white' : 'text-white/45 hover:text-white/80'
+              }`}
+            >
+              {label} · {count}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => void load()}
+          className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-2.5 py-1 text-[11px] text-white/70 transition hover:bg-white/[0.12]"
+        >
+          Refresh
+        </button>
+      </div>
+
+      {error && <p className="border-b border-white/[0.06] bg-red-500/10 px-5 py-3 text-[12.5px] text-red-300">{error}</p>}
+
+      {view === 'orders' && (
+        <table className="w-full text-left text-[12.5px]">
+          <thead>
+            <tr className="border-b border-white/[0.06] text-[10.5px] uppercase tracking-wider text-white/35">
+              <th className="px-5 py-2.5 font-medium">order_id</th>
+              <th className="px-3 py-2.5 font-medium">customer</th>
+              <th className="px-3 py-2.5 font-medium">phone</th>
+              <th className="px-3 py-2.5 font-medium">status</th>
+              <th className="px-3 py-2.5 font-medium">total_inr</th>
+              <th className="px-3 py-2.5 font-medium">created_at</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orderRows.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-5 py-5 text-white/40">
+                  Table is empty.
+                </td>
+              </tr>
+            )}
+            {orderRows.map((o) => (
+              <Fragment key={o.id}>
+                <tr
+                  onClick={() => toggle(o.id)}
+                  className="cursor-pointer border-b border-white/[0.04] transition hover:bg-white/[0.04]"
+                >
+                  <td className="px-5 py-2.5 font-mono text-white/85">#{o.order_id}</td>
+                  <td className="px-3 py-2.5 text-white/70">{o.customer_name}</td>
+                  <td className="px-3 py-2.5 font-mono text-white/50">{o.customer_phone}</td>
+                  <td className="px-3 py-2.5 capitalize text-white/70">{o.status}</td>
+                  <td className="px-3 py-2.5 font-mono tabular-nums text-white/85">₹{o.total_inr}</td>
+                  <td className="px-3 py-2.5 font-mono text-[11px] text-white/40">
+                    {new Date(o.created_at).toLocaleString()}
+                  </td>
+                </tr>
+                {isOpen(o.id) && (
+                  <tr className="border-b border-white/[0.04]">
+                    <td colSpan={6} className="p-0">
+                      <pre className="max-h-72 overflow-auto bg-black/50 p-4 font-mono text-[11px] leading-relaxed text-zinc-300">
+                        {slimJson(o as unknown as Record<string, unknown>)}
+                      </pre>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {view === 'emails' && (
+        <table className="w-full text-left text-[12.5px]">
+          <thead>
+            <tr className="border-b border-white/[0.06] text-[10.5px] uppercase tracking-wider text-white/35">
+              <th className="px-5 py-2.5 font-medium">sender</th>
+              <th className="px-3 py-2.5 font-medium">subject</th>
+              <th className="px-3 py-2.5 font-medium">recipient</th>
+              <th className="px-3 py-2.5 font-medium">is_read</th>
+              <th className="px-3 py-2.5 font-medium">received_at</th>
+            </tr>
+          </thead>
+          <tbody>
+            {emailRows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-5 py-5 text-white/40">
+                  Table is empty — sync the Mailbox first.
+                </td>
+              </tr>
+            )}
+            {emailRows.map((m) => (
+              <Fragment key={m.message_id}>
+                <tr
+                  onClick={() => toggle(m.message_id)}
+                  className="cursor-pointer border-b border-white/[0.04] transition hover:bg-white/[0.04]"
+                >
+                  <td className="max-w-[220px] truncate px-5 py-2.5 text-white/70">{m.sender}</td>
+                  <td className="max-w-[260px] truncate px-3 py-2.5 text-white/85">{m.subject}</td>
+                  <td className="max-w-[200px] truncate px-3 py-2.5 font-mono text-[11px] text-white/45">{m.recipient}</td>
+                  <td className="px-3 py-2.5 font-mono text-[11px] text-white/55">{String(m.is_read)}</td>
+                  <td className="px-3 py-2.5 font-mono text-[11px] text-white/40">
+                    {new Date(m.received_at).toLocaleString()}
+                  </td>
+                </tr>
+                {isOpen(m.message_id) && (
+                  <tr className="border-b border-white/[0.04]">
+                    <td colSpan={5} className="p-0">
+                      <pre className="max-h-72 overflow-auto bg-black/50 p-4 font-mono text-[11px] leading-relaxed text-zinc-300">
+                        {slimJson(m as unknown as Record<string, unknown>)}
+                      </pre>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
