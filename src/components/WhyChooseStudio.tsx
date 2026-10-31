@@ -25,7 +25,7 @@ function SpotlightCard({ item }: { item: WhyItem }) {
   return (
     <div
       ref={ref}
-      className="group relative overflow-hidden rounded-[18px] sm:rounded-2xl border border-white/[0.12] border-t-white/[0.3] bg-[#0d0d10]/80 p-5 backdrop-blur-2xl transition-[border-color,box-shadow] duration-300 hover:border-white/25 hover:shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.35)] flex items-start gap-4 cursor-default select-none"
+      className="group relative h-full overflow-hidden rounded-[18px] sm:rounded-2xl border border-white/[0.12] border-t-white/[0.3] bg-[#0d0d10]/80 p-5 backdrop-blur-2xl transition-[border-color,box-shadow] duration-300 hover:border-white/25 hover:shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.35)] flex items-start gap-4 cursor-default select-none"
     >
       {/* spotlight cursor glow */}
       <div
@@ -43,7 +43,7 @@ function SpotlightCard({ item }: { item: WhyItem }) {
         <h3 className="text-sm sm:text-base font-semibold text-white leading-snug">
           {item.title}
         </h3>
-        <p className="text-xs text-white/55 leading-relaxed">
+        <p className="text-xs text-zinc-400 leading-relaxed">
           {item.desc}
         </p>
       </div>
@@ -85,7 +85,7 @@ export default function WhyChooseStudio({ className = '' }: { className?: string
     },
     {
       title: 'Fast Pan-India Delivery & Pickup',
-      desc: 'Free studio pickup at Maniktala, 5-hr hyperlocal delivery (Porter/Rapido) across Kolkata & Howrah, and India Post dispatch pan-India. (Free standard India Post delivery applies automatically on net fabrication cart values above ₹999).',
+      desc: 'Free studio pickup at Maniktala, 5-hr Kolkata hyperlocal courier, and Pan-India Speed Post delivery.',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="1" y="3" width="15" height="13" />
@@ -127,7 +127,7 @@ export default function WhyChooseStudio({ className = '' }: { className?: string
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto items-stretch">
         {items.map((item, idx) => (
           <SpotlightCard key={idx} item={item} />
         ))}

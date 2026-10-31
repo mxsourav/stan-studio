@@ -31,7 +31,7 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
 
   return (
     <>
-      <footer className="relative z-40 mt-6 border-t border-white/10 bg-[#070708] text-stone-300 font-['Plus_Jakarta_Sans',sans-serif]">
+      <footer className="relative z-40 mt-6 border-t border-white/10 bg-[#070708] text-zinc-300 font-['Plus_Jakarta_Sans',sans-serif]">
         {/* Top Tier: Compact 4-column layout */}
         <div className="mx-auto grid max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-6 px-4 sm:px-6 py-6 sm:py-7">
           
@@ -41,14 +41,14 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
               <div>
                 <Wordmark size={15} />
               </div>
-              <p className="text-[10.5px] text-stone-400">Maniktala, Kolkata</p>
+              <p className="text-[10.5px] text-zinc-400">Maniktala, Kolkata</p>
             </div>
-            <div className="text-[11.5px] leading-relaxed text-stone-400">
+            <div className="text-[11.5px] leading-relaxed text-zinc-400">
               <p>
                 Wann Hostel, C/O Scottish Church College, 32/8 Abhedananda Rd, Beadon St, Maniktala, Kolkata, WB 700006
               </p>
             </div>
-            <div className="text-[12px] font-semibold text-stone-300">
+            <div className="text-[12px] font-semibold text-zinc-300">
               <div className="leading-snug">
                 <span>Call Us : </span>
                 <a
@@ -59,7 +59,7 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
                 >
                   +91 8509986008
                 </a>
-                <span className="text-[11px] font-normal text-stone-400 block sm:inline sm:ml-1.5">
+                <span className="text-[11px] font-normal text-zinc-400 block sm:inline sm:ml-1.5">
                   &bull; Mon &ndash; Sat, 10 AM &ndash; 8 PM
                 </span>
               </div>
@@ -67,13 +67,13 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
             
             {/* Payment / Dispatch Badges */}
             <div className="flex items-center gap-1.5 pt-0.5">
-              <div className="flex h-5 w-10 items-center justify-center rounded border border-white/10 bg-white/5 text-[8.5px] font-bold text-stone-300">
+              <div className="flex h-5 w-10 items-center justify-center rounded border border-white/10 bg-white/5 text-[8.5px] font-bold text-zinc-300">
                 UPI
               </div>
-              <div className="flex h-5 w-12 items-center justify-center rounded border border-white/10 bg-white/5 text-[9px] font-bold text-stone-300">
+              <div className="flex h-5 w-12 items-center justify-center rounded border border-white/10 bg-white/5 text-[9px] font-bold text-zinc-300">
                 POST
               </div>
-              <div className="flex h-5 w-14 items-center justify-center rounded border border-white/10 bg-white/5 text-[9px] font-bold text-stone-300">
+              <div className="flex h-5 w-14 items-center justify-center rounded border border-white/10 bg-white/5 text-[9px] font-bold text-zinc-300">
                 PORTER
               </div>
             </div>
@@ -83,8 +83,8 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
           <div className="col-span-1 sm:col-span-1 lg:col-span-5 grid grid-cols-2 gap-4">
             {/* Useful Links */}
             <div>
-              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-stone-300">Useful Links</h3>
-              <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-stone-400">
+              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-300">Useful Links</h3>
+              <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-zinc-400">
                 <li>
                   <Link to="/about" className="hover:text-white transition-colors">
                     About Us
@@ -131,8 +131,8 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
 
             {/* Policies & Legal */}
             <div>
-              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-stone-300">Policies &amp; Legal</h3>
-              <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-stone-400">
+              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-300">Policies &amp; Legal</h3>
+              <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-zinc-400">
                 <li>
                   <button
                     type="button"
@@ -186,8 +186,8 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
           <div className="col-span-1 sm:col-span-1 lg:col-span-3 grid grid-cols-2 gap-4">
             {/* Quick Desk */}
             <div>
-              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-stone-300">Support Desk</h3>
-              <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-stone-400">
+              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-300">Support Desk</h3>
+              <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-zinc-400">
                 <li>
                   <a
                     href="https://wa.me/918509986008"
@@ -216,8 +216,8 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
 
             {/* Follow Us */}
             <div>
-              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-stone-300">Follow Us</h3>
-              <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-stone-400">
+              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-300">Follow Us</h3>
+              <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-zinc-400">
                 <li>
                   <a
                     href="https://instagram.com"
@@ -255,15 +255,15 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
         </div>
 
         {/* Bottom Tier: Simple Copyright Line (Zero Buttons / Clutter) */}
-        <div className="border-t border-white/5 bg-[#030A07]">
+        <div className="border-t border-white/5 bg-[#040405]">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
-              <span className="text-[10px] font-bold tracking-[0.08em] text-stone-400 uppercase">
+              <span className="text-[10px] font-bold tracking-[0.08em] text-zinc-400 uppercase">
                 &copy; {new Date().getFullYear()} ST&Delta;N STUDIO. ALL RIGHTS RESERVED.
               </span>
-              <span className="hidden sm:inline text-stone-600">&bull;</span>
-              <span className="text-[9.5px] text-stone-500 uppercase tracking-wider">
-                Official Digital Fabrication Studio &bull; College Street &amp; Maniktala, Kolkata
+              <span className="hidden sm:inline text-zinc-600">&bull;</span>
+              <span className="text-[9.5px] text-zinc-500 uppercase tracking-wider">
+                Digital Fabrication Studio &bull; College Street &amp; Maniktala, Kolkata
               </span>
             </div>
           </div>
