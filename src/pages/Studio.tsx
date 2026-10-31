@@ -158,12 +158,12 @@ export default function Studio() {
 
       <div className="flex flex-col lg:block p-3 sm:p-4 lg:p-0 gap-4 max-w-2xl mx-auto lg:max-w-none">
         {/* Tool host: 3D viewport, shadow on wall, CTAs, and Build Data */}
-        <main className="order-1 relative w-full h-auto rounded-[22px] sm:rounded-[28px] border border-white/[0.08] bg-[#070708] lg:fixed lg:bottom-4 lg:left-[466px] lg:right-4 lg:top-4 lg:h-[calc(100vh-32px)] lg:overflow-hidden">
+        <main className="order-1 relative w-full h-auto rounded-[22px] sm:rounded-[28px] border border-white/[0.08] bg-[#070708] lg:fixed lg:bottom-4 lg:left-[416px] xl:left-[436px] lg:right-4 lg:top-4 lg:w-auto lg:h-[calc(100vh-32px)] lg:overflow-hidden">
           <div ref={containerRef} />
         </main>
 
         {/* Controls dock: View switcher, Tabs, Shapes, and Sliders */}
-        <aside className="order-2 relative w-full flex flex-col gap-3 p-3.5 sm:p-5 bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent bg-[#0a0a0c]/60 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/[0.16] border-t-white/[0.35] rounded-[22px] sm:rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)] lg:fixed lg:bottom-4 lg:left-4 lg:top-4 lg:w-[450px] lg:min-w-[440px] lg:overflow-y-auto">
+        <aside className="order-2 relative w-full flex flex-col gap-3 p-3.5 sm:p-5 bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent bg-[#0a0a0c]/60 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/[0.16] border-t-white/[0.35] rounded-[22px] sm:rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)] lg:fixed lg:bottom-4 lg:left-4 lg:top-4 lg:w-[400px] xl:w-[420px] lg:overflow-y-auto">
           {/* Desktop-only header inside dock */}
           <div className="hidden lg:flex items-center justify-between px-1 pb-1">
             <span className="flex items-center">

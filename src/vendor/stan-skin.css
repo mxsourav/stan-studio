@@ -48,7 +48,10 @@
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
-  grid-template-rows: minmax(0, 1fr);
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  gap: 12px;
 }
 :is(html #stan-tool) .views .card {
   display: flex;
@@ -57,14 +60,16 @@
   overflow: hidden;
 }
 :is(html #stan-tool) .stan-build-card {
-  flex: 0 0 30%;
+  flex: 0 0 28%;
+  max-height: 28%;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 :is(html #stan-tool) .stan-cta-row {
   flex-shrink: 0;
-  margin-bottom: 12px;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 /* ── Viewport cards: authentic visionOS frosted glass with refractive edges ── */
@@ -734,11 +739,14 @@
 #stan-tool .stan-cta-row {
   display: flex;
   gap: 10px;
-  margin-top: 12px;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 #stan-tool .stan-cta-row .btn,
 #stan-tool .stan-cta-row button {
   flex: 1;
+  min-width: 0;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -837,8 +845,8 @@
 
   :is(html #stan-tool) .views {
     flex: none;
-    display: flex;
-    flex-direction: column;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 12px;
     overflow: visible;
   }
