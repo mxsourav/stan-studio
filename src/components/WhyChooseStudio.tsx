@@ -25,7 +25,7 @@ function SpotlightCard({ item }: { item: WhyItem }) {
   return (
     <div
       ref={ref}
-      className="group relative h-full overflow-hidden rounded-2xl border border-white/[0.12] border-t-white/[0.3] bg-[#0d0d10]/80 p-3 sm:p-5 backdrop-blur-2xl transition-[border-color,box-shadow] duration-300 hover:border-white/25 hover:shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.35)] flex flex-col sm:flex-row items-start gap-2.5 sm:gap-4 cursor-default select-none"
+      className="group relative h-full overflow-hidden rounded-2xl border border-white/[0.1] border-t-white/[0.25] bg-[#0d0d10]/40 sm:bg-[#0d0d10]/55 p-3 sm:p-5 backdrop-blur-sm sm:backdrop-blur-md transition-[border-color,box-shadow] duration-300 hover:border-white/25 hover:shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.35)] flex flex-col sm:flex-row items-start gap-2.5 sm:gap-4 cursor-default select-none"
     >
       {/* spotlight cursor glow */}
       <div

@@ -98,9 +98,9 @@ export default function Home() {
       </div>
 
       {/* Why Choose STΔN studio? — Subtle Frosted Glass Layer over the filament roll stage extending till footer */}
-      <section className="relative z-30 border-t border-white/[0.08] bg-[#070708]/30 backdrop-blur-md backdrop-saturate-[140%]">
+      <section className="relative z-30 border-t border-white/[0.06] bg-[#070708]/15 backdrop-blur-[3px] backdrop-saturate-[120%]">
         {/* Soft subtle ambient blur veil extending seamlessly above the section header */}
-        <div className="pointer-events-none absolute inset-x-0 -top-20 h-20 bg-gradient-to-t from-[#070708]/30 to-transparent backdrop-blur-[6px]" />
+        <div className="pointer-events-none absolute inset-x-0 -top-20 h-20 bg-gradient-to-t from-[#070708]/15 to-transparent backdrop-blur-[2px]" />
         
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-12 sm:pb-16">
           <WhyChooseStudio />

@@ -1028,10 +1028,24 @@ function render() {
     spoolRotor.rotation.y = spoolRotationAngle;
 
     /* Dynamic Stage Interpolation: Smooth transition from Initial to Last Stage Pose */
-    const curPosX = THREE.MathUtils.lerp(SPOOL_CALIB_START.posX, SPOOL_CALIB_END.posX, p);
-    let curPosY = THREE.MathUtils.lerp(SPOOL_CALIB_START.posY, SPOOL_CALIB_END.posY, p);
-    const curPosZ = THREE.MathUtils.lerp(SPOOL_CALIB_START.posZ, SPOOL_CALIB_END.posZ, p);
-    const curScale = THREE.MathUtils.lerp(SPOOL_CALIB_START.scale, SPOOL_CALIB_END.scale, p);
+    const isPhone = typeof window !== 'undefined' && window.innerWidth < 768;
+
+    // Desktop vs Phone calibration:
+    // On desktop, the spool rests on the left at (-6.90) to leave room for the right-hand showcase.
+    // On phone, the spool is centered in the background (X = -3.53) directly behind the cards.
+    const startX = isPhone ? -3.30 : SPOOL_CALIB_START.posX;
+    const endX = isPhone ? -3.53 : SPOOL_CALIB_END.posX;
+    const startY = isPhone ? 0.05 : SPOOL_CALIB_START.posY;
+    const endY = isPhone ? 0.44 : SPOOL_CALIB_END.posY;
+    const startZ = isPhone ? 0.20 : SPOOL_CALIB_START.posZ;
+    const endZ = isPhone ? 1.45 : SPOOL_CALIB_END.posZ;
+    const startScale = isPhone ? 1.05 : SPOOL_CALIB_START.scale;
+    const endScale = isPhone ? 0.96 : SPOOL_CALIB_END.scale;
+
+    const curPosX = THREE.MathUtils.lerp(startX, endX, p);
+    let curPosY = THREE.MathUtils.lerp(startY, endY, p);
+    const curPosZ = THREE.MathUtils.lerp(startZ, endZ, p);
+    const curScale = THREE.MathUtils.lerp(startScale, endScale, p);
 
     // Anchored 3D stage at final frame: spool remains anchored and rotates smoothly on its axis without shifting up
     stage.position.set(curPosX, curPosY, curPosZ);
@@ -1061,7 +1075,7 @@ function render() {
     spoolPose.position.set(hoverShiftX, hoverShiftY, 0.0);
 
     /* 3. Spool Stays Anchored in Viewport (Zero off-screen exit) */
-    spoolAnchor.position.x = -1.40;
+    spoolAnchor.position.x = isPhone ? 0.0 : -1.40;
 
     /* 4. Local Tangent Peel Mechanics (Zero Kinks, C2-Continuous Flow):
           P_anc, P0, P1, P2, P3 are computed in local spool frame along the pure circumferential
