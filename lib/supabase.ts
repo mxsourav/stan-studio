@@ -4,7 +4,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const DEFAULT_SUPABASE_URL = 'https://imeravcrrnfmigwzqjzl.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_kz9AY9IH3bXWCH_bRjxS0w_0cKw0A1B';
+const DEFAULT_SUPABASE_ANON_KEY = 'REDACTED-SET-VIA-ENV';
 
 function getEnv(key: string): string | undefined {
     if (typeof process !== 'undefined' && process.env && process.env[key]) {
@@ -37,7 +37,7 @@ export function getSupabaseAdmin(): SupabaseClient {
     const serviceRoleKey = 
         getEnv('SUPABASE_SERVICE_ROLE_KEY') || 
         getEnv('SUPABASE_SECRET_KEY') ||
-        'sb_secret_KY9Kpel_N13ssMqf84cC_w_MnuHCydW';
+        'REDACTED-SET-VIA-ENV';
 
     if (!serviceRoleKey) {
         throw new Error('[STΔN Studio / Supabase Admin] Secret service role key is not configured.');

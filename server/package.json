@@ -1,0 +1,21 @@
+{
+  "name": "stan-studio-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "STΔN studio. production order pipeline — Supabase persistence + admin API",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  }
+}

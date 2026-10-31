@@ -1,0 +1,574 @@
+/* ─── STAN studio. visionOS frosted-glass skin for the mounted shadow-lamp tool ─── */
+
+:is(html #stan-tool, .stan-dock) {
+  --bg: #070708;
+  --card: rgba(10, 10, 12, 0.6);
+  --line: rgba(255, 255, 255, 0.16);
+  --text: #ffffff;
+  --mut: rgba(255, 255, 255, 0.55);
+  --acc: #f1efe8;
+  --acc-d: #d9d6cd;
+  --soft: rgba(255, 255, 255, 0.06);
+  --ok: #7ee2a8;
+  --bad: #ff6b6b;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+  background: #070708;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#stan-tool .stan-tool-dom {
+  padding: 0 4px 14px;
+}
+
+/* Layout: single column of compact viewport cards right of the dock */
+:is(html #stan-tool),
+:is(html #stan-tool) .stan-tool-dom {
+  height: 100%;
+}
+:is(html #stan-tool) .main {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+:is(html #stan-tool) .main > div:last-child {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+:is(html #stan-tool) .views {
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+:is(html #stan-tool) .views .card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+:is(html #stan-tool) .stan-build-card {
+  flex-shrink: 0;
+}
+:is(html #stan-tool) .stan-cta-row {
+  flex-shrink: 0;
+}
+
+/* ── Viewport cards: authentic visionOS frosted glass with refractive edges ── */
+:is(html #stan-tool) .views .card {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(10, 10, 12, 0.6);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(255, 255, 255, 0.35);
+  border-radius: 28px;
+  padding: 10px 12px;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 20px rgba(255, 255, 255, 0.03);
+}
+
+:is(html #stan-tool) .views h2 {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+}
+
+/* Compact canvas heights so the cards sit beside the wider sidebar */
+:is(html #stan-tool) #view3d,
+:is(html #stan-tool) #wallWrap {
+  flex: 1;
+  min-height: 160px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+:is(html #stan-tool) .hint {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* Glass pill buttons (Full screen) */
+:is(html #stan-tool) .btn.ghost,
+:is(html #stan-tool) .btn.ghost.sm {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+}
+:is(html #stan-tool) .btn.ghost:hover,
+:is(html #stan-tool) .btn.ghost.sm:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* ── Segmented pills: floating Apple-style control ── */
+:is(html #stan-tool, .stan-dock) .seg {
+  display: flex;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 4px;
+  gap: 2px;
+}
+:is(html #stan-tool, .stan-dock) .seg button {
+  flex: 1;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.55);
+  border-radius: 12px;
+  background: transparent;
+  border: none;
+  padding: 7px 12px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+:is(html #stan-tool, .stan-dock) .seg button.on {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Relocated control cards inside the dock: transparent (React shells carry the glass) ── */
+:is(html #stan-tool, .stan-dock) .side {
+  position: static;
+  max-height: none;
+  overflow: visible;
+  scrollbar-width: none;
+  display: contents;
+}
+:is(html #stan-tool, .stan-dock) .side > .card,
+:is(html #stan-tool, .stan-dock) .side .card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
+:is(html #stan-tool, .stan-dock) .card h2 {
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 600;
+}
+:is(html #stan-tool, .stan-dock) .f label,
+:is(html #stan-tool, .stan-dock) .f {
+  color: rgba(255, 255, 255, 0.7);
+}
+:is(html #stan-tool, .stan-dock) .card .hint {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Drop zones: dark glass media cards ── */
+:is(html #stan-tool, .stan-dock) .dz {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.75);
+}
+:is(html #stan-tool, .stan-dock) .dz strong {
+  color: rgba(255, 255, 255, 0.9);
+}
+:is(html #stan-tool, .stan-dock) .dz:hover,
+:is(html #stan-tool, .stan-dock) .dz.over {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* ── Shape chips: obsidian wells, white specular active border ── */
+:is(html #stan-tool, .stan-dock) .shapes button {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 14px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+:is(html #stan-tool, .stan-dock) .shapes button.on {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  color: #ffffff;
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.35) inset;
+}
+
+/* ── Sliders: continuous platinum track, crisp white thumb with ring ── */
+:is(html #stan-tool, .stan-dock) input[type="range"] {
+  height: 6px;
+}
+:is(html #stan-tool, .stan-dock) input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.9) var(--p), rgba(255, 255, 255, 0.1) var(--p));
+}
+:is(html #stan-tool, .stan-dock) input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  background: #ffffff;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+:is(html #stan-tool, .stan-dock) input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+:is(html #stan-tool, .stan-dock) input[type="range"]::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+}
+:is(html #stan-tool, .stan-dock) input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+/* ── Inputs / selects: translucent glass wells ── */
+:is(html #stan-tool, .stan-dock) select,
+:is(html #stan-tool, .stan-dock) input.num {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 8px 12px;
+  transition: border-color 0.2s ease;
+}
+:is(html #stan-tool, .stan-dock) select:focus,
+:is(html #stan-tool, .stan-dock) input.num:focus {
+  border-color: rgba(255, 255, 255, 0.3);
+  outline: none;
+}
+:is(html #stan-tool, .stan-dock) .chk {
+  color: rgba(255, 255, 255, 0.7);
+}
+:is(html #stan-tool, .stan-dock) .chk input {
+  accent-color: #ffffff;
+  width: 15px;
+  height: 15px;
+}
+
+/* ── Buttons: white primary / frosted secondary ── */
+:is(html #stan-tool, .stan-dock) .btn {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+:is(html #stan-tool, .stan-dock) .btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+:is(html #stan-tool, .stan-dock) .btn.green,
+:is(html #stan-tool, .stan-dock) .btn.green:hover {
+  background: #ffffff;
+  color: #0a0a0c;
+  border-color: #ffffff;
+  box-shadow: 0 10px 40px rgba(255, 255, 255, 0.16);
+}
+
+/* ── Stat tiles: dark glass telemetry ── */
+:is(html #stan-tool, .stan-dock) .stats {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+:is(html #stan-tool, .stan-dock) .stat {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+:is(html #stan-tool, .stan-dock) .stat small {
+  color: rgba(255, 255, 255, 0.45);
+}
+:is(html #stan-tool, .stan-dock) .stat:has(#s_cost) {
+  background: rgba(241, 239, 232, 0.07);
+  border-color: rgba(241, 239, 232, 0.2);
+}
+:is(html #stan-tool, .stan-dock) .matsel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-radius: 12px;
+}
+:is(html #stan-tool, .stan-dock) #status {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+}
+
+/* ── Modals: dark frosted glass sheets, 28px radius ── */
+:is(html #stan-tool) .modal {
+  background: rgba(0, 0, 0, 0.62);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+:is(html #stan-tool) .sheet,
+:is(html #stan-tool) .wallsheet {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)),
+    rgba(18, 18, 22, 0.92);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(255, 255, 255, 0.35);
+  border-radius: 28px;
+  color: #ffffff;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 20px rgba(255, 255, 255, 0.03);
+}
+:is(html #stan-tool) .sheet h3,
+:is(html #stan-tool) .sheet b,
+:is(html #stan-tool) .sheet label {
+  color: #ffffff;
+}
+:is(html #stan-tool) .sheet .sub,
+:is(html #stan-tool) .sheet small,
+:is(html #stan-tool) .sheet .dlinfo,
+:is(html #stan-tool) .sheet .legend {
+  color: rgba(255, 255, 255, 0.5);
+}
+:is(html #stan-tool) .sheet .opt {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+:is(html #stan-tool) .sheet .opt:has(input:checked) {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+}
+:is(html #stan-tool) .cvpane {
+  border-radius: 12px;
+}
+:is(html #stan-tool) .cvtag {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Busy overlay ── */
+:is(html #stan-tool) #busy > div {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01)),
+    rgba(18, 18, 22, 0.92);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(255, 255, 255, 0.35);
+  border-radius: 28px;
+  color: #ffffff;
+}
+:is(html #stan-tool) .spin {
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: #ffffff;
+}
+
+/* ── Ultra-slim scrollbar: explicit selectors for the scroll containers ── */
+html #stan-tool::-webkit-scrollbar,
+html #stan-tool ::-webkit-scrollbar,
+.stan-dock::-webkit-scrollbar,
+.stan-dock ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+html #stan-tool::-webkit-scrollbar-track,
+html #stan-tool ::-webkit-scrollbar-track,
+.stan-dock::-webkit-scrollbar-track,
+.stan-dock ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+html #stan-tool::-webkit-scrollbar-thumb,
+html #stan-tool ::-webkit-scrollbar-thumb,
+.stan-dock::-webkit-scrollbar-thumb,
+.stan-dock ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+}
+html #stan-tool::-webkit-scrollbar-button,
+.stan-dock::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+html #stan-tool,
+.stan-dock,
+html #stan-tool .stan-tool-dom {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.04);
+}
+
+/* ── Stock sidebar carrier: hidden (our dock drives it via the bridge) ── */
+#stan-tool .stan-side-carrier {
+  display: none !important;
+}
+
+/* ── Native select popups: dark options ── */
+:is(html #stan-tool, .stan-dock) select option,
+:is(html #stan-tool, .stan-dock) select optgroup {
+  background: #121216;
+  color: #ffffff;
+}
+
+/* ── Modal inner tiles: dark glass ── */
+:is(html #stan-tool) #dlPrev {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+:is(html #stan-tool) .legend {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+:is(html #stan-tool) #dlInfo {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.65);
+}
+:is(html #stan-tool) #dlInfo b {
+  color: rgba(255, 255, 255, 0.9);
+}
+:is(html #stan-tool) #dlInfo .ok {
+  color: #7ee2a8;
+}
+
+
+/* ── Rescued stock CTAs: pinned glass pills under the build card ── */
+#stan-tool .stan-cta-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+#stan-tool .stan-cta-row .btn,
+#stan-tool .stan-cta-row button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-weight: 600;
+  padding: 10px 16px;
+  font-size: 13px;
+  transition: background 0.2s ease;
+}
+#stan-tool .stan-cta-row .btn:hover,
+#stan-tool .stan-cta-row button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+#stan-tool .stan-cta-row .btn.green {
+  background: #ffffff;
+  color: #0a0a0c;
+  border-color: #ffffff;
+}
+
+/* ── Stock sidebar carrier: hidden (our dock drives it via the bridge) ── */
+#stan-tool .stan-side-carrier {
+  display: none !important;
+}
+
+/* ── Native select popups: dark options ── */
+:is(html #stan-tool, .stan-dock) select option,
+:is(html #stan-tool, .stan-dock) select optgroup {
+  background: #121216;
+  color: #ffffff;
+}
+
+/* ── Modal inner tiles: dark glass ── */
+:is(html #stan-tool) #dlPrev {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+}
+:is(html #stan-tool) .legend {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+:is(html #stan-tool) #dlInfo {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.65);
+}
+:is(html #stan-tool) #dlInfo b {
+  color: rgba(255, 255, 255, 0.9);
+}
+:is(html #stan-tool) #dlInfo .ok {
+  color: #7ee2a8;
+}
+
+
+/* ── Order modal: dark glass checkout (fixes the white #ordSummary bug) ── */
+:is(html #stan-tool) .dlinfo,
+:is(html #stan-tool) #ordSummary {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  color: rgb(228, 228, 231) !important;
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+:is(html #stan-tool) .dlinfo *,
+:is(html #stan-tool) #ordSummary * {
+  color: rgb(212, 212, 216) !important;
+}
+:is(html #stan-tool) #ordModal .sheet .btn.green,
+:is(html #stan-tool) #ordModal .sheet .btn.green:hover {
+  background: #ffffff;
+  color: #0a0a0c;
+  border-color: #ffffff;
+}
+:is(html #stan-tool) .osteps,
+:is(html #stan-tool) .ordhead {
+  color: rgba(255, 255, 255, 0.7);
+}
+:is(html #stan-tool) .ordmain {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ── Order sheet layout: checkout portal sits between summary and Close ── */
+:is(html #stan-tool) #ordModal .sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(460px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+:is(html #stan-tool) #ordModal .sheet::-webkit-scrollbar {
+  width: 8px;
+}
+:is(html #stan-tool) #ordModal .sheet::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+}
+:is(html #stan-tool) #ordModal .sheet .stan-checkout {
+  order: 40;
+}
+:is(html #stan-tool) #ordModal .sheet .acts {
+  order: 50;
+}
+:is(html #stan-tool) #ordModal .sheet .stan-checkout input {
+  color-scheme: dark;
+}

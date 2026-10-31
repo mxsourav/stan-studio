@@ -1,24 +1,40 @@
 {
   "name": "stan-studio",
-  "version": "1.0.0",
-  "description": "> Hyper-realistic, interactive 3D WebGL filament spool experience engineered with Three.js.",
-  "main": "three.min.js",
+  "version": "2.0.0",
+  "description": "STAN studio. — 3D Shadow Lamp Studio & WebGL platform",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "dev:all": "concurrently -n web,api -c cyan,green --kill-others \"npm run dev\" \"npm run dev --prefix server\"",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mxsourav/stan-studio.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
-  "bugs": {
-    "url": "https://github.com/mxsourav/stan-studio/issues"
-  },
-  "homepage": "https://github.com/mxsourav/stan-studio#readme",
+  "license": "UNLICENSED",
   "dependencies": {
-    "@supabase/supabase-js": "^2.118.0"
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.0",
+    "@supabase/supabase-js": "^2.118.0",
+    "jszip": "^3.10.1",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-router-dom": "^7.9.6",
+    "three": "^0.181.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.181.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "concurrently": "^9.1.2",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
+    "vite": "^6.3.6"
   }
 }

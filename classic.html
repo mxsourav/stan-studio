@@ -1,0 +1,4858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Filament Spool — Studio Roll View</title>
+    <script>
+        (function() {
+            try {
+                var s = localStorage.getItem('stan_theme');
+                var d = s ? s === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (d) {
+                    document.documentElement.classList.add('dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html {
+            overflow-x: hidden;
+            overflow-y: scroll;
+            background: #ffffff;
+            scrollbar-width: thin;
+            scrollbar-color: #d1d5db #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            transition: background-color 0.35s ease;
+        }
+
+        html.dark,
+        body.dark-mode {
+            background: #0c0e14;
+            color: #f8fafc;
+            scrollbar-color: #334155 #0c0e14;
+        }
+
+        body {
+            background: #ffffff;
+            overflow-x: hidden;
+            min-height: 220vh; /* Smooth, natural scroll runway reaching 100% */
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            transition: background-color 0.35s ease, color 0.35s ease;
+        }
+
+        /* Fixed Fullscreen WebGL Canvas */
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            z-index: 1;
+            pointer-events: none; /* Passes all scroll & wheel events through to window */
+        }
+
+        .scroll-spacer {
+            height: 220vh;
+            width: 100%;
+            pointer-events: none;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           SLEEK GLASSMORPHIC STUDIO FILAMENT CONTROL PANEL
+           ══════════════════════════════════════════════════════════════ */
+        #studio-ctrl {
+            position: fixed;
+            top: 92px;
+            right: 32px;
+            z-index: 50;
+            width: 360px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            border-radius: 18px;
+            box-shadow: 
+                0 20px 48px rgba(0, 0, 0, 0.08), 
+                0 4px 12px rgba(0, 0, 0, 0.03),
+                inset 0 1px 1.5px rgba(255, 255, 255, 0.95);
+            padding: 16px 18px;
+            pointer-events: auto;
+            user-select: none;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+
+        #studio-ctrl::-webkit-scrollbar {
+            width: 5px;
+        }
+        #studio-ctrl::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #studio-ctrl::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.14);
+            border-radius: 999px;
+        }
+        #studio-ctrl::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        #studio-ctrl.minimized {
+            transform: translateX(calc(100% + 40px));
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Floating Toggle Pill when minimized */
+        #studio-ctrl-toggle {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 49;
+            height: 42px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 999px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #111827;
+            pointer-events: auto;
+            transition: all 0.2s ease;
+        }
+        #studio-ctrl-toggle:hover {
+            background: #ffffff;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .ctrl-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .ctrl-title-wrap {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ctrl-tag {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #9ca3af;
+        }
+
+        .ctrl-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+        }
+
+        .ctrl-close {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.04);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .ctrl-close:hover {
+            background: rgba(0, 0, 0, 0.08);
+            color: #0f172a;
+        }
+
+        .ctrl-section-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin: 12px 0 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Swatches Grid */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .swatch-btn {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            outline: none;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.10);
+        }
+        .swatch-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .swatch-btn.active {
+            border-color: #0f172a;
+            transform: scale(1.08);
+            box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.2);
+        }
+
+        /* Custom Color Button with Hidden Input */
+        .custom-color-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.10);
+            cursor: pointer;
+            background: conic-gradient(from 180deg at 50% 50%, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .custom-color-wrap input[type="color"] {
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            width: 80px;
+            height: 80px;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .custom-color-icon {
+            font-size: 12px;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+            pointer-events: none;
+        }
+
+        /* Finish Segmented Toggles */
+        .finish-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.04);
+            padding: 3px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+        .finish-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 0;
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .finish-btn.active {
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Fine-tuning Sliders */
+        .slider-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: #475569;
+        }
+        .slider-row span {
+            width: 70px;
+            font-weight: 500;
+        }
+        .slider-row input[type="range"] {
+            flex: 1;
+            height: 4px;
+            accent-color: #0f172a;
+            cursor: pointer;
+        }
+        .slider-val {
+            width: 28px;
+            text-align: right;
+            font-size: 10px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           3D PLACEMENT & ORIENTATION CALIBRATOR STYLES
+           ══════════════════════════════════════════════════════════════ */
+        .studio-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.04);
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+        }
+        .studio-tab-btn {
+            background: transparent;
+            border: none;
+            padding: 7px 2px;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748b;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .studio-tab-btn.active {
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .studio-pane {
+            display: none;
+        }
+        .studio-pane.active {
+            display: block;
+        }
+
+        /* Independent Frame Selector (Start vs Last Frame) */
+        .calib-frame-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+        .frame-selector-btn {
+            background: transparent;
+            border: none;
+            padding: 8px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            user-select: none;
+        }
+        .frame-selector-btn .frame-tag {
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 5px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.06);
+            color: #475569;
+            transition: all 0.15s ease;
+        }
+        .frame-selector-btn:hover {
+            color: #0f172a;
+            background: rgba(255, 255, 255, 0.65);
+        }
+        .frame-selector-btn.active {
+            background: #0f172a;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+        }
+        .frame-selector-btn.active .frame-tag {
+            background: rgba(255, 255, 255, 0.22);
+            color: #ffffff;
+        }
+
+        .calib-presets {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .calib-preset-btn {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 6px 2px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #475569;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+        .calib-preset-btn:hover {
+            background: #0f172a;
+            color: #ffffff;
+            border-color: #0f172a;
+        }
+
+        .calib-group-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            margin: 12px 0 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .calib-group-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        .calib-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .calib-axis {
+            width: 84px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #334155;
+            flex-shrink: 0;
+        }
+        .calib-row input[type="range"] {
+            flex: 1;
+            height: 4px;
+            accent-color: #0f172a;
+            cursor: pointer;
+        }
+        .calib-input-stepper {
+            display: inline-flex;
+            align-items: center;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .calib-num-input {
+            width: 64px;
+            padding: 3px 18px 3px 5px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 11px;
+            font-weight: 600;
+            color: #0f172a;
+            background: #f8fafc;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            border-radius: 6px;
+            text-align: right;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            -moz-appearance: textfield;
+        }
+        .calib-num-input::-webkit-outer-spin-button,
+        .calib-num-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .calib-num-input:focus {
+            border-color: #0f172a;
+            background: #ffffff;
+            box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.1);
+        }
+
+        .calib-stepper-btns {
+            position: absolute;
+            right: 2px;
+            top: 2px;
+            bottom: 2px;
+            width: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .stepper-btn {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.04);
+            border: none;
+            border-radius: 2px;
+            padding: 0;
+            margin: 0.5px 0;
+            font-size: 7px;
+            line-height: 1;
+            color: #475569;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.1s, color 0.1s, transform 0.08s;
+            user-select: none;
+        }
+        .stepper-btn:hover {
+            background: #0f172a;
+            color: #ffffff;
+        }
+        .stepper-btn:active {
+            background: #2563eb;
+            color: #ffffff;
+            transform: scale(0.92);
+        }
+
+        .calib-hint {
+            font-size: 10px;
+            font-weight: 500;
+            color: #64748b;
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            border-radius: 7px;
+            padding: 5px 9px;
+            margin-top: 8px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            line-height: 1.35;
+        }
+
+        .calib-code-wrap {
+            background: #090d16;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: 8px;
+            position: relative;
+        }
+        .calib-code-wrap pre {
+            margin: 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 10.5px;
+            line-height: 1.45;
+            color: #38bdf8;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .calib-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .btn-copy-calib {
+            flex: 1;
+            background: #0f172a;
+            color: #ffffff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+        }
+        .btn-copy-calib:hover {
+            background: #1e293b;
+            transform: translateY(-1px);
+        }
+        .btn-copy-calib-sub {
+            background: rgba(15, 23, 42, 0.08);
+            color: #0f172a;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .btn-copy-calib-sub:hover {
+            background: rgba(15, 23, 42, 0.16);
+            color: #000000;
+            transform: translateY(-1px);
+        }
+        .btn-reset-calib {
+            background: rgba(0, 0, 0, 0.05);
+            color: #475569;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-reset-calib:hover {
+            background: rgba(0, 0, 0, 0.09);
+            color: #0f172a;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           TYPOGRAPHIC BRAND LOGOTYPE (ANTAPANI EXTRA BOLD + SKEUOMORPHISM)
+           ══════════════════════════════════════════════════════════════ */
+        @font-face {
+            font-family: 'Antapani';
+            src: url('Fonts/antapani-extrabold.otf') format('opentype');
+            font-weight: 800;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           PREMIUM LIQUID GLASSMORPHISM TOP BAR (GENUINE OPTICAL GLASS)
+           ══════════════════════════════════════════════════════════════ */
+        .liquid-glass-nav {
+            position: fixed;
+            top: 20px;
+            left: 32px;
+            right: 32px;
+            height: 60px;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            overflow: hidden;
+            
+            /* Genuine Optical Frosted Glass (Ultra-Transparent with Dynamic Control) */
+            background: var(--glass-bg, rgba(255, 255, 255, 0.05));
+            backdrop-filter: blur(var(--glass-blur, 11px)) saturate(160%);
+            -webkit-backdrop-filter: blur(var(--glass-blur, 11px)) saturate(160%);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            box-shadow: 
+                0 12px 32px -4px rgba(0, 0, 0, 0.04),
+                0 2px 6px rgba(0, 0, 0, 0.02),
+                inset 0 1.2px 1.2px 0 rgba(255, 255, 255, 0.85),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.02);
+            pointer-events: auto;
+            user-select: none;
+            transition: box-shadow 0.25s ease, background 0.25s ease;
+        }
+
+        .liquid-glass-nav:hover {
+            box-shadow: 
+                0 18px 40px -6px rgba(0, 0, 0, 0.06),
+                0 4px 10px rgba(0, 0, 0, 0.02),
+                inset 0 1.2px 1.2px 0 rgba(255, 255, 255, 0.95),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.02);
+        }
+
+        /* Tactile Acid-Etched Frosted Glass Grain Noise Layer */
+        .glass-noise-overlay {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            opacity: var(--glass-noise-opacity, 0.35);
+            mix-blend-mode: overlay;
+            background-image: var(--glass-noise-url, url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.10' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"));
+            background-size: var(--glass-noise-size, 30px);
+            z-index: 0;
+        }
+
+        .liquid-glass-nav .nav-left,
+        .liquid-glass-nav .nav-right {
+            position: relative;
+            z-index: 1;
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-brand {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 7px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+        }
+
+        .nav-brand:hover {
+            opacity: 0.75;
+        }
+
+        .nav-brand-stan {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 23px;
+            font-weight: 800;
+            color: #000000;
+            letter-spacing: -0.02em;
+            display: inline-flex;
+            align-items: baseline;
+            gap: 1px;
+            transition: color 0.35s ease;
+        }
+
+        .delta-symbol-nav {
+            width: 17px;
+            height: 17px;
+            display: inline-block;
+            vertical-align: -1px;
+            margin: 0 1px;
+        }
+
+        .nav-brand-studio {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 23px;
+            font-weight: 800; /* Bold as before */
+            color: #000000;
+            letter-spacing: -0.02em;
+            margin-left: 6px;
+            transition: color 0.35s ease;
+        }
+
+        .crimson-dot {
+            color: #ff0033; /* High-contrast electric scarlet red */
+            display: inline-block;
+            font-weight: 800;
+            transition: color 0.35s ease;
+        }
+
+        /* Dark Mode Logo & Typography Overrides */
+        body.dark-mode .nav-brand-stan,
+        body.dark-mode .nav-brand-studio,
+        body.dark-mode .hero-stan,
+        body.dark-mode .hero-studio {
+            color: #ffffff;
+        }
+
+        body.dark-mode .crimson-dot {
+            color: #ff1a40; /* High-contrast radiant scarlet red in dark mode */
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Minimalist Tactile Glass Theme Switcher */
+        .theme-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #0f172a;
+            cursor: pointer;
+            outline: none;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 0;
+            position: relative;
+        }
+
+        .theme-toggle-btn:hover {
+            background: rgba(0, 0, 0, 0.08);
+            transform: translateY(-0.5px);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+        }
+
+        .theme-toggle-btn:active {
+            transform: translateY(0.5px);
+        }
+
+        body.dark-mode .theme-toggle-btn {
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        body.dark-mode .theme-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.16);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+        }
+
+        body.dark-mode .liquid-glass-nav {
+            background: var(--glass-bg, rgba(16, 20, 28, 0.45));
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 
+                0 16px 40px -4px rgba(0, 0, 0, 0.5),
+                0 2px 6px rgba(0, 0, 0, 0.3),
+                inset 0 1px 1px 0 rgba(255, 255, 255, 0.15),
+                inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        body.dark-mode .hero-scroll-cue {
+            background: #ffffff;
+            color: #0b0d11;
+        }
+
+        body.dark-mode .hero-scroll-cue svg {
+            stroke: #0b0d11;
+        }
+
+        body.dark-mode .hero-scroll-cue:hover {
+            background: #f1f5f9;
+        }
+
+        body.dark-mode #scroll-status {
+            background: rgba(18, 22, 30, 0.88);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #94a3b8;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        }
+
+        body.dark-mode #reset-scroll-btn {
+            background: #ff2b2b;
+            color: #ffffff;
+        }
+
+        /* Tactile Minimalist Glass Trigger (Zero neon, pure luxury) */
+        .nav-action-btn {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+            cursor: pointer;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            outline: none;
+        }
+
+        .nav-action-btn:hover {
+            background: rgba(0, 0, 0, 0.08);
+            transform: translateY(-0.5px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+        }
+
+        .nav-action-btn:active {
+            transform: translateY(0.5px);
+            background: rgba(0, 0, 0, 0.10);
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           HERO RIGHT-SIDE BRAND TYPOGRAPHY (PURE TEXT, ZERO BOX, ZERO GAP)
+           ══════════════════════════════════════════════════════════════ */
+        .hero-brand {
+            position: fixed;
+            top: 50%;
+            right: 17%;
+            transform: translateY(-50%);
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            user-select: none;
+            pointer-events: auto;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            transition: color 0.35s ease;
+            will-change: transform, opacity, filter;
+        }
+
+        /* Dedicated WebGL Frosted Glass & Curl Noise Dispersion Overlay */
+        #hero-dispersion-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            z-index: 31; /* Above DOM hero lockup */
+            pointer-events: none;
+            opacity: 1;
+        }
+
+        .hero-stan {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 92px;
+            font-weight: 800;
+            line-height: 0.78;
+            letter-spacing: -0.03em;
+            color: #000000;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 2px;
+            margin: 0;
+            padding: 0;
+            transition: color 0.35s ease;
+        }
+
+        .delta-symbol-hero {
+            width: 68px;
+            height: 68px;
+            display: inline-block;
+            vertical-align: -3px;
+            margin: 0 2px;
+        }
+
+        .hero-studio {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 42px;
+            font-weight: 800; /* Bold as before */
+            line-height: 0.82;
+            letter-spacing: -0.02em;
+            color: #000000;
+            text-align: center;
+            margin: 0;
+            margin-top: 6px; /* ZERO awkward gap between STAN and studio. */
+            padding: 0;
+            display: block;
+            transition: color 0.35s ease;
+        }
+
+        .hero-scroll-cue {
+            margin-top: 38px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #181a1e;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+            border: none;
+            outline: none;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .hero-scroll-cue:hover {
+            transform: translateY(2px) scale(1.05);
+            background: #000000;
+        }
+
+        .hero-scroll-cue svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+                /* ══════════════════════════════════════════════════════════════
+           STΔN 3D SHADOW BOX LAMP GENERATOR — BESPOKE GLASSMORPHISM STUDIO
+           ══════════════════════════════════════════════════════════════ */
+        .shadowbox-section {
+            position: relative;
+            z-index: 35;
+            min-height: 100vh;
+            background: #ffffff;
+            padding: 80px 24px 120px 24px;
+            box-sizing: border-box;
+            transition: background-color 0.35s ease;
+        }
+
+        html.dark .shadowbox-section,
+        body.dark-mode .shadowbox-section {
+            background: #080b12;
+        }
+
+        .sb-header {
+            max-width: 1380px;
+            margin: 0 auto 28px auto;
+            text-align: center;
+        }
+
+        .sb-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 14px;
+            border-radius: 999px;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.22);
+            color: #ef4444;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            margin-bottom: 12px;
+        }
+
+        .sb-badge-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #ef4444;
+            box-shadow: 0 0 8px #ef4444;
+            animation: pulseDot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .sb-title {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            margin-bottom: 10px;
+        }
+
+        html.dark .sb-title,
+        body.dark-mode .sb-title {
+            color: #f8fafc;
+        }
+
+        .sb-desc {
+            max-width: 740px;
+            margin: 0 auto;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #64748b;
+        }
+
+        html.dark .sb-desc,
+        body.dark-mode .sb-desc {
+            color: #94a3b8;
+        }
+
+        /* 3D Interactive Viewport Container */
+        .sb-container {
+            max-width: 1400px;
+            height: 780px;
+            margin: 0 auto;
+            position: relative;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: #090d16;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.18);
+        }
+
+        html.dark .sb-container,
+        body.dark-mode .sb-container {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+        }
+
+        #sb-viewport-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+        }
+
+        #sb-viewport-canvas:active {
+            cursor: grabbing;
+        }
+
+        /* Top Floating Glass Bar */
+        .sb-top-bar {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .sb-top-bar > * {
+            pointer-events: auto;
+        }
+
+        .sb-view-pills {
+            display: flex;
+            gap: 6px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 5px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+
+        .sb-view-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sb-view-btn:hover {
+            color: #ffffff;
+        }
+
+        .sb-view-btn.active {
+            background: #ffffff;
+            color: #090d16;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+        }
+
+        .sb-telemetry-badge-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .sb-pill-badge {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 6px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            color: #e2e8f0;
+            font-size: 11.5px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .sb-pill-badge.highlight {
+            border-color: rgba(245, 158, 11, 0.4);
+            color: #fbbf24;
+            background: rgba(245, 158, 11, 0.12);
+        }
+
+        /* Left Floating Glass Dock */
+        .sb-dock {
+            position: absolute;
+            top: 76px;
+            left: 16px;
+            bottom: 76px;
+            width: 370px;
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+            pointer-events: auto;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .sb-dock-tabs {
+            display: flex;
+            gap: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 12px;
+            margin-bottom: 14px;
+        }
+
+        .sb-dock-tab {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: #94a3b8;
+            padding: 8px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .sb-dock-tab:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .sb-dock-tab.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .sb-dock-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .sb-dock-content::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sb-dock-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sb-dock-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        .sb-pane {
+            display: none;
+        }
+
+        .sb-pane.active {
+            display: block;
+        }
+
+        /* Preset Chips */
+        .sb-preset-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .sb-preset-chip {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .sb-preset-chip:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        /* Upload Dropzone */
+        .sb-dropzone {
+            border: 2px dashed rgba(255, 255, 255, 0.18);
+            border-radius: 14px;
+            padding: 16px 12px;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.2s ease;
+            margin-bottom: 14px;
+        }
+
+        .sb-dropzone:hover {
+            border-color: rgba(56, 189, 248, 0.5);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .sb-dropzone-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+
+        .sb-dropzone-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        .sb-dropzone-sub {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* 2D Silhouette Preview Wrap */
+        .sb-preview-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 14px;
+        }
+
+        .sb-preview-thumb {
+            width: 72px;
+            height: 72px;
+            border-radius: 8px;
+            background: #ffffff;
+            object-fit: contain;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sb-preview-meta {
+            flex: 1;
+        }
+
+        .sb-preview-meta-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #f1f5f9;
+            margin-bottom: 4px;
+        }
+
+        .sb-preview-meta-badge {
+            font-size: 10.5px;
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        /* Sliders & Parametric Controls */
+        .sb-control-group {
+            margin-bottom: 14px;
+        }
+
+        .sb-group-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sb-slider-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .sb-slider-label {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #cbd5e1;
+            min-width: 95px;
+        }
+
+        .sb-slider-input {
+            flex: 1;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 3px;
+            outline: none;
+            accent-color: #38bdf8;
+            cursor: pointer;
+        }
+
+        .sb-slider-val {
+            font-size: 11.5px;
+            font-family: monospace;
+            font-weight: 700;
+            color: #38bdf8;
+            min-width: 44px;
+            text-align: right;
+        }
+
+        .sb-toggle-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .sb-toggle-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+            padding: 7px 0;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        .sb-toggle-btn.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+        }
+
+        /* 7 Geometric Shapes Selector */
+        .sb-shapes-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .sb-shape-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 8px 4px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .sb-shape-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.16);
+            transform: translateY(-1px);
+        }
+
+        .sb-shape-card.active {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.5);
+            color: #fbbf24;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
+        }
+
+        .sb-shape-icon {
+            width: 22px;
+            height: 22px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+        }
+
+        .sb-shape-name {
+            font-size: 9.5px;
+            font-weight: 700;
+        }
+
+        /* BOM Price Card */
+        .sb-bom-card {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+
+        .sb-bom-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 0.1em;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 6px;
+        }
+
+        .sb-bom-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: #cbd5e1;
+        }
+
+        .sb-bom-row.total {
+            border-top: 1px dashed rgba(255, 255, 255, 0.15);
+            padding-top: 8px;
+            margin-top: 8px;
+            font-size: 14px;
+            font-weight: 800;
+            color: #fbbf24;
+        }
+
+        /* Action Buttons */
+        .sb-btn-primary {
+            width: 100%;
+            background: #ffffff;
+            color: #0f172a;
+            border: none;
+            padding: 11px 0;
+            border-radius: 12px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 14px rgba(255, 255, 255, 0.2);
+        }
+
+        .sb-btn-primary:hover {
+            transform: translateY(-1.5px);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+            background: #f8fafc;
+        }
+
+        .sb-btn-secondary {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            padding: 10px 0;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .sb-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .sb-btn-whatsapp {
+            width: 100%;
+            background: #25d366;
+            color: #ffffff;
+            border: none;
+            padding: 11px 0;
+            border-radius: 12px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(37, 211, 102, 0.3);
+        }
+
+        .sb-btn-whatsapp:hover {
+            background: #22c55e;
+            transform: translateY(-1px);
+        }
+
+        /* Bottom Floating Camera Controls */
+        .sb-camera-dock {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        .sb-cam-btn {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            color: #cbd5e1;
+            padding: 7px 14px;
+            border-radius: 999px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sb-cam-btn:hover {
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .sb-cam-btn.active {
+            background: rgba(6, 182, 212, 0.18);
+            border-color: rgba(6, 182, 212, 0.5);
+            color: #22d3ee;
+        }
+
+        @media (max-width: 900px) {
+            .sb-container {
+                height: 850px;
+            }
+            .sb-dock {
+                width: calc(100% - 32px);
+                bottom: 60px;
+                height: 380px;
+                top: auto;
+            }
+            .sb-top-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+
+        .hud-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+        }
+
+        .hud-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            font-family: monospace;
+        }
+
+        html.dark .hud-value,
+        body.dark-mode .hud-value {
+            color: #f8fafc;
+        }
+
+        .hud-value.active-pulse {
+            color: #ef4444;
+        }
+
+        .printer-canvas-hint {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 999px;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            z-index: 10;
+        }
+
+        html.dark .printer-canvas-hint,
+        body.dark-mode .printer-canvas-hint {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+        }
+
+        
+        /* ─── Interactive High-Tech Studio Dock (Micro LiDAR, Thermal IR, Stepper Audio) ─── */
+        .printer-action-dock {
+            position: absolute;
+            bottom: 60px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 15;
+            pointer-events: auto;
+        }
+
+        .action-dock-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            user-select: none;
+        }
+
+        html.dark .action-dock-btn,
+        body.dark-mode .action-dock-btn {
+            background: rgba(15, 23, 42, 0.88);
+            border-color: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-dock-btn:hover {
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+            color: #0f172a;
+        }
+
+        html.dark .action-dock-btn:hover,
+        body.dark-mode .action-dock-btn:hover {
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .action-dock-btn.active {
+            border-color: rgba(6, 182, 212, 0.5);
+            background: rgba(6, 182, 212, 0.12);
+            color: #0891b2;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.25);
+        }
+
+        html.dark .action-dock-btn.active,
+        body.dark-mode .action-dock-btn.active {
+            border-color: rgba(34, 211, 238, 0.5);
+            background: rgba(6, 182, 212, 0.20);
+            color: #22d3ee;
+            box-shadow: 0 0 14px rgba(34, 211, 238, 0.30);
+        }
+
+        .action-dock-btn.active-thermal {
+            border-color: rgba(249, 115, 22, 0.5) !important;
+            background: rgba(249, 115, 22, 0.15) !important;
+            color: #ea580c !important;
+            box-shadow: 0 0 14px rgba(249, 115, 22, 0.35) !important;
+        }
+
+        html.dark .action-dock-btn.active-thermal,
+        body.dark-mode .action-dock-btn.active-thermal {
+            border-color: rgba(251, 146, 60, 0.6) !important;
+            color: #fb923c !important;
+        }
+
+        .action-dock-btn.active-audio {
+            border-color: rgba(99, 102, 241, 0.5) !important;
+            background: rgba(99, 102, 241, 0.15) !important;
+            color: #4f46e5 !important;
+            box-shadow: 0 0 14px rgba(99, 102, 241, 0.35) !important;
+        }
+
+        html.dark .action-dock-btn.active-audio,
+        body.dark-mode .action-dock-btn.active-audio {
+            border-color: rgba(129, 140, 248, 0.6) !important;
+            color: #a5b4fc !important;
+        }
+
+        .dock-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #94a3b8;
+            transition: all 0.2s ease;
+        }
+
+        .action-dock-btn.active .dock-dot {
+            background: #06b6d4;
+            box-shadow: 0 0 8px #06b6d4;
+        }
+
+        .action-dock-btn.active-thermal .dock-dot {
+            background: #f97316;
+            box-shadow: 0 0 8px #f97316;
+        }
+
+        .action-dock-btn.active-audio .dock-dot {
+            background: #6366f1;
+            box-shadow: 0 0 8px #6366f1;
+        }
+
+        .printer-reset-cam-btn {
+            background: #0f172a;
+            color: #ffffff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.15s ease;
+        }
+
+        html.dark .printer-reset-cam-btn,
+        body.dark-mode 
+        /* ─── Interactive High-Tech Studio Dock (Micro LiDAR, Thermal IR, Stepper Audio) ─── */
+        .printer-action-dock {
+            position: absolute;
+            bottom: 60px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 15;
+            pointer-events: auto;
+        }
+
+        .action-dock-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            user-select: none;
+        }
+
+        html.dark .action-dock-btn,
+        body.dark-mode .action-dock-btn {
+            background: rgba(15, 23, 42, 0.88);
+            border-color: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-dock-btn:hover {
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+            color: #0f172a;
+        }
+
+        html.dark .action-dock-btn:hover,
+        body.dark-mode .action-dock-btn:hover {
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .action-dock-btn.active {
+            border-color: rgba(6, 182, 212, 0.5);
+            background: rgba(6, 182, 212, 0.12);
+            color: #0891b2;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.25);
+        }
+
+        html.dark .action-dock-btn.active,
+        body.dark-mode .action-dock-btn.active {
+            border-color: rgba(34, 211, 238, 0.5);
+            background: rgba(6, 182, 212, 0.20);
+            color: #22d3ee;
+            box-shadow: 0 0 14px rgba(34, 211, 238, 0.30);
+        }
+
+        .action-dock-btn.active-thermal {
+            border-color: rgba(249, 115, 22, 0.5) !important;
+            background: rgba(249, 115, 22, 0.15) !important;
+            color: #ea580c !important;
+            box-shadow: 0 0 14px rgba(249, 115, 22, 0.35) !important;
+        }
+
+        html.dark .action-dock-btn.active-thermal,
+        body.dark-mode .action-dock-btn.active-thermal {
+            border-color: rgba(251, 146, 60, 0.6) !important;
+            color: #fb923c !important;
+        }
+
+        .action-dock-btn.active-audio {
+            border-color: rgba(99, 102, 241, 0.5) !important;
+            background: rgba(99, 102, 241, 0.15) !important;
+            color: #4f46e5 !important;
+            box-shadow: 0 0 14px rgba(99, 102, 241, 0.35) !important;
+        }
+
+        html.dark .action-dock-btn.active-audio,
+        body.dark-mode .action-dock-btn.active-audio {
+            border-color: rgba(129, 140, 248, 0.6) !important;
+            color: #a5b4fc !important;
+        }
+
+        .dock-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #94a3b8;
+            transition: all 0.2s ease;
+        }
+
+        .action-dock-btn.active .dock-dot {
+            background: #06b6d4;
+            box-shadow: 0 0 8px #06b6d4;
+        }
+
+        .action-dock-btn.active-thermal .dock-dot {
+            background: #f97316;
+            box-shadow: 0 0 8px #f97316;
+        }
+
+        .action-dock-btn.active-audio .dock-dot {
+            background: #6366f1;
+            box-shadow: 0 0 8px #6366f1;
+        }
+
+        .printer-reset-cam-btn {
+            background: #ffffff;
+            color: #0f172a;
+        }
+
+        .printer-reset-cam-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .printer-ctrl-card {
+            background: rgba(255, 255, 255, 0.90);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+            padding: 20px 22px;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.06);
+            user-select: none;
+            transition: background 0.35s ease, border-color 0.35s ease;
+        }
+
+        html.dark .printer-ctrl-card,
+        body.dark-mode .printer-ctrl-card {
+            background: rgba(15, 23, 42, 0.90);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+        }
+
+        .printer-ctrl-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        html.dark .printer-ctrl-header,
+        body.dark-mode .printer-ctrl-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .printer-ctrl-tag {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            color: #ef4444;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .printer-ctrl-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        html.dark .printer-ctrl-title,
+        body.dark-mode .printer-ctrl-title {
+            color: #f8fafc;
+        }
+
+        .printer-ctrl-reset {
+            background: transparent;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            color: #64748b;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        html.dark .printer-ctrl-reset,
+        body.dark-mode .printer-ctrl-reset {
+            border-color: rgba(255, 255, 255, 0.15);
+            color: #94a3b8;
+        }
+
+        .printer-ctrl-reset:hover {
+            color: #0f172a;
+            border-color: #0f172a;
+        }
+
+        html.dark .printer-ctrl-reset:hover,
+        body.dark-mode .printer-ctrl-reset:hover {
+            color: #ffffff;
+            border-color: #ffffff;
+        }
+
+        .printer-speed-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            margin-bottom: 12px;
+        }
+
+        .speed-btn {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: #475569;
+            padding: 6px 0;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        html.dark .speed-btn,
+        body.dark-mode .speed-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+        }
+
+        .speed-btn.active {
+            background: #0f172a;
+            color: #ffffff;
+            border-color: #0f172a;
+        }
+
+        html.dark .speed-btn.active,
+        body.dark-mode .speed-btn.active {
+            background: #ffffff;
+            color: #0f172a;
+            border-color: #ffffff;
+        }
+
+        .speed-btn.pause-btn {
+            flex: 1.4;
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.25);
+            color: #ef4444;
+        }
+
+        .printer-code-display {
+            background: #090d16;
+            color: #38bdf8;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-family: monospace;
+            line-height: 1.45;
+            overflow-x: auto;
+            user-select: all;
+            margin: 6px 0 10px 0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- Genuine Optical Liquid Glassmorphism Top Navigation Bar -->
+<header class="liquid-glass-nav" id="liquid-glass-nav">
+    <div class="glass-noise-overlay" id="glass-noise-overlay"></div>
+    <div class="nav-left">
+        <a href="#" class="nav-brand" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;" title="STΔN studio.">
+            <span class="nav-brand-stan">STΔN</span>
+            <span class="nav-brand-studio">studio<span class="crimson-dot">.</span></span>
+        </a>
+    </div>
+    <div class="nav-right">
+        <!-- Interactive Theme Switcher (Dark / Light Mode) -->
+        <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Dark / Light Mode" aria-label="Toggle Theme">
+            <span class="theme-icon theme-icon-moon" style="display: flex; align-items: center; justify-content: center;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </span>
+            <span class="theme-icon theme-icon-sun" style="display: none; align-items: center; justify-content: center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </span>
+        </button>
+
+        <!-- Tweak panel trigger (hidden from front end; press Shift+C or call toggleStudioCtrl() in console to reveal) -->
+        <button class="nav-action-btn" id="nav-lab-btn" onclick="toggleStudioCtrl()" title="Filament Material Studio" style="display:none;">
+            Filament Studio
+        </button>
+    </div>
+</header>
+
+<!-- Hero Brand Lockup in Empty Right Space (STΔN / studio. / down arrow) -->
+<div class="hero-brand" id="hero-brand">
+    <div class="hero-stan">STΔN</div>
+    <div class="hero-studio">studio<span class="crimson-dot">.</span></div>
+    <button class="hero-scroll-cue" onclick="animateRollTo(1.0, 2600)" title="Scroll to unroll filament in 2.6 seconds (100%)" aria-label="Scroll down">
+        <svg viewBox="0 0 24 24">
+            <polyline points="7 10 12 15 17 10"></polyline>
+        </svg>
+    </button>
+</div>
+
+<!-- Pure WebGL Viewport on Crisp White -->
+<canvas id="webgl-canvas"></canvas>
+<!-- WebGL Frosted Glass & Curl Noise Particle Dispersion Overlay -->
+<canvas id="hero-dispersion-canvas"></canvas>
+<div class="scroll-spacer"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     STΔN 3D SHADOW BOX LAMP GENERATOR — COMPUTATIONAL OPTICAL STUDIO
+     ═══════════════════════════════════════════════════════════════════ -->
+<section id="shadowbox-studio" class="shadowbox-section">
+    <div class="sb-header">
+        <div class="sb-badge">
+            <span class="sb-badge-dot"></span>
+            STAN 3D STUDIO // OPTICAL RAY ENGINE
+        </div>
+        <h2 class="sb-title">3D Shadow Box Lamp Generator</h2>
+        <p class="sb-desc">
+            Transform any 2D silhouette into an inverse-projected 3D shadow lamp with automatic floating island bridging. Preview live wall shadows in real time and export print-ready watertight STL files.
+        </p>
+    </div>
+
+    <div class="sb-container">
+        <!-- 3D WebGL Canvas -->
+        <canvas id="sb-viewport-canvas"></canvas>
+
+        <!-- Top Floating Glass Navigation & Telemetry Bar -->
+        <div class="sb-top-bar">
+            <!-- View Mode Switcher Pills -->
+            <div class="sb-view-pills">
+                <button type="button" class="sb-view-btn active" data-view="shadow-wall" id="btn-view-shadow">
+                    <span>🌔</span>
+                    <span>Live Wall Shadow</span>
+                </button>
+                <button type="button" class="sb-view-btn" data-view="assembled-mesh" id="btn-view-mesh">
+                    <span>📦</span>
+                    <span>3D Assembled</span>
+                </button>
+                <button type="button" class="sb-view-btn" data-view="flat-bed" id="btn-view-bed">
+                    <span>🖨️</span>
+                    <span>Flat Print Bed</span>
+                </button>
+            </div>
+
+            <!-- Live Telemetry Badges -->
+            <div class="sb-telemetry-badge-group">
+                <div class="sb-pill-badge" id="badge-dims">
+                    <span>📏</span>
+                    <span id="val-badge-dims">110 × 110 × 73 mm</span>
+                </div>
+                <div class="sb-pill-badge" id="badge-weight">
+                    <span>⚖️</span>
+                    <span id="val-badge-weight">~64g PLA</span>
+                </div>
+                <div class="sb-pill-badge highlight" id="badge-price">
+                    <span>🏷️</span>
+                    <span id="val-badge-price">₹599</span>
+                </div>
+                <div class="sb-pill-badge" id="badge-leak" style="color:#10b981;">
+                    <span>🛡️</span>
+                    <span id="val-badge-leak">0% Leak</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Floating Glass Dock -->
+        <div class="sb-dock">
+            <!-- Tabs -->
+            <div class="sb-dock-tabs">
+                <button type="button" class="sb-dock-tab active" data-tab="tab-silhouette">🎨 Artwork</button>
+                <button type="button" class="sb-dock-tab" data-tab="tab-enclosure">📐 Optics & Box</button>
+                <button type="button" class="sb-dock-tab" data-tab="tab-export">🚀 Export & Order</button>
+            </div>
+
+            <div class="sb-dock-content">
+                <!-- TAB 1: Artwork & Silhouette -->
+                <div id="tab-silhouette" class="sb-pane active">
+                    <!-- Preset Silhouette Chips -->
+                    <div class="sb-group-title">
+                        <span>PRESET SILHOUETTES</span>
+                        <span style="font-size:9px; color:#64748b;">1-CLICK LOAD</span>
+                    </div>
+                    <div class="sb-preset-row">
+                        <button type="button" class="sb-preset-chip" data-preset="wolf">🐺 Wolf Moon</button>
+                        <button type="button" class="sb-preset-chip" data-preset="dragon">🐉 Cyber Dragon</button>
+                        <button type="button" class="sb-preset-chip" data-preset="anime">🌸 Anime Girl</button>
+                        <button type="button" class="sb-preset-chip" data-preset="stan">⚡ STΔN Monogram</button>
+                    </div>
+
+                    <!-- Drag & Drop Upload Zone -->
+                    <div class="sb-dropzone" id="sb-dropzone">
+                        <input type="file" id="sb-file-input" accept="image/png, image/jpeg, image/webp, image/svg+xml" style="display:none;">
+                        <div class="sb-dropzone-icon">📁</div>
+                        <div class="sb-dropzone-text">Drop your image here or <span style="color:#38bdf8; text-decoration:underline;">Browse</span></div>
+                        <div class="sb-dropzone-sub">PNG, JPG, WEBP, or SVG (Up to 15MB)</div>
+                    </div>
+
+                    <!-- 2D Processed Binary Mask Thumbnail -->
+                    <div class="sb-preview-wrap">
+                        <img id="sb-preview-img" class="sb-preview-thumb" alt="Silhouette Preview" src="">
+                        <div class="sb-preview-meta">
+                            <div class="sb-preview-meta-title">Binary Stencil Mask</div>
+                            <div class="sb-preview-meta-badge" id="sb-telemetry-struts">2 islands bridged • 0 dropped</div>
+                            <div style="font-size:10px; color:#64748b; margin-top:2px;">Anchored to bottom structural rail</div>
+                        </div>
+                    </div>
+
+                    <!-- Silhouette Controls -->
+                    <div class="sb-control-group">
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">Threshold</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-threshold" min="10" max="245" step="1" value="128">
+                            <span class="sb-slider-val" id="sb-val-threshold">128</span>
+                        </div>
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">Strut Width</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-strut" min="0.6" max="2.8" step="0.1" value="1.0">
+                            <span class="sb-slider-val" id="sb-val-strut">1.0mm</span>
+                        </div>
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">Noise Filter</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-minarea" min="2" max="60" step="2" value="8">
+                            <span class="sb-slider-val" id="sb-val-minarea">8px</span>
+                        </div>
+
+                        <!-- Invert & Mirror Toggles -->
+                        <div class="sb-toggle-row">
+                            <button type="button" class="sb-toggle-btn" id="sb-toggle-invert">Invert Mask</button>
+                            <button type="button" class="sb-toggle-btn active" id="sb-toggle-mirror">Mirror Wall</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: Enclosure & Optics -->
+                <div id="tab-enclosure" class="sb-pane">
+                    <div class="sb-group-title">
+                        <span>ENCLOSURE SHAPE (7 GEOMETRIES)</span>
+                    </div>
+
+                    <!-- 7 Geometric Shapes Grid -->
+                    <div class="sb-shapes-grid">
+                        <div class="sb-shape-card" data-shape="rect">
+                            <svg class="sb-shape-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+                            <span class="sb-shape-name">Rectangle</span>
+                        </div>
+                        <div class="sb-shape-card" data-shape="cyl">
+                            <svg class="sb-shape-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle></svg>
+                            <span class="sb-shape-name">Cylinder</span>
+                        </div>
+                        <div class="sb-shape-card" data-shape="round12">
+                            <svg class="sb-shape-icon" viewBox="0 0 24 24"><polygon points="12,2 17,3.3 20.7,7 22,12 20.7,17 17,20.7 12,22 7,20.7 3.3,17 2,12 3.3,7 7,3.3"></polygon></svg>
+                            <span class="sb-shape-name">12-gon</span>
+                        </div>
+                        <div class="sb-shape-card active" data-shape="hex">
+                            <svg class="sb-shape-icon" viewBox="0 0 24 24"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7"></polygon></svg>
+                            <span class="sb-shape-name">Hexagon</span>
+                        </div>
+                        <div class="sb-shape-card" data-shape="oct">
+                            <svg class="sb-shape-icon" viewBox="0 0 24 24"><polygon points="7.8,2.5 16.2,2.5 21.5,7.8 21.5,16.2 16.2,21.5 7.8,21.5 2.5,16.2 2.5,7.8"></polygon></svg>
+                            <span class="sb-shape-name">Octagon</span>
+                        </div>
+                        <div class="sb-shape-card" data-shape="tri">
+                            <svg class="sb-shape-icon" viewBox="0 0 24 24"><polygon points="12,3 22,20 2,20"></polygon></svg>
+                            <span class="sb-shape-name">Triangle</span>
+                        </div>
+                        <div class="sb-shape-card" data-shape="diamond">
+                            <svg class="sb-shape-icon" viewBox="0 0 24 24"><polygon points="12,2 22,12 12,22 2,12"></polygon></svg>
+                            <span class="sb-shape-name">Diamond</span>
+                        </div>
+                    </div>
+
+                    <!-- Enclosure Sliders -->
+                    <div class="sb-control-group">
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">Inner Width</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-width" min="60" max="180" step="2" value="110">
+                            <span class="sb-slider-val" id="sb-val-width">110mm</span>
+                        </div>
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">Inner Height</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-height" min="60" max="180" step="2" value="110">
+                            <span class="sb-slider-val" id="sb-val-height">110mm</span>
+                        </div>
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">Panel Height</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-pheight" min="35" max="140" step="2" value="70">
+                            <span class="sb-slider-val" id="sb-val-pheight">70mm</span>
+                        </div>
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">LED Post (hL)</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-ledh" min="40" max="155" step="2" value="85">
+                            <span class="sb-slider-val" id="sb-val-ledh">85mm</span>
+                        </div>
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">Wall Thickness</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-wthick" min="1.2" max="3.0" step="0.2" value="1.8">
+                            <span class="sb-slider-val" id="sb-val-wthick">1.8mm</span>
+                        </div>
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">Floor Thickness</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-fthick" min="2.0" max="5.0" step="0.5" value="3.0">
+                            <span class="sb-slider-val" id="sb-val-fthick">3.0mm</span>
+                        </div>
+                        <div class="sb-slider-row">
+                            <span class="sb-slider-label">Wall Distance</span>
+                            <input type="range" class="sb-slider-input" id="sb-slider-walldist" min="150" max="550" step="10" value="250">
+                            <span class="sb-slider-val" id="sb-val-walldist">250mm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: Export & Order -->
+                <div id="tab-export" class="sb-pane">
+                    <!-- Live BOM Breakdown Card -->
+                    <div class="sb-bom-card">
+                        <div class="sb-bom-title">BILL OF MATERIALS & PRICING</div>
+                        <div class="sb-bom-row">
+                            <span>Filament Weight (PLA)</span>
+                            <span id="bom-filament-weight">~64 g</span>
+                        </div>
+                        <div class="sb-bom-row">
+                            <span>Polymer Cost (@ ₹3.50/g)</span>
+                            <span id="bom-filament-cost">₹224</span>
+                        </div>
+                        <div class="sb-bom-row">
+                            <span>5mm LED + USB Lead + Resistor</span>
+                            <span>₹80</span>
+                        </div>
+                        <div class="sb-bom-row">
+                            <span>Bambu A1 Mini Machine Print Time</span>
+                            <span id="bom-print-time">~3.5 hrs</span>
+                        </div>
+                        <div class="sb-bom-row">
+                            <span>Setup & Post-Processing QC</span>
+                            <span>₹195</span>
+                        </div>
+                        <div class="sb-bom-row total">
+                            <span>Total Estimated Price</span>
+                            <span id="bom-total-price">₹599</span>
+                        </div>
+                    </div>
+
+                    <!-- Direct Client-Side Downloads -->
+                    <button type="button" class="sb-btn-primary" id="btn-download-stl">
+                        <span>⬇️</span>
+                        <span>Download Fused .STL</span>
+                    </button>
+                    <button type="button" class="sb-btn-secondary" id="btn-download-zip">
+                        <span>📦</span>
+                        <span>Download Multi-Plate (.ZIP)</span>
+                    </button>
+
+                    <!-- Order via WhatsApp -->
+                    <button type="button" class="sb-btn-whatsapp" id="btn-order-whatsapp">
+                        <span>💬</span>
+                        <span>Order Custom Print on WhatsApp</span>
+                    </button>
+                    <p style="font-size:10.5px; color:#64748b; text-align:center; margin-top:8px;">
+                        Includes wired 5V USB cord, 5mm warm LED, and precision print inspection.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Floating Camera & Lighting Bar -->
+        <div class="sb-camera-dock">
+            <button type="button" class="sb-cam-btn" id="btn-reset-cam" title="Reset Viewport Camera">
+                <span>↺</span>
+                <span>Reset View</span>
+            </button>
+            <button type="button" class="sb-cam-btn" id="btn-auto-orbit" title="Toggle Auto-Orbit Turntable">
+                <span>✨</span>
+                <span>Turntable</span>
+            </button>
+            <div style="display:flex; align-items:center; gap:4px; margin-left:6px;">
+                <span style="font-size:11px; color:#94a3b8; font-weight:600;">LED:</span>
+                <button type="button" class="sb-cam-btn" style="padding:4px 8px; font-size:11px;" data-color="#ffb347" title="Warm Amber 2700K">🟠 Warm</button>
+                <button type="button" class="sb-cam-btn" style="padding:4px 8px; font-size:11px;" data-color="#ffffff" title="Pure White 5000K">⚪ White</button>
+                <button type="button" class="sb-cam-btn" style="padding:4px 8px; font-size:11px;" data-color="#22d3ee" title="Neon Cyan">🔵 Cyan</button>
+                <button type="button" class="sb-cam-btn" style="padding:4px 8px; font-size:11px;" data-color="#ef4444" title="Crimson Red">🔴 Red</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Interactive Scroll Status & Quick Reset -->
+<div id="scroll-status" style="position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:40; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.85); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:8px 18px; border-radius:999px; border:1px solid rgba(0,0,0,0.08); font-size:12px; font-weight:600; color:#64748b; box-shadow:0 8px 24px rgba(0,0,0,0.06); pointer-events:auto; user-select:none; transition:all 0.2s ease;">
+    <span id="scroll-percent">Scroll to unroll filament • 0%</span>
+    <button id="reset-scroll-btn" onclick="animateRollTo(0.0, 2600)" style="background:#0f172a; color:#ffffff; border:none; padding:5px 12px; border-radius:999px; font-size:11px; font-weight:600; cursor:pointer; display:none; transition:transform 0.15s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">↺ Back to Spool</button>
+</div>
+
+
+<div id="studio-ctrl" class="minimized" style="display:none;">
+    <div class="ctrl-header">
+        <div class="ctrl-title-wrap">
+            <span class="ctrl-tag">STΔN STUDIO // 3D CALIBRATOR</span>
+            <span class="ctrl-title">Filament Control Center</span>
+        </div>
+        <button class="ctrl-close" onclick="toggleStudioCtrl(false)" title="Minimize Panel">✕</button>
+    </div>
+
+    <!-- Tab Switcher -->
+    <div class="studio-tabs">
+        <button class="studio-tab-btn active" data-tab="tab-placement">🎯 Placement</button>
+        <button class="studio-tab-btn" data-tab="tab-material">🎨 Material</button>
+        <button class="studio-tab-btn" data-tab="tab-glass">✨ Glass & FX</button>
+    </div>
+
+    <!-- TAB 1: 3D Placement & Orientation Calibrator -->
+    <div id="tab-placement" class="studio-pane active">
+        <!-- Independent Frame Selector (Start vs Last Frame) -->
+        <div class="calib-frame-selector">
+            <button type="button" class="frame-selector-btn active" id="btn-frame-start" onclick="setCalibFrame('start')" title="Switch to editing Initial / First Frame (0% scroll)">
+                <span>🎬</span>
+                <span>Start Frame</span>
+                <span class="frame-tag">0%</span>
+            </button>
+            <button type="button" class="frame-selector-btn" id="btn-frame-end" onclick="setCalibFrame('end')" title="Switch to editing Final / Last Frame (100% scroll)">
+                <span>🏁</span>
+                <span>Last Frame</span>
+                <span class="frame-tag">100%</span>
+            </button>
+        </div>
+
+        <!-- Quick Presets for Active Frame -->
+        <div class="calib-presets">
+            <button type="button" class="calib-preset-btn" onclick="applyFramePreset('default')" title="Reset active frame to calibrated default">Default</button>
+            <button type="button" class="calib-preset-btn" onclick="applyFramePreset('center')">Center</button>
+            <button type="button" class="calib-preset-btn" onclick="applyFramePreset('far-left')">Far Left</button>
+            <button type="button" class="calib-preset-btn" onclick="applyFramePreset('face')">Face-On</button>
+        </div>
+
+        <!-- Position X, Y, Z -->
+        <div class="calib-group-title">
+            <span>Stage Position (X, Y, Z)</span>
+            <span id="calib-active-frame-badge" style="margin-left:auto; font-size:9.5px; font-weight:700; color:#0284c7; background:rgba(2,132,199,0.1); padding:1px 6px; border-radius:4px;">Editing: Start (0%)</span>
+        </div>
+        <div class="calib-row" data-target="calib-num-pos-x">
+            <span class="calib-axis">Pos X (Hoz)</span>
+            <input type="range" id="calib-pos-x" min="-9.0" max="5.0" step="0.05" value="-7.05">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-pos-x" min="-9.0" max="5.0" step="0.05" value="-7.05" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-pos-x" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-pos-x" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="calib-num-pos-y">
+            <span class="calib-axis">Pos Y (Vert)</span>
+            <input type="range" id="calib-pos-y" min="-3.0" max="3.0" step="0.05" value="-0.10">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-pos-y" min="-3.0" max="3.0" step="0.05" value="-0.10" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-pos-y" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-pos-y" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="calib-num-pos-z">
+            <span class="calib-axis">Pos Z (Depth)</span>
+            <input type="range" id="calib-pos-z" min="-4.0" max="4.0" step="0.05" value="0.00">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-pos-z" min="-4.0" max="4.0" step="0.05" value="0.00" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-pos-z" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-pos-z" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rotation Pitch, Yaw, Roll -->
+        <div class="calib-group-title">Spool Angles (Degrees)</div>
+        <div class="calib-row" data-target="calib-num-rot-x">
+            <span class="calib-axis">Pitch X (Tilt)</span>
+            <input type="range" id="calib-rot-x" min="-180" max="180" step="0.5" value="-11.0">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-rot-x" min="-180" max="180" step="0.5" value="-11.0" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-rot-x" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-rot-x" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="calib-num-rot-y">
+            <span class="calib-axis">Yaw Y (Spin)</span>
+            <input type="range" id="calib-rot-y" min="-180" max="180" step="0.5" value="60.5">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-rot-y" min="-180" max="180" step="0.5" value="60.5" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-rot-y" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-rot-y" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="calib-num-rot-z">
+            <span class="calib-axis">Roll Z (Turn)</span>
+            <input type="range" id="calib-rot-z" min="-180" max="180" step="0.5" value="99.0">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-rot-z" min="-180" max="180" step="0.5" value="99.0" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-rot-z" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-rot-z" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scale Control -->
+        <div class="calib-group-title">Spool Scale (Uniform)</div>
+        <div class="calib-row" data-target="calib-num-scale">
+            <span class="calib-axis">Scale Size</span>
+            <input type="range" id="calib-scale" min="0.20" max="1.50" step="0.01" value="0.87">
+            <div class="calib-input-stepper">
+                <input type="number" id="calib-num-scale" min="0.20" max="1.50" step="0.01" value="0.87" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn up" data-target="calib-num-scale" data-dir="1" title="Increase">▲</button>
+                    <button type="button" class="stepper-btn down" data-target="calib-num-scale" data-dir="-1" title="Decrease">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Precision Hint -->
+        <div class="calib-hint">
+            <span>🖱️</span>
+            <span><strong>Scroll wheel</strong> over any row to fine-tune. Hold <strong>Shift</strong> for micro-steps!</span>
+        </div>
+
+        <!-- Live Code Display Box -->
+        <div class="calib-group-title">
+            <span>Live Placement Config</span>
+            <span id="calib-code-frame-label" style="margin-left:auto; font-size:9.5px; font-weight:700; color:#38bdf8;">Start Frame (0%)</span>
+        </div>
+        <div class="calib-code-wrap">
+            <pre id="calib-code-display"></pre>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="calib-actions">
+            <button type="button" id="btn-copy-both" class="btn-copy-calib" onclick="copyCalibConfig('both')" title="Copy complete configuration with both Start and End frames">
+                📋 Copy Both (Start + End)
+            </button>
+            <button type="button" id="btn-copy-calib" class="btn-copy-calib-sub" onclick="copyCalibConfig('active')" title="Copy current active frame configuration only">
+                📄 Copy Active
+            </button>
+            <button type="button" id="btn-reset-calib" class="btn-reset-calib" onclick="resetCalibConfig()" title="Reset active frame back to calibrated defaults">
+                ↺ Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- TAB 2: Material & Color Studio -->
+    <div id="tab-material" class="studio-pane">
+        <!-- Finish Presets -->
+        <div class="ctrl-section-label">
+            <span>Polymer Finish</span>
+        </div>
+        <div class="finish-tabs">
+            <button class="finish-btn active" data-finish="matte">Matte PLA</button>
+            <button class="finish-btn" data-finish="silk">Silk Gloss</button>
+            <button class="finish-btn" data-finish="carbon">Carbon</button>
+        </div>
+
+        <!-- Live Sliders -->
+        <div class="slider-row">
+            <span>Roughness</span>
+            <input type="range" id="slider-roughness" min="0.05" max="0.95" step="0.01" value="0.90">
+            <span class="slider-val" id="val-roughness">0.90</span>
+        </div>
+        <div class="slider-row">
+            <span>Clearcoat</span>
+            <input type="range" id="slider-clearcoat" min="0.0" max="1.0" step="0.02" value="0.00">
+            <span class="slider-val" id="val-clearcoat">0.00</span>
+        </div>
+        <div class="slider-row">
+            <span>Sheen</span>
+            <input type="range" id="slider-sheen" min="0.0" max="1.0" step="0.02" value="0.00">
+            <span class="slider-val" id="val-sheen">0.00</span>
+        </div>
+    </div>
+
+    <!-- TAB 3: Frosted Glass & Hover FX Studio -->
+    <div id="tab-glass" class="studio-pane">
+        <!-- Interactive Hover Tilt Intensity -->
+        <div class="ctrl-section-label">
+            <span>Filament Reel Hover Parallax</span>
+        </div>
+        <div class="calib-row" data-target="glass-num-hover">
+            <span class="calib-axis">Hover Tilt</span>
+            <input type="range" id="glass-hover" min="0.2" max="3.5" step="0.1" value="0.7">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-hover" min="0.2" max="3.5" step="0.1" value="0.7" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-hover" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-hover" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Frosted Glass Controls -->
+        <div class="ctrl-section-label" style="margin-top:14px;">
+            <span>Frosted Optical Glass</span>
+        </div>
+        <div class="calib-row" data-target="glass-num-blur">
+            <span class="calib-axis">Blur (px)</span>
+            <input type="range" id="glass-blur" min="0" max="40" step="1" value="11">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-blur" min="0" max="40" step="1" value="11" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-blur" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-blur" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="glass-num-opacity">
+            <span class="calib-axis">Opacity</span>
+            <input type="range" id="glass-opacity" min="0.05" max="0.95" step="0.01" value="0.05">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-opacity" min="0.05" max="0.95" step="0.01" value="0.05" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-opacity" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-opacity" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Frosting Grain & Noise Controls -->
+        <div class="ctrl-section-label" style="margin-top:14px;">
+            <span>Frosting Noise Grain</span>
+        </div>
+        <div class="calib-row" data-target="glass-num-noise-density">
+            <span class="calib-axis">Density</span>
+            <input type="range" id="glass-noise-density" min="0.10" max="2.00" step="0.05" value="0.10">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-noise-density" min="0.10" max="2.00" step="0.05" value="0.10" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-density" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-density" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="glass-num-noise-size">
+            <span class="calib-axis">Grain Size</span>
+            <input type="range" id="glass-noise-size" min="30" max="300" step="5" value="30">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-noise-size" min="30" max="300" step="5" value="30" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-size" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-size" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+        <div class="calib-row" data-target="glass-num-noise-opacity">
+            <span class="calib-axis">Grain Opac</span>
+            <input type="range" id="glass-noise-opacity" min="0.00" max="0.50" step="0.01" value="0.35">
+            <div class="calib-input-stepper">
+                <input type="number" id="glass-num-noise-opacity" min="0.00" max="0.50" step="0.01" value="0.35" class="calib-num-input" title="Type, click ▲/▼, or scroll mouse wheel">
+                <div class="calib-stepper-btns">
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-opacity" data-dir="1">▲</button>
+                    <button type="button" class="stepper-btn" data-target="glass-num-noise-opacity" data-dir="-1">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Code Readout & Copy Button -->
+        <div class="ctrl-section-label" style="margin-top:16px;">
+            <span>Live Glass & Hover Config</span>
+        </div>
+        <pre id="glass-code-display" style="background:#090d16; color:#38bdf8; padding:10px 12px; border-radius:8px; font-size:10px; font-family:monospace; line-height:1.45; overflow-x:auto; user-select:all; margin:6px 0 10px 0; border:1px solid rgba(255,255,255,0.08);"></pre>
+        <div class="calib-actions">
+            <button type="button" class="calib-btn-primary" id="btn-copy-glass" onclick="copyGlassConfig()" style="width:100%;">📋 Copy Glass & FX Config</button>
+        </div>
+    </div>
+</div>
+
+<!-- Local Three.js with CDN Fallback (100% offline & robust) -->
+<script src="three.min.js"></script>
+<script>
+if (typeof THREE === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"><\/script>');
+}
+</script>
+<!-- Awwwards-Grade WebGL Frosted Glass & Curl-Noise Hero Dispersion -->
+<script src="lib/hero-dispersion.js?v=4.4"></script>
+<!-- Bambu Lab A1 Mini Kinematics & Studio Engine -->
+<script src="lib/GLTFLoader.js"></script>
+<script src="lib/shadow-box-studio.js?v=1.0"></script>
+
+<script>
+/* ====================================================================
+   STΔN 3D STUDIO — AUTHENTIC INJECTION-MOLDED SPOOL & S-CURVE UNROLLING
+   1. Authentic Injection-Molded ABS Spool Frame:
+      - 4 Large trapezoidal/sector cutout windows showing tightly packed coils
+      - 2 Solid quadrants with STΔN technical spec decal + barcode
+      - Raised outer perimeter rim lip with filament clip notches
+      - Raised inner bore collar and 8 radial structural reinforcement ribs
+   2. Precision Coiled Filament (1.75mm scale proportion, strandR = 0.0135):
+      - Visible concentric micro-rings through cutout windows with radial AO
+      - 48 tightly wound outer wire rings matching unrolled strand diameter
+   3. True Soft Studio Contact Shadows (feathered multi-stop Gaussian texture)
+   4. Rotation Physics Fix: Rolls forward in the direction filament is peeling
+   5. Gravity S-Curve Choreography: Dips low under hero text, never hits navbar
+   ==================================================================== */
+;(function () {
+'use strict';
+
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
+window.scrollTo(0, 0);
+
+/* ─── CAD Dimensions for 1kg Spool ────────────────────────────── */
+const S = {
+    flangeR  : 1.95,   // Outer flange disc radius
+    flangeTh : 0.075,  // Flange disc thickness
+    hubInR   : 0.50,   // Center axle hole radius (hollow bore)
+    hubOutR  : 0.96,   // Outer hub barrel where winding starts
+    width    : 1.22,   // Gap between inner flange faces
+    maxWindR : 1.82,   // Full 1kg wound filament radius
+    minWindR : 0.98,   // Depleted spool radius
+    strandR  : 0.024,  // Tactile wire radius matching 24 bold spool rings
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   RENDERER & STUDIO SETUP
+   ═══════════════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('webgl-canvas');
+const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    powerPreference: 'high-performance',
+});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0xffffff, 1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.06;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCENE & STUDIO PMREM ENVIRONMENT
+   ═══════════════════════════════════════════════════════════════════ */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffffff);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xffffff);
+envScene.add(new THREE.AmbientLight(0xffffff, 1.3));
+
+const envKey = new THREE.DirectionalLight(0xffffff, 2.0);
+envKey.position.set(4, 8, 5);
+envScene.add(envKey);
+
+const envFill = new THREE.DirectionalLight(0xf0f4ff, 1.0);
+envFill.position.set(-5, 3, -3);
+envScene.add(envFill);
+
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+pmrem.dispose();
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIGHTING SETUP (CLEAN INDUSTRIAL STUDIO)
+   ═══════════════════════════════════════════════════════════════════ */
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
+scene.add(ambientLight);
+
+const keyLightTarget = new THREE.Object3D();
+keyLightTarget.position.set(-5.6, -0.2, 0.0);
+scene.add(keyLightTarget);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.3);
+keyLight.position.set(-4.4, 10.3, 2.2);
+keyLight.target = keyLightTarget;
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 2048;
+keyLight.shadow.mapSize.height = 2048;
+keyLight.shadow.camera.near = 1.0;
+keyLight.shadow.camera.far = 24.0;
+keyLight.shadow.camera.left = -5.0;
+keyLight.shadow.camera.right = 5.0;
+keyLight.shadow.camera.top = 5.0;
+keyLight.shadow.camera.bottom = -5.0;
+keyLight.shadow.bias = -0.0001;
+keyLight.shadow.normalBias = 0.035;
+keyLight.shadow.radius = 4.5;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xedf3ff, 0.95);
+fillLight.position.set(-9.0, 5.0, -3.0);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffffff, 1.40);
+rimLight.position.set(-3.5, 4.0, 7.5);
+scene.add(rimLight);
+
+/* ═══════════════════════════════════════════════════════════════════
+   CLEAN STUDIO FLOOR SHADOW PLANE & SOFT CONTACT SHADOW
+   ═══════════════════════════════════════════════════════════════════ */
+const FLOOR_Y = -2.58;
+
+// Disable harsh geometric spoke silhouette projection on the studio floor
+const shadowPlaneGeo = new THREE.PlaneGeometry(100, 100);
+const shadowPlaneMat = new THREE.ShadowMaterial({ opacity: 0.0 });
+const shadowPlane = new THREE.Mesh(shadowPlaneGeo, shadowPlaneMat);
+shadowPlane.rotation.x = -Math.PI / 2;
+shadowPlane.position.y = FLOOR_Y;
+shadowPlane.receiveShadow = false;
+shadowPlane.visible = false;
+scene.add(shadowPlane);
+
+// Photorealistic Multi-Layer Gaussian Blur Shadow (Cinema 4D / Octane Softbox Contact AO)
+function createContactShadowTexture() {
+    const c = document.createElement('canvas');
+    c.width = 1024;
+    c.height = 1024;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, 1024, 1024);
+
+    const cx = 512, cy = 512;
+    const hasFilter = typeof ctx.filter === 'string';
+
+    if (hasFilter) {
+        // 1. Broad Ambient Gaussian Dispersion (Feathers softly into infinite white floor)
+        ctx.save();
+        ctx.filter = 'blur(65px)';
+        ctx.fillStyle = 'rgba(18, 22, 30, 0.16)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 390, 240, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 2. Mid-Field Cylinder Body Penumbra (Spool wound filament mass)
+        ctx.save();
+        ctx.filter = 'blur(35px)';
+        ctx.fillStyle = 'rgba(14, 18, 26, 0.28)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 280, 165, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 3. Dense Grounding Contact Occlusion (Occlusion near floor)
+        ctx.save();
+        ctx.filter = 'blur(18px)';
+        ctx.fillStyle = 'rgba(10, 14, 20, 0.44)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 15, 185, 105, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 4. Tight Crevice Contact Touch (Deep dark grounding under the lowest rim)
+        ctx.save();
+        ctx.filter = 'blur(9px)';
+        ctx.fillStyle = 'rgba(6, 8, 14, 0.68)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 25, 115, 58, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    } else {
+        const grad = ctx.createRadialGradient(cx, cy, 15, cx, cy, 480);
+        grad.addColorStop(0.00, 'rgba(6, 8, 14, 0.70)');
+        grad.addColorStop(0.12, 'rgba(10, 14, 20, 0.50)');
+        grad.addColorStop(0.30, 'rgba(14, 18, 26, 0.30)');
+        grad.addColorStop(0.55, 'rgba(18, 22, 30, 0.14)');
+        grad.addColorStop(0.80, 'rgba(22, 26, 35, 0.04)');
+        grad.addColorStop(1.00, 'rgba(28, 32, 42, 0.00)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 480, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 8;
+    return tex;
+}
+
+const contactShadowTex = createContactShadowTexture();
+const contactShadowGeo = new THREE.PlaneGeometry(1, 1);
+const contactShadowMat = new THREE.MeshBasicMaterial({
+    map: contactShadowTex,
+    transparent: true,
+    opacity: 0.58,
+    depthWrite: false,
+});
+const contactShadowMesh = new THREE.Mesh(contactShadowGeo, contactShadowMat);
+contactShadowMesh.rotation.x = -Math.PI / 2;
+contactShadowMesh.position.y = FLOOR_Y + 0.002;
+scene.add(contactShadowMesh);
+
+/* ═══════════════════════════════════════════════════════════════════
+   PREMIUM PBR MATERIALS (INJECTION-MOLDED ABS & PRECISION MATTE PLA)
+   ═══════════════════════════════════════════════════════════════════ */
+const matSpool = new THREE.MeshPhysicalMaterial({
+    color: 0x141416,
+    roughness: 0.38,
+    metalness: 0.08,
+    clearcoat: 0.15,
+    clearcoatRoughness: 0.30,
+    side: THREE.DoubleSide,
+});
+
+const matAxlePipe = new THREE.MeshPhysicalMaterial({
+    color: 0x0f1013,
+    roughness: 0.48,
+    metalness: 0.10,
+    clearcoat: 0.12,
+    clearcoatRoughness: 0.35,
+    side: THREE.DoubleSide,
+});
+
+const initialHex = 0x085d63; // Rich Precision Matte Teal from previous version
+const initialColor = new THREE.Color(initialHex);
+
+/* ═══════════════════════════════════════════════════════════════════
+   PROCEDURAL TEXTURES FOR 24 BOLD WOUND RINGS & RADIAL SIDE COILS
+   - 24 Distinct, tactile 3D cylinder strands with deep crevice shadows
+   - Side concentric coils with ambient occlusion visible in cutout windows
+   ═══════════════════════════════════════════════════════════════════ */
+function createWoundCylinderTextures() {
+    const w = 1024, h = 1024;
+    const cColor = document.createElement('canvas');
+    cColor.width = w; cColor.height = h;
+    const ctxC = cColor.getContext('2d');
+
+    const cNorm = document.createElement('canvas');
+    cNorm.width = w; cNorm.height = h;
+    const ctxN = cNorm.getContext('2d');
+    const imgN = ctxN.createImageData(w, h);
+    const dN = imgN.data;
+
+    const numStrands = 24; // Bold tactile rings matching previous version
+    const strandH = h / numStrands;
+
+    for (let y = 0; y < h; y++) {
+        const t = (y % strandH) / strandH;
+        const curve = Math.sin(t * Math.PI);
+        // Deep, rich crevice shading (0.36 in groove, 1.0 at peak)
+        const shade = 0.36 + 0.64 * Math.pow(curve, 0.62);
+        const v = Math.round(255 * shade);
+
+        ctxC.fillStyle = `rgb(${v},${v},${v})`;
+        ctxC.fillRect(0, y, w, 1);
+
+        const ny = Math.cos(t * Math.PI);
+        const nz = Math.sin(t * Math.PI);
+        for (let x = 0; x < w; x++) {
+            const idx = (y * w + x) * 4;
+            const microNoise = (Math.random() - 0.5) * 4;
+            dN[idx    ] = Math.min(255, Math.max(0, 128 + microNoise));
+            dN[idx + 1] = Math.min(255, Math.max(0, 128 + ny * 115 + microNoise));
+            dN[idx + 2] = Math.min(255, Math.max(0, 128 + nz * 115));
+            dN[idx + 3] = 255;
+        }
+    }
+    ctxN.putImageData(imgN, 0, 0);
+
+    const colorTex = new THREE.CanvasTexture(cColor);
+    colorTex.wrapS = colorTex.wrapT = THREE.RepeatWrapping;
+    colorTex.anisotropy = 16;
+
+    const normTex = new THREE.CanvasTexture(cNorm);
+    normTex.wrapS = normTex.wrapT = THREE.RepeatWrapping;
+    normTex.anisotropy = 16;
+
+    return { colorTex, normTex };
+}
+
+/* Dedicated Radial Texture for the Concentric Coils seen through Cutout Windows */
+function createSideCoilTextures() {
+    const size = 1024;
+    const cColor = document.createElement('canvas');
+    cColor.width = size; cColor.height = size;
+    const ctxC = cColor.getContext('2d');
+
+    const cNorm = document.createElement('canvas');
+    cNorm.width = size; cNorm.height = size;
+    const ctxN = cNorm.getContext('2d');
+    const imgN = ctxN.createImageData(size, size);
+    const dN = imgN.data;
+
+    const cx = size / 2, cy = size / 2;
+    const rMax = size * 0.485;
+    const rMin = rMax * (S.hubOutR / S.maxWindR);
+    const numLayers = 18;
+    const layerPitch = (rMax - rMin) / numLayers;
+
+    // Fill background with deep crevice shade
+    ctxC.fillStyle = 'rgb(95,95,95)';
+    ctxC.fillRect(0, 0, size, size);
+
+    for (let py = 0; py < size; py++) {
+        const dy = py - cy;
+        for (let px = 0; px < size; px++) {
+            const dx = px - cx;
+            const r = Math.sqrt(dx * dx + dy * dy);
+            const idx = (py * size + px) * 4;
+
+            if (r >= rMin - 4 && r <= rMax + 4) {
+                const angle = Math.atan2(dy, dx);
+                const relR = (r - rMin);
+                const layerT = (relR % layerPitch) / layerPitch;
+                const curve = Math.sin(layerT * Math.PI);
+                
+                const nr = Math.cos(layerT * Math.PI);
+                const nx = nr * Math.cos(angle);
+                const ny = nr * Math.sin(angle);
+                const nz = Math.sin(layerT * Math.PI);
+
+                dN[idx    ] = Math.min(255, Math.max(0, 128 + nx * 110));
+                dN[idx + 1] = Math.min(255, Math.max(0, 128 - ny * 110));
+                dN[idx + 2] = Math.min(255, Math.max(0, 128 + nz * 110));
+                dN[idx + 3] = 255;
+            } else {
+                dN[idx    ] = 128;
+                dN[idx + 1] = 128;
+                dN[idx + 2] = 255;
+                dN[idx + 3] = 255;
+            }
+        }
+    }
+
+    // Render color rings to 2D canvas with anti-aliasing and Radial Ambient Occlusion
+    for (let i = 0; i < numLayers; i++) {
+        const rLayer = rMin + (i + 0.5) * layerPitch;
+        const normR = i / (numLayers - 1);
+        const ao = 0.52 + 0.48 * Math.pow(normR, 0.60);
+        const v = Math.round(255 * ao);
+        ctxC.beginPath();
+        ctxC.arc(cx, cy, rLayer, 0, Math.PI * 2);
+        ctxC.strokeStyle = `rgb(${v},${v},${v})`;
+        ctxC.lineWidth = layerPitch * 0.82;
+        ctxC.stroke();
+
+        // Dark crevice separator
+        ctxC.beginPath();
+        ctxC.arc(cx, cy, rMin + i * layerPitch, 0, Math.PI * 2);
+        ctxC.strokeStyle = 'rgb(90,90,90)';
+        ctxC.lineWidth = layerPitch * 0.22;
+        ctxC.stroke();
+    }
+    ctxN.putImageData(imgN, 0, 0);
+
+    const sideColorTex = new THREE.CanvasTexture(cColor);
+    sideColorTex.anisotropy = 16;
+    const sideNormTex = new THREE.CanvasTexture(cNorm);
+    sideNormTex.anisotropy = 16;
+
+    return { sideColorTex, sideNormTex };
+}
+
+const { colorTex: cylinderColorTex, normTex: cylinderNormTex } = createWoundCylinderTextures();
+const { sideColorTex, sideNormTex } = createSideCoilTextures();
+
+/* STRICT MATTE PLA MATERIALS (ZERO GLOSS, ZERO CLEARCOAT) */
+const matWoundFilament = new THREE.MeshPhysicalMaterial({
+    color: initialColor,
+    map: cylinderColorTex,
+    normalMap: cylinderNormTex,
+    normalScale: new THREE.Vector2(2.4, 2.4),
+    roughness: 0.90,
+    metalness: 0.0,
+    clearcoat: 0.0,
+    clearcoatRoughness: 1.0,
+    sheen: 0.0,
+    side: THREE.FrontSide,
+});
+
+const matSideCoil = new THREE.MeshPhysicalMaterial({
+    color: initialColor,
+    map: sideColorTex,
+    normalMap: sideNormTex,
+    normalScale: new THREE.Vector2(2.0, 2.0),
+    roughness: 0.90,
+    metalness: 0.0,
+    clearcoat: 0.0,
+    clearcoatRoughness: 1.0,
+    sheen: 0.0,
+    side: THREE.DoubleSide,
+});
+
+const matUnrolledStrand = new THREE.MeshPhysicalMaterial({
+    color: initialColor,
+    roughness: 0.90,
+    metalness: 0.0,
+    clearcoat: 0.0,
+    clearcoatRoughness: 1.0,
+    sheen: 0.0,
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   3D STAGE & SPOOL (CONFIGURABLE VIA 3D CALIBRATOR)
+   ═══════════════════════════════════════════════════════════════════ */
+const SPOOL_CALIB_START_DEFAULT = Object.freeze({
+    posX: -7.05,
+    posY: -0.10,
+    posZ: 0.00,
+    rotXDeg: -11.0, // rad: -0.1920
+    rotYDeg: 60.5,  // rad: 1.0559
+    rotZDeg: 99.0,  // rad: 1.7279
+    scale: 0.87
+});
+
+const SPOOL_CALIB_END_DEFAULT = Object.freeze({
+    posX: -6.90,
+    posY: 0.75,
+    posZ: 1.45,
+    rotXDeg: -13.0, // rad: -0.2269
+    rotYDeg: 66.0,  // rad: 1.1519
+    rotZDeg: 78.5,  // rad: 1.3701
+    scale: 1.26
+});
+
+const SPOOL_CALIB_START = { ...SPOOL_CALIB_START_DEFAULT };
+const SPOOL_CALIB_END = { ...SPOOL_CALIB_END_DEFAULT };
+
+const GLASS_HOVER_CONFIG = {
+    hoverIntensity: 0.7,
+    blur: 11,           // px
+    opacity: 0.05,      // 0.0 to 1.0
+    noiseDensity: 0.10, // grain frequency
+    noiseSize: 30,        // px
+    noiseOpacity: 0.35  // 0.0 to 1.0
+};
+
+let activeCalibFrame = 'start'; // 'start' | 'end'
+let calibInteractTimeout = null;
+let isUserInteractingWithCalibrator = false;
+
+function markCalibInteraction() {
+    isUserInteractingWithCalibrator = true;
+    if (calibInteractTimeout) clearTimeout(calibInteractTimeout);
+    calibInteractTimeout = setTimeout(() => {
+        isUserInteractingWithCalibrator = false;
+    }, 600);
+}
+
+function syncFrameSelectorFromScroll(p) {
+    if (isUserInteractingWithCalibrator) return;
+    if (typeof window.setCalibFrame !== 'function') return;
+    if (p <= 0.03 && activeCalibFrame !== 'start') {
+        window.setCalibFrame('start', false);
+    } else if (p >= 0.97 && activeCalibFrame !== 'end') {
+        window.setCalibFrame('end', false);
+    }
+}
+
+const stage = new THREE.Group();
+stage.scale.set(SPOOL_CALIB_START.scale, SPOOL_CALIB_START.scale, SPOOL_CALIB_START.scale);
+stage.position.set(SPOOL_CALIB_START.posX, SPOOL_CALIB_START.posY, SPOOL_CALIB_START.posZ);
+scene.add(stage);
+
+const spoolAnchor = new THREE.Group();
+spoolAnchor.position.set(-1.40, 0.0, 0.0);
+stage.add(spoolAnchor);
+
+const spoolPose = new THREE.Group();
+spoolPose.rotation.x = SPOOL_CALIB_START.rotXDeg * Math.PI / 180;
+spoolPose.rotation.y = SPOOL_CALIB_START.rotYDeg * Math.PI / 180;
+spoolPose.rotation.z = SPOOL_CALIB_START.rotZDeg * Math.PI / 180;
+spoolAnchor.add(spoolPose);
+
+const spoolRotor = new THREE.Group();
+spoolPose.add(spoolRotor);
+
+/* ─── REAL 3D HOLLOW AXLE PIPE (100% CLEAR BORE) ──────────────── */
+const pipeH = S.width + S.flangeTh * 2 + 0.08;
+const axlePipeGeo = new THREE.CylinderGeometry(S.hubInR, S.hubInR, pipeH, 64, 1, true);
+const axlePipeMesh = new THREE.Mesh(axlePipeGeo, matAxlePipe);
+spoolRotor.add(axlePipeMesh);
+
+const lipGeo = new THREE.TorusGeometry(S.hubInR, 0.020, 16, 64);
+const lipTop = new THREE.Mesh(lipGeo, matAxlePipe);
+lipTop.rotation.x = Math.PI / 2;
+lipTop.position.y = pipeH / 2;
+spoolRotor.add(lipTop);
+
+const lipBottom = new THREE.Mesh(lipGeo, matAxlePipe);
+lipBottom.rotation.x = Math.PI / 2;
+lipBottom.position.y = -pipeH / 2;
+spoolRotor.add(lipBottom);
+
+// Central Hub Cylinder Barrel
+const hubH = S.width;
+const hubGeo = new THREE.CylinderGeometry(S.hubOutR, S.hubOutR, hubH, 64, 1, true);
+const hubMesh = new THREE.Mesh(hubGeo, matSpool);
+hubMesh.castShadow = true;
+hubMesh.receiveShadow = true;
+spoolRotor.add(hubMesh);
+
+/* ═══════════════════════════════════════════════════════════════════
+   AUTHENTIC INJECTION-MOLDED SPOOL FRAME GENERATOR
+   - 4 Sector / Trapezoidal window cutouts showing coiled filament inside
+   - 4 Solid quadrants with authentic STΔN spec decal
+   - Raised outer perimeter rim lip + filament clip notches
+   - Raised inner bore collar + radial structural reinforcement ribs
+   ═══════════════════════════════════════════════════════════════════ */
+function createSpecLabelDecal() {
+    const w = 512, h = 180;
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, w - 4, h - 4);
+
+    ctx.fillStyle = '#0a0a0c';
+    ctx.font = 'bold 36px -apple-system, sans-serif';
+    ctx.fillText('STΔN  PLA-PRO', 20, 48);
+
+    ctx.fillStyle = '#475569';
+    ctx.font = '600 18px monospace';
+    ctx.fillText('1.75MM • 1000G • PRECISION', 20, 76);
+
+    ctx.fillStyle = '#0a0a0c';
+    let bx = 20;
+    const by = 94, bh = 56;
+    const barWidths = [3, 1, 4, 2, 1, 5, 2, 4, 1, 3, 2, 5, 1, 4, 2, 3, 1, 2, 5, 3, 2, 4, 1, 3, 2, 4, 1, 5, 2, 3, 1, 4, 2];
+    for (let i = 0; i < barWidths.length && bx < w - 24; i++) {
+        ctx.fillRect(bx, by, barWidths[i] * 2.2, bh);
+        bx += barWidths[i] * 2.2 + 3.8;
+    }
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '600 15px monospace';
+    ctx.fillText('LOT #STN-2604 // 205-225°C', 20, 168);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 16;
+    return tex;
+}
+
+const specLabelTex = createSpecLabelDecal();
+const matSpecLabel = new THREE.MeshPhysicalMaterial({
+    map: specLabelTex,
+    roughness: 0.90,
+    metalness: 0.02,
+    clearcoat: 0.04,
+    side: THREE.DoubleSide,
+});
+
+function createInjectionMoldedFlange(isFront = false) {
+    const flangeGroup = new THREE.Group();
+
+    // 1. Base Shape with Central Bore and 4 Sector Windows
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, S.flangeR, 0, Math.PI * 2, false);
+
+    const centerHole = new THREE.Path();
+    centerHole.absarc(0, 0, S.hubInR, 0, Math.PI * 2, true);
+    shape.holes.push(centerHole);
+
+    // 4 Sector Window Cutouts centered at 45°, 135°, 225°, 315°
+    const windowAngles = [
+        Math.PI * 0.25, // Top-Right (45°)
+        Math.PI * 0.75, // Top-Left (135°)
+        Math.PI * 1.25, // Bottom-Left (225°)
+        Math.PI * 1.75  // Bottom-Right (315°)
+    ];
+    const r1 = S.hubOutR + 0.12; // 1.08
+    const r2 = S.flangeR - 0.20;  // 1.75
+    const span = Math.PI * 0.26;  // ~47 degrees
+
+    windowAngles.forEach(a => {
+        const hPath = new THREE.Path();
+        const aStart = a - span / 2;
+        const aEnd = a + span / 2;
+
+        hPath.absarc(0, 0, r2, aStart, aEnd, false);
+        hPath.lineTo(Math.cos(aEnd) * r1, Math.sin(aEnd) * r1);
+        hPath.absarc(0, 0, r1, aEnd, aStart, true);
+        hPath.lineTo(Math.cos(aStart) * r2, Math.sin(aStart) * r2);
+        shape.holes.push(hPath);
+    });
+
+    // 2 Pairs of tiny filament-clip holes on outer rim
+    const clipAngles = [Math.PI * 0.50, Math.PI * 1.50];
+    clipAngles.forEach(ca => {
+        for (let offset = -0.045; offset <= 0.045; offset += 0.09) {
+            const clipPath = new THREE.Path();
+            const angle = ca + offset;
+            const cr = S.flangeR - 0.07;
+            const cx = Math.cos(angle) * cr;
+            const cy = Math.sin(angle) * cr;
+            clipPath.absarc(cx, cy, 0.022, 0, Math.PI * 2, true);
+            shape.holes.push(clipPath);
+        }
+    });
+
+    const geo = new THREE.ExtrudeGeometry(shape, {
+        depth: S.flangeTh,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        steps: 1,
+        bevelSize: 0.012,
+        bevelThickness: 0.012,
+        curveSegments: 64,
+    });
+    geo.center();
+    geo.rotateX(Math.PI / 2);
+
+    const mainPlate = new THREE.Mesh(geo, matSpool);
+    mainPlate.castShadow = true;
+    mainPlate.receiveShadow = true;
+    flangeGroup.add(mainPlate);
+
+    // 2. Raised Outer Perimeter Rim Lip
+    const rimLipGeo = new THREE.TorusGeometry(S.flangeR - 0.035, 0.036, 16, 72);
+    const rimLip = new THREE.Mesh(rimLipGeo, matSpool);
+    rimLip.rotation.x = Math.PI / 2;
+    rimLip.position.y = (S.flangeTh / 2) + 0.015;
+    rimLip.castShadow = true;
+    flangeGroup.add(rimLip);
+
+    // 3. Raised Inner Hub Collar Ring
+    const collarGeo = new THREE.TorusGeometry(S.hubInR + 0.06, 0.028, 16, 64);
+    const collar = new THREE.Mesh(collarGeo, matSpool);
+    collar.rotation.x = Math.PI / 2;
+    collar.position.y = (S.flangeTh / 2) + 0.012;
+    collar.castShadow = true;
+    flangeGroup.add(collar);
+
+    // 4. 8 Raised Radial Structural Ribs (Framing the borders of each window)
+    const ribLen = r2 - r1 + 0.22;
+    const ribMidR = (r1 + r2) * 0.50;
+    const ribGeo = new THREE.BoxGeometry(0.040, 0.024, ribLen);
+
+    const borderRibAngles = [];
+    windowAngles.forEach(wa => {
+        borderRibAngles.push(wa - span / 2 - 0.015);
+        borderRibAngles.push(wa + span / 2 + 0.015);
+    });
+
+    borderRibAngles.forEach(ra => {
+        const rib = new THREE.Mesh(ribGeo, matSpool);
+        rib.position.x = Math.cos(ra) * ribMidR;
+        rib.position.z = Math.sin(ra) * ribMidR;
+        rib.position.y = (S.flangeTh / 2) + 0.012;
+        rib.rotation.y = -ra + Math.PI / 2;
+        rib.castShadow = true;
+        flangeGroup.add(rib);
+    });
+
+    // 5. STΔN Technical Spec Label Decal (on solid quadrant matching reference)
+    if (isFront) {
+        const decalGeo = new THREE.PlaneGeometry(0.44, 0.18);
+        const decalMesh = new THREE.Mesh(decalGeo, matSpecLabel);
+        decalMesh.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
+        decalMesh.position.set(-ribMidR, (S.flangeTh / 2) + 0.016, 0.0);
+        decalMesh.castShadow = false;
+        flangeGroup.add(decalMesh);
+    }
+
+    return flangeGroup;
+}
+
+const flangeLeft = createInjectionMoldedFlange(false);
+flangeLeft.position.y = -(S.width / 2 + S.flangeTh / 2);
+spoolRotor.add(flangeLeft);
+
+const flangeRight = createInjectionMoldedFlange(true); // Front flange with STΔN spec decal
+flangeRight.position.y = (S.width / 2 + S.flangeTh / 2);
+spoolRotor.add(flangeRight);
+
+/* ═══════════════════════════════════════════════════════════════════
+   COILED FILAMENT PACK: 24 BOLD TACTILE RINGS & RECESSED SIDE COILS
+   ═══════════════════════════════════════════════════════════════════ */
+const halfW = (S.width - 0.02) / 2;
+
+// 1. Outer Cylindrical Wound Barrel (Clean UV mapping across full spool width)
+let woundCylGeo = new THREE.CylinderGeometry(S.maxWindR, S.maxWindR, S.width - 0.02, 96, 1, true);
+const woundMesh = new THREE.Mesh(woundCylGeo, matWoundFilament);
+woundMesh.castShadow = true;
+woundMesh.receiveShadow = true;
+spoolRotor.add(woundMesh);
+
+// 2. Recessed Side Coils visible through the 4 Sector Cutout Windows
+function createSideCoilGeo(currentR) {
+    const geo = new THREE.RingGeometry(S.hubOutR + 0.015, currentR, 72, 1);
+    const pos = geo.attributes.position;
+    const uvs = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const u = 0.5 + (x / (S.maxWindR * 2.06));
+        const v = 0.5 + (y / (S.maxWindR * 2.06));
+        uvs.setXY(i, u, v);
+    }
+    uvs.needsUpdate = true;
+    return geo;
+}
+
+let sideCoilFrontGeo = createSideCoilGeo(S.maxWindR);
+const sideCoilFront = new THREE.Mesh(sideCoilFrontGeo, matSideCoil);
+sideCoilFront.rotation.x = -Math.PI / 2;
+sideCoilFront.position.y = halfW - 0.005;
+sideCoilFront.receiveShadow = true;
+spoolRotor.add(sideCoilFront);
+
+let sideCoilBackGeo = createSideCoilGeo(S.maxWindR);
+const sideCoilBack = new THREE.Mesh(sideCoilBackGeo, matSideCoil);
+sideCoilBack.rotation.x = Math.PI / 2;
+sideCoilBack.position.y = -halfW + 0.005;
+sideCoilBack.receiveShadow = true;
+spoolRotor.add(sideCoilBack);
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   AERODYNAMIC UNROLLING FILAMENT STRAND & CINEMATIC CAMERA
+   ═══════════════════════════════════════════════════════════════════ */
+const PEEL_RAD = 18 * Math.PI / 180; // Top-front rim peel angle
+const cosP = Math.cos(PEEL_RAD);
+const sinP = Math.sin(PEEL_RAD);
+
+// Pure circumferential tangent (+theta direction)
+const tLocal = new THREE.Vector3(-sinP, 0, cosP);
+
+// 13-point smooth aerodynamic trajectory across studio in stage space
+const strandPoints = [
+    new THREE.Vector3(-1.45,  1.78,  0.05), // P_anc: snug on roll surface
+    new THREE.Vector3(-1.10,  1.79,  0.15), // P0: Dynamic peel point on roll
+    new THREE.Vector3(-0.79,  1.72,  0.38), // P1: Smooth tangent departure
+    new THREE.Vector3(-0.35,  1.66,  0.68), // P2: Tangent lift into air
+    new THREE.Vector3( 0.25,  1.56,  1.02), // P3: Tangent arc fusion
+    new THREE.Vector3( 1.45,  1.18,  0.92), // P4: Smooth sweeping glide to the right
+    new THREE.Vector3( 2.45,  0.50,  0.65), // P5: Gentle aerodynamic curve
+    new THREE.Vector3( 2.75, -0.35,  0.40), // P6: Wide radius banking down
+    new THREE.Vector3( 2.25, -1.25,  0.15), // P7: Inward sweeping flourish
+    new THREE.Vector3( 1.20, -1.95, -0.05), // P8: Flowing across lower center
+    new THREE.Vector3(-0.05, -2.60, -0.20), // P9: Low studio floor flow
+    new THREE.Vector3( 0.50, -3.45, -0.15), // P10: Continuous ribbon loop
+    new THREE.Vector3( 1.40, -4.30,  0.10), // P11: Trailing off gracefully
+];
+
+let strandCurve = new THREE.CatmullRomCurve3(strandPoints, false, 'centripetal', 0.5);
+const RADIAL_SEGS = 16;
+const INDICES_PER_SEG = RADIAL_SEGS * 6; // Exactly 96 indices per tubular segment
+const TUBE_SEGS = 260;
+let strandGeo = new THREE.TubeGeometry(strandCurve, TUBE_SEGS, S.strandR, RADIAL_SEGS, false);
+const strandMesh = new THREE.Mesh(strandGeo, matUnrolledStrand);
+strandMesh.castShadow = false;
+stage.add(strandMesh); // Placed directly in stage coordinates
+
+// Watertight Solid Polymer Tip Cap (cleanly seals the tube end without any hole or clipping)
+const tipCapGeo = new THREE.SphereGeometry(S.strandR * 1.08, 24, 16);
+const tipCapMesh = new THREE.Mesh(tipCapGeo, matUnrolledStrand);
+tipCapMesh.castShadow = false;
+tipCapMesh.visible = false;
+stage.add(tipCapMesh);
+
+/* ═══════════════════════════════════════════════════════════════════
+   CINEMATIC MULTI-ANGLE CAMERA CHOREOGRAPHY
+   ═══════════════════════════════════════════════════════════════════ */
+const cameraSpline = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-2.20,  0.35, 8.5), // 0.00: Hero start with generous breathing margins on all sides
+    new THREE.Vector3(-2.40,  0.40, 8.8), // 0.25: Gentle elevation and lateral tracking as peel begins
+    new THREE.Vector3(-2.60,  0.42, 9.1), // 0.50: Clean bore framing, zero clipping on left/top
+    new THREE.Vector3(-2.70,  0.40, 9.3), // 0.75: Spool comfortably framed on left, wire sweeps right
+    new THREE.Vector3(-2.75,  0.38, 9.5), // 1.00: Final stage with large spool cleanly framed and rolling
+], false, 'catmullrom', 0.5);
+
+const lookAtSpline = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-3.30,  0.15, 0.0), // 0.00: Centered on spool and strand
+    new THREE.Vector3(-3.40,  0.25, 0.2), // 0.25: Tracking peel point
+    new THREE.Vector3(-3.50,  0.35, 0.4), // 0.50: Centered vertically and horizontally
+    new THREE.Vector3(-3.55,  0.40, 0.6), // 0.75: Continuing smooth track
+    new THREE.Vector3(-3.60,  0.45, 0.7), // 1.00: Last stage resting frame
+], false, 'catmullrom', 0.5);
+
+/* ═══════════════════════════════════════════════════════════════════
+   SCROLL ENGINE & 3-SECOND SMOOTH UNROLL TRANSITION
+   ═══════════════════════════════════════════════════════════════════ */
+let targetProgress = 0;
+let currentProgress = 0;
+let spoolRotationAngle = 0;
+let continuousRollAngle = 0;
+const scrollPercentEl = document.getElementById('scroll-percent');
+const resetScrollBtn = document.getElementById('reset-scroll-btn');
+
+let isTransitioning = false;
+let transStartTime = 0;
+let transDuration = 1500; // 1.5 seconds to reach 100%
+let transStartP = 0;
+let transTargetP = 0;
+
+function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+window.animateRollTo = function (destP, duration = 1500) {
+    transStartP = currentProgress;
+    transTargetP = Math.max(0, Math.min(1.0, destP));
+    transStartTime = performance.now();
+    transDuration = duration;
+    isTransitioning = true;
+};
+
+function getHeroRunway() {
+    const scrollSpacer = document.querySelector('.scroll-spacer');
+    if (scrollSpacer && scrollSpacer.offsetHeight > window.innerHeight) {
+        return scrollSpacer.offsetHeight - window.innerHeight;
+    }
+    return Math.max(window.innerHeight * 1.6, 900);
+}
+
+function handleScroll() {
+    if (isTransitioning) return;
+    const runway = getHeroRunway();
+    if (runway > 0) {
+        const raw = window.pageYOffset / runway;
+        targetProgress = Math.min(1.0, Math.max(0.0, isNaN(raw) ? 0 : raw));
+    } else {
+        targetProgress = 0;
+    }
+}
+
+window.addEventListener('scroll', handleScroll, { passive: true });
+window.addEventListener('resize', handleScroll);
+window.addEventListener('pageshow', () => {
+    window.scrollTo(0, 0);
+    handleScroll();
+});
+handleScroll();
+
+window.__DEBUG__ = {
+    getTargetProgress: () => targetProgress,
+    getCurrentProgress: () => currentProgress,
+    getActiveFrame: () => activeCalibFrame,
+    getStartCalib: () => SPOOL_CALIB_START,
+    getEndCalib: () => SPOOL_CALIB_END,
+    setTargetProgress: (v) => { targetProgress = v; currentProgress = v; },
+    animateRollTo: (v, dur) => window.animateRollTo(v, dur),
+    camera,
+    stage,
+    spoolPose
+};
+
+// Interactive Mouse Parallax
+let mouseX = 0, mouseY = 0;
+let targetMouseX = 0, targetMouseY = 0;
+window.addEventListener('mousemove', (e) => {
+    targetMouseX = (e.clientX / innerWidth - 0.5) * 2;
+    targetMouseY = (e.clientY / innerHeight - 0.5) * 2;
+}, { passive: true });
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN RENDER LOOP (60FPS DETERMINISTIC, REAL FORWARD ROTATION)
+   ═══════════════════════════════════════════════════════════════════ */
+const _camPos = new THREE.Vector3();
+const _lookTarget = new THREE.Vector3();
+const _p0Local = new THREE.Vector3();
+const _p1Local = new THREE.Vector3();
+const _p2Local = new THREE.Vector3();
+const _p3Local = new THREE.Vector3();
+let prevRadius = S.maxWindR;
+let lastStrandP = -1;
+
+function render() {
+    requestAnimationFrame(render);
+
+    if (isTransitioning) {
+        const elapsed = performance.now() - transStartTime;
+        const t = Math.min(1.0, elapsed / transDuration);
+        const easedT = easeInOutCubic(t);
+        currentProgress = transStartP + (transTargetP - transStartP) * easedT;
+        targetProgress = currentProgress;
+
+        const runway = getHeroRunway();
+        if (runway > 0) {
+            window.scrollTo(0, currentProgress * runway);
+        }
+
+        if (t >= 1.0) {
+            currentProgress = transTargetP;
+            isTransitioning = false;
+        }
+    } else {
+        if (isNaN(targetProgress) || !isFinite(targetProgress)) targetProgress = 0;
+        if (isNaN(currentProgress) || !isFinite(currentProgress)) currentProgress = 0;
+
+        currentProgress += (targetProgress - currentProgress) * 0.085;
+        if (Math.abs(targetProgress - currentProgress) < 0.0001) {
+            currentProgress = targetProgress;
+        }
+    }
+    const p = Math.min(1.0, Math.max(0.0, currentProgress));
+
+    mouseX += (targetMouseX - mouseX) * 0.05;
+    mouseY += (targetMouseY - mouseY) * 0.05;
+
+    const runway = getHeroRunway();
+    const excessScroll = Math.max(0, window.pageYOffset - runway);
+
+    const pct = Math.round(p * 100);
+    if (scrollPercentEl) {
+        scrollPercentEl.textContent = p >= 0.99 ? 'Unrolling Complete • 100%' : `Scroll to unroll filament • ${pct}%`;
+    }
+    if (resetScrollBtn) {
+        resetScrollBtn.style.display = p > 0.05 ? 'inline-block' : 'none';
+    }
+
+    // Smoothly fade out scroll status pill when scrolling down into printer showcase
+    const scrollStatusEl = document.getElementById('scroll-status');
+    if (scrollStatusEl) {
+        if (excessScroll > 40) {
+            scrollStatusEl.style.opacity = '0';
+            scrollStatusEl.style.pointerEvents = 'none';
+            scrollStatusEl.style.transform = 'translateX(-50%) translateY(24px)';
+        } else {
+            scrollStatusEl.style.opacity = '1';
+            scrollStatusEl.style.pointerEvents = 'auto';
+            scrollStatusEl.style.transform = 'translateX(-50%) translateY(0)';
+        }
+    }
+
+    if (typeof syncFrameSelectorFromScroll === 'function') {
+        syncFrameSelectorFromScroll(p);
+    }
+
+    /* 1. Dynamic Spool Radius (Shrinks uniformly as filament is consumed) */
+    const wp = Math.pow(p, 0.70);
+    const currentR = THREE.MathUtils.lerp(S.maxWindR, S.minWindR, wp);
+
+    if (Math.abs(currentR - prevRadius) > 0.003) {
+        woundCylGeo.dispose();
+        woundCylGeo = new THREE.CylinderGeometry(currentR, currentR, S.width - 0.02, 96, 1, true);
+        woundMesh.geometry = woundCylGeo;
+
+        sideCoilFrontGeo.dispose();
+        sideCoilFrontGeo = createSideCoilGeo(currentR);
+        sideCoilFront.geometry = sideCoilFrontGeo;
+
+        sideCoilBackGeo.dispose();
+        sideCoilBackGeo = createSideCoilGeo(currentR);
+        sideCoilBack.geometry = sideCoilBackGeo;
+
+        prevRadius = currentR;
+    }
+
+    /* 2. FORWARD CLOCKWISE ROTATION WITH CONTINUOUS END-STAGE ROLLING:
+          Rolls forward as filament peels, and smoothly keeps slowly rolling */
+    continuousRollAngle -= 0.005;
+    const targetSpoolAngle = -p * Math.PI * 4.6 + continuousRollAngle;
+    spoolRotationAngle += (targetSpoolAngle - spoolRotationAngle) * 0.12;
+    spoolRotor.rotation.y = spoolRotationAngle;
+
+    /* Dynamic Stage Interpolation: Smooth transition from Initial to Last Stage Pose */
+    const curPosX = THREE.MathUtils.lerp(SPOOL_CALIB_START.posX, SPOOL_CALIB_END.posX, p);
+    let curPosY = THREE.MathUtils.lerp(SPOOL_CALIB_START.posY, SPOOL_CALIB_END.posY, p);
+    const curPosZ = THREE.MathUtils.lerp(SPOOL_CALIB_START.posZ, SPOOL_CALIB_END.posZ, p);
+    const curScale = THREE.MathUtils.lerp(SPOOL_CALIB_START.scale, SPOOL_CALIB_END.scale, p);
+
+    // Continuous 3D exit: smoothly scroll the spool upward out of the viewport in 3D
+    // when the user scrolls past the hero runway into the printer section,
+    // completely eliminating any horizontal 2D slicing or cutting!
+    if (excessScroll > 0) {
+        const exitRatio = Math.min(1.5, excessScroll / (window.innerHeight * 0.85));
+        curPosY += exitRatio * 8.5;
+    }
+
+    stage.position.set(curPosX, curPosY, curPosZ);
+    stage.scale.set(curScale, curScale, curScale);
+
+    const curRotXDeg = THREE.MathUtils.lerp(SPOOL_CALIB_START.rotXDeg, SPOOL_CALIB_END.rotXDeg, p);
+    const curRotYDeg = THREE.MathUtils.lerp(SPOOL_CALIB_START.rotYDeg, SPOOL_CALIB_END.rotYDeg, p);
+    const curRotZDeg = THREE.MathUtils.lerp(SPOOL_CALIB_START.rotZDeg, SPOOL_CALIB_END.rotZDeg, p);
+
+    const baseRotX = (curRotXDeg * Math.PI) / 180;
+    const baseRotY = (curRotYDeg * Math.PI) / 180;
+    const baseRotZ = (curRotZDeg * Math.PI) / 180;
+
+    /* Enhanced Interactive Kinetic Hover Parallax with Adjustable Multiplier */
+    const hoverMult = (typeof GLASS_HOVER_CONFIG !== 'undefined') ? GLASS_HOVER_CONFIG.hoverIntensity : 1.8;
+    const hoverPitch = mouseY * (0.075 * hoverMult);
+    const hoverYaw = mouseX * (0.135 * hoverMult);
+    const hoverRoll = mouseX * (-0.035 * hoverMult);
+
+    spoolPose.rotation.x = baseRotX + Math.sin(p * Math.PI) * 0.06 + hoverPitch;
+    spoolPose.rotation.y = baseRotY + Math.sin(p * Math.PI) * 0.10 + hoverYaw;
+    spoolPose.rotation.z = baseRotZ - Math.sin(p * Math.PI) * 0.03 + hoverRoll;
+
+    // Subtle 3D floating translation responsive to mouse hover
+    const hoverShiftX = mouseX * (0.12 * hoverMult);
+    const hoverShiftY = -mouseY * (0.08 * hoverMult);
+    spoolPose.position.set(hoverShiftX, hoverShiftY, 0.0);
+
+    /* 3. Spool Stays Anchored in Viewport (Zero off-screen exit) */
+    spoolAnchor.position.x = -1.40;
+
+    /* 4. Local Tangent Peel Mechanics (Zero Kinks, C2-Continuous Flow):
+          P_anc, P0, P1, P2, P3 are computed in local spool frame along the pure circumferential
+          tangent and transformed smoothly into stage coordinate space */
+    const traverseY = Math.sin(p * Math.PI * 6.0) * (halfW * 0.40);
+
+    const anchorAngle = PEEL_RAD - 0.28;
+    const _pAncLocal = new THREE.Vector3(currentR * Math.cos(anchorAngle), traverseY, currentR * Math.sin(anchorAngle));
+    _p0Local.set(currentR * cosP, traverseY, currentR * sinP);
+    _p1Local.copy(_p0Local).addScaledVector(tLocal, 0.40);
+    _p2Local.copy(_p0Local).addScaledVector(tLocal, 0.85);
+    const _p3Local = _p0Local.clone().addScaledVector(tLocal, 1.45);
+
+    spoolAnchor.updateMatrixWorld(true);
+    spoolPose.updateMatrix();
+
+    const m = spoolPose.matrixWorld;
+    const pAncWorld = _pAncLocal.clone().applyMatrix4(m);
+    const p0World = _p0Local.clone().applyMatrix4(m);
+    const p1World = _p1Local.clone().applyMatrix4(m);
+    const p2World = _p2Local.clone().applyMatrix4(m);
+    const p3World = _p3Local.clone().applyMatrix4(m);
+
+    stage.worldToLocal(pAncWorld);
+    stage.worldToLocal(p0World);
+    stage.worldToLocal(p1World);
+    stage.worldToLocal(p2World);
+    stage.worldToLocal(p3World);
+
+    strandPoints[0].copy(pAncWorld);
+    strandPoints[1].copy(p0World);
+    strandPoints[2].copy(p1World);
+    strandPoints[3].copy(p2World);
+    strandPoints[4].copy(p3World);
+
+    if (Math.abs(p - lastStrandP) > 0.0006 || lastStrandP < 0) {
+        strandGeo.dispose();
+        strandCurve = new THREE.CatmullRomCurve3(strandPoints, false, 'centripetal', 0.5);
+        strandGeo = new THREE.TubeGeometry(strandCurve, TUBE_SEGS, S.strandR, RADIAL_SEGS, false);
+        strandMesh.geometry = strandGeo;
+        lastStrandP = p;
+    }
+
+    /* 5. Trailing Filament Reveal with Smooth Dynamic Peel */
+    const reveal = Math.min(1.0, Math.pow(p, 0.78) * 1.15);
+    const completedSegs = Math.floor(reveal * TUBE_SEGS);
+    const drawCount = completedSegs * INDICES_PER_SEG;
+
+    strandGeo.setDrawRange(0, drawCount);
+    strandMesh.visible = completedSegs > 0;
+
+    if (completedSegs > 0) {
+        tipCapMesh.visible = true;
+        const uTip = Math.min(1.0, completedSegs / TUBE_SEGS);
+        strandCurve.getPoint(uTip, tipCapMesh.position);
+    } else {
+        tipCapMesh.visible = false;
+    }
+
+    /* Hero brand dispersion handled via WebGL & Curl Noise in lib/hero-dispersion.js */
+
+    /* 6. Dynamic Robotic Studio Camera Tracking & Parallax */
+    cameraSpline.getPointAt(p, _camPos);
+    lookAtSpline.getPointAt(p, _lookTarget);
+
+    _camPos.x += mouseX * (0.07 * hoverMult);
+    _camPos.y += -mouseY * (0.05 * hoverMult);
+
+    camera.position.copy(_camPos);
+    camera.lookAt(_lookTarget);
+
+    /* 7. Subtle Cinematic Banking */
+    const dutchTilt = Math.sin(p * Math.PI) * -0.065;
+    camera.rotation.z += dutchTilt;
+
+    /* 8. Studio Dynamic Key Light & Photorealistic Gaussian Contact Shadow Tracking */
+    const _spoolCenter = new THREE.Vector3();
+    spoolPose.getWorldPosition(_spoolCenter);
+
+    keyLightTarget.position.copy(_spoolCenter);
+    keyLight.position.set(_spoolCenter.x + 1.2, _spoolCenter.y + 10.5, _spoolCenter.z + 2.2);
+
+    // Dynamic ground shadow orientation & scale tracking
+    const _cylAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(spoolPose.getWorldQuaternion(new THREE.Quaternion()));
+    const shadowRotationAngle = Math.atan2(-_cylAxis.z, _cylAxis.x);
+    contactShadowMesh.rotation.z = shadowRotationAngle;
+
+    contactShadowMesh.position.x = _spoolCenter.x - 0.16;
+    contactShadowMesh.position.z = _spoolCenter.z - 0.22;
+
+    const shadowWidth = curScale * 4.9;
+    const shadowHeight = curScale * 3.7;
+    contactShadowMesh.scale.set(shadowWidth, shadowHeight, 1.0);
+    contactShadowMat.opacity = 0.62;
+
+    renderer.render(scene, camera);
+}
+
+// Start render loop
+render();
+
+/* ═══════════════════════════════════════════════════════════════════
+   WINDOW RESIZE
+   ═══════════════════════════════════════════════════════════════════ */
+window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    handleScroll();
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   STUDIO CONTROLS INTERACTIVE ENGINE (COLOR & MATERIAL TWEAKER)
+   ═══════════════════════════════════════════════════════════════════ */
+window.setFilamentColor = function (hex) {
+    const col = new THREE.Color(hex);
+    matWoundFilament.color.copy(col);
+    if (typeof matSideCoil !== 'undefined') matSideCoil.color.copy(col);
+    matUnrolledStrand.color.copy(col);
+    if (window.printerStudio && typeof window.printerStudio.setFilamentColor === 'function') {
+        window.printerStudio.setFilamentColor(col);
+    }
+
+    const hexStr = '#' + col.getHexString().toUpperCase();
+    const hexLabel = document.getElementById('active-hex-label');
+    if (hexLabel) hexLabel.textContent = hexStr;
+
+    const ind = document.getElementById('toggle-indicator');
+    if (ind) ind.style.background = hexStr;
+};
+
+window.setMaterialFinish = function (type) {
+    const rSlider = document.getElementById('slider-roughness');
+    const cSlider = document.getElementById('slider-clearcoat');
+    const sSlider = document.getElementById('slider-sheen');
+
+    if (type === 'matte') {
+        matWoundFilament.roughness = matUnrolledStrand.roughness = 0.90;
+        matWoundFilament.clearcoat = matUnrolledStrand.clearcoat = 0.00;
+        matWoundFilament.sheen = matUnrolledStrand.sheen = 0.00;
+        matWoundFilament.metalness = matUnrolledStrand.metalness = 0.00;
+        if (typeof matSideCoil !== 'undefined') {
+            matSideCoil.roughness = 0.90;
+            matSideCoil.clearcoat = 0.00;
+            matSideCoil.sheen = 0.00;
+            matSideCoil.metalness = 0.00;
+        }
+    } else if (type === 'silk') {
+        matWoundFilament.roughness = matUnrolledStrand.roughness = 0.22;
+        matWoundFilament.clearcoat = matUnrolledStrand.clearcoat = 0.70;
+        matWoundFilament.sheen = matUnrolledStrand.sheen = 0.95;
+        matWoundFilament.metalness = matUnrolledStrand.metalness = 0.02;
+        if (typeof matSideCoil !== 'undefined') {
+            matSideCoil.roughness = 0.22;
+            matSideCoil.clearcoat = 0.70;
+            matSideCoil.sheen = 0.95;
+            matSideCoil.metalness = 0.02;
+        }
+    } else if (type === 'carbon') {
+        matWoundFilament.roughness = matUnrolledStrand.roughness = 0.75;
+        matWoundFilament.clearcoat = matUnrolledStrand.clearcoat = 0.04;
+        matWoundFilament.sheen = matUnrolledStrand.sheen = 0.08;
+        matWoundFilament.metalness = matUnrolledStrand.metalness = 0.12;
+        if (typeof matSideCoil !== 'undefined') {
+            matSideCoil.roughness = 0.75;
+            matSideCoil.clearcoat = 0.04;
+            matSideCoil.sheen = 0.08;
+            matSideCoil.metalness = 0.12;
+        }
+    }
+
+    if (rSlider) { rSlider.value = matWoundFilament.roughness; document.getElementById('val-roughness').textContent = matWoundFilament.roughness; }
+    if (cSlider) { cSlider.value = matWoundFilament.clearcoat; document.getElementById('val-clearcoat').textContent = matWoundFilament.clearcoat; }
+    if (sSlider) { sSlider.value = matWoundFilament.sheen; document.getElementById('val-sheen').textContent = matWoundFilament.sheen; }
+};
+
+window.toggleStudioCtrl = function (forceState) {
+    const ctrl = document.getElementById('studio-ctrl');
+    if (!ctrl) return;
+    const isCurrentlyHidden = (ctrl.style.display === 'none' || ctrl.classList.contains('minimized'));
+    const shouldShow = (typeof forceState === 'boolean') ? forceState : isCurrentlyHidden;
+    if (shouldShow) {
+        ctrl.style.display = 'block';
+        requestAnimationFrame(() => {
+            ctrl.classList.remove('minimized');
+        });
+    } else {
+        ctrl.classList.add('minimized');
+        setTimeout(() => {
+            if (ctrl.classList.contains('minimized')) {
+                ctrl.style.display = 'none';
+            }
+        }, 320);
+    }
+};
+window.showStudioCtrl = () => window.toggleStudioCtrl(true);
+window.hideStudioCtrl = () => window.toggleStudioCtrl(false);
+
+// Developer Quick Toggle: Press Shift + C anytime to reveal/hide the tweak bar
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'C' && e.shiftKey && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        window.toggleStudioCtrl();
+    }
+});
+
+// Wire UI Event Listeners
+document.querySelectorAll('.swatch-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.swatch-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const color = btn.dataset.color;
+        window.setFilamentColor(color);
+    });
+});
+
+const customInput = document.getElementById('custom-color-input');
+if (customInput) {
+    customInput.addEventListener('input', (e) => {
+        document.querySelectorAll('.swatch-btn').forEach(b => b.classList.remove('active'));
+        window.setFilamentColor(e.target.value);
+    });
+}
+
+document.querySelectorAll('.finish-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.finish-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        window.setMaterialFinish(btn.dataset.finish);
+    });
+});
+
+const rSlider = document.getElementById('slider-roughness');
+if (rSlider) {
+    rSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        matWoundFilament.roughness = matSideCoil.roughness = matUnrolledStrand.roughness = val;
+        document.getElementById('val-roughness').textContent = val.toFixed(2);
+    });
+}
+
+const cSlider = document.getElementById('slider-clearcoat');
+if (cSlider) {
+    cSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        matWoundFilament.clearcoat = matSideCoil.clearcoat = matUnrolledStrand.clearcoat = val;
+        document.getElementById('val-clearcoat').textContent = val.toFixed(2);
+    });
+}
+
+const sSlider = document.getElementById('slider-sheen');
+if (sSlider) {
+    sSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        matWoundFilament.sheen = matSideCoil.sheen = matUnrolledStrand.sheen = val;
+        document.getElementById('val-sheen').textContent = val.toFixed(2);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 3D PLACEMENT & ORIENTATION CALIBRATOR LOGIC
+// ═══════════════════════════════════════════════════════════════════
+function getActiveCalibState() {
+    return activeCalibFrame === 'start' ? SPOOL_CALIB_START : SPOOL_CALIB_END;
+}
+
+window.setCalibFrame = function (frame, shouldScroll = true) {
+    if (frame !== 'start' && frame !== 'end') return;
+    activeCalibFrame = frame;
+
+    const btnStart = document.getElementById('btn-frame-start');
+    const btnEnd = document.getElementById('btn-frame-end');
+    if (btnStart) btnStart.classList.toggle('active', frame === 'start');
+    if (btnEnd) btnEnd.classList.toggle('active', frame === 'end');
+
+    if (shouldScroll) {
+        if (frame === 'start') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            const runway = getHeroRunway();
+            window.scrollTo({ top: runway, behavior: 'smooth' });
+        }
+    }
+
+    syncCalibInputsFromState();
+};
+
+function formatSingleFrameCode(name, obj) {
+    const radX = (obj.rotXDeg * Math.PI / 180).toFixed(4);
+    const radY = (obj.rotYDeg * Math.PI / 180).toFixed(4);
+    const radZ = (obj.rotZDeg * Math.PI / 180).toFixed(4);
+    return `// 3D Filament Spool Placement & Orientation (${name === 'start' ? 'Start Frame • 0%' : 'Last Frame • 100%'})
+const SPOOL_CALIBRATION = {
+  posX: ${obj.posX.toFixed(2)},
+  posY: ${obj.posY.toFixed(2)},
+  posZ: ${obj.posZ.toFixed(2)},
+  rotXDeg: ${obj.rotXDeg.toFixed(1)}, // rad: ${radX}
+  rotYDeg: ${obj.rotYDeg.toFixed(1)}, // rad: ${radY}
+  rotZDeg: ${obj.rotZDeg.toFixed(1)}, // rad: ${radZ}
+  scale: ${obj.scale.toFixed(2)}
+};`;
+}
+
+function formatBothFramesCode() {
+    const radX = (obj) => (obj.rotXDeg * Math.PI / 180).toFixed(4);
+    const radY = (obj) => (obj.rotYDeg * Math.PI / 180).toFixed(4);
+    const radZ = (obj) => (obj.rotZDeg * Math.PI / 180).toFixed(4);
+
+    return `// 3D Filament Spool Placement & Orientation (Both Frames)
+const SPOOL_CALIBRATION = {
+  start: {
+    posX: ${SPOOL_CALIB_START.posX.toFixed(2)},
+    posY: ${SPOOL_CALIB_START.posY.toFixed(2)},
+    posZ: ${SPOOL_CALIB_START.posZ.toFixed(2)},
+    rotXDeg: ${SPOOL_CALIB_START.rotXDeg.toFixed(1)}, // rad: ${radX(SPOOL_CALIB_START)}
+    rotYDeg: ${SPOOL_CALIB_START.rotYDeg.toFixed(1)}, // rad: ${radY(SPOOL_CALIB_START)}
+    rotZDeg: ${SPOOL_CALIB_START.rotZDeg.toFixed(1)}, // rad: ${radZ(SPOOL_CALIB_START)}
+    scale: ${SPOOL_CALIB_START.scale.toFixed(2)}
+  },
+  end: {
+    posX: ${SPOOL_CALIB_END.posX.toFixed(2)},
+    posY: ${SPOOL_CALIB_END.posY.toFixed(2)},
+    posZ: ${SPOOL_CALIB_END.posZ.toFixed(2)},
+    rotXDeg: ${SPOOL_CALIB_END.rotXDeg.toFixed(1)}, // rad: ${radX(SPOOL_CALIB_END)}
+    rotYDeg: ${SPOOL_CALIB_END.rotYDeg.toFixed(1)}, // rad: ${radY(SPOOL_CALIB_END)}
+    rotZDeg: ${SPOOL_CALIB_END.rotZDeg.toFixed(1)}, // rad: ${radZ(SPOOL_CALIB_END)}
+    scale: ${SPOOL_CALIB_END.scale.toFixed(2)}
+  }
+};`;
+}
+
+function updateCalibCodeDisplay() {
+    const el = document.getElementById('calib-code-display');
+    const badgeEl = document.getElementById('calib-active-frame-badge');
+    const labelEl = document.getElementById('calib-code-frame-label');
+    if (badgeEl) {
+        badgeEl.textContent = activeCalibFrame === 'start' ? 'Editing: Start (0%)' : 'Editing: Last (100%)';
+        badgeEl.style.color = activeCalibFrame === 'start' ? '#0284c7' : '#16a34a';
+        badgeEl.style.background = activeCalibFrame === 'start' ? 'rgba(2,132,199,0.1)' : 'rgba(22,163,74,0.1)';
+    }
+    if (labelEl) {
+        labelEl.textContent = activeCalibFrame === 'start' ? 'Start Frame (0%)' : 'Last Frame (100%)';
+    }
+    if (!el) return;
+    el.textContent = formatBothFramesCode();
+}
+
+function syncCalibInputsFromState() {
+    const state = getActiveCalibState();
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+    };
+    setVal('calib-pos-x', state.posX);
+    setVal('calib-num-pos-x', state.posX.toFixed(2));
+    setVal('calib-pos-y', state.posY);
+    setVal('calib-num-pos-y', state.posY.toFixed(2));
+    setVal('calib-pos-z', state.posZ);
+    setVal('calib-num-pos-z', state.posZ.toFixed(2));
+
+    setVal('calib-rot-x', state.rotXDeg);
+    setVal('calib-num-rot-x', state.rotXDeg.toFixed(1));
+    setVal('calib-rot-y', state.rotYDeg);
+    setVal('calib-num-rot-y', state.rotYDeg.toFixed(1));
+    setVal('calib-rot-z', state.rotZDeg);
+    setVal('calib-num-rot-z', state.rotZDeg.toFixed(1));
+
+    setVal('calib-scale', state.scale);
+    setVal('calib-num-scale', state.scale.toFixed(2));
+
+    updateCalibCodeDisplay();
+}
+
+function onCalibSliderInput() {
+    markCalibInteraction();
+    const state = getActiveCalibState();
+    const getVal = (id, fallback) => {
+        const el = document.getElementById(id);
+        return el ? parseFloat(el.value) : fallback;
+    };
+    state.posX = getVal('calib-pos-x', state.posX);
+    state.posY = getVal('calib-pos-y', state.posY);
+    state.posZ = getVal('calib-pos-z', state.posZ);
+    state.rotXDeg = getVal('calib-rot-x', state.rotXDeg);
+    state.rotYDeg = getVal('calib-rot-y', state.rotYDeg);
+    state.rotZDeg = getVal('calib-rot-z', state.rotZDeg);
+    state.scale = getVal('calib-scale', state.scale);
+
+    // Sync numeric fields
+    const setNum = (id, val, dec) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val.toFixed(dec);
+    };
+    setNum('calib-num-pos-x', state.posX, 2);
+    setNum('calib-num-pos-y', state.posY, 2);
+    setNum('calib-num-pos-z', state.posZ, 2);
+    setNum('calib-num-rot-x', state.rotXDeg, 1);
+    setNum('calib-num-rot-y', state.rotYDeg, 1);
+    setNum('calib-num-rot-z', state.rotZDeg, 1);
+    setNum('calib-num-scale', state.scale, 2);
+
+    updateCalibCodeDisplay();
+}
+
+function onCalibNumberInput() {
+    markCalibInteraction();
+    const state = getActiveCalibState();
+    const getVal = (id, fallback) => {
+        const el = document.getElementById(id);
+        const v = el ? parseFloat(el.value) : fallback;
+        return isNaN(v) ? fallback : v;
+    };
+    state.posX = getVal('calib-num-pos-x', state.posX);
+    state.posY = getVal('calib-num-pos-y', state.posY);
+    state.posZ = getVal('calib-num-pos-z', state.posZ);
+    state.rotXDeg = getVal('calib-num-rot-x', state.rotXDeg);
+    state.rotYDeg = getVal('calib-num-rot-y', state.rotYDeg);
+    state.rotZDeg = getVal('calib-num-rot-z', state.rotZDeg);
+    state.scale = getVal('calib-num-scale', state.scale);
+
+    // Sync range sliders
+    const setSlider = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+    };
+    setSlider('calib-pos-x', state.posX);
+    setSlider('calib-pos-y', state.posY);
+    setSlider('calib-pos-z', state.posZ);
+    setSlider('calib-rot-x', state.rotXDeg);
+    setSlider('calib-rot-y', state.rotYDeg);
+    setSlider('calib-rot-z', state.rotZDeg);
+    setSlider('calib-scale', state.scale);
+
+    updateCalibCodeDisplay();
+}
+
+// Bind Calibrator Sliders and Numeric Inputs
+['calib-pos-x', 'calib-pos-y', 'calib-pos-z', 'calib-rot-x', 'calib-rot-y', 'calib-rot-z', 'calib-scale'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', onCalibSliderInput);
+});
+
+['calib-num-pos-x', 'calib-num-pos-y', 'calib-num-pos-z', 'calib-num-rot-x', 'calib-num-rot-y', 'calib-num-rot-z', 'calib-num-scale'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', onCalibNumberInput);
+        el.addEventListener('change', onCalibNumberInput);
+    }
+});
+
+// Precision Steppers & Mouse-Wheel Controls
+function stepCalibInput(id, direction, factor = 1) {
+    markCalibInteraction();
+    const input = document.getElementById(id);
+    if (!input) return;
+    const step = parseFloat(input.step) || 0.05;
+    const min = input.min !== '' ? parseFloat(input.min) : -Infinity;
+    const max = input.max !== '' ? parseFloat(input.max) : Infinity;
+    const current = parseFloat(input.value) || 0;
+    
+    const delta = step * direction * factor;
+    let next = current + delta;
+    next = Math.min(max, Math.max(min, next));
+    
+    const stepDecimals = (step.toString().split('.')[1] || '').length;
+    const decimals = factor < 1 ? stepDecimals + 1 : stepDecimals;
+    
+    input.value = next.toFixed(decimals);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+let stepperTimer = null;
+let stepperInterval = null;
+function clearStepperTimers() {
+    if (stepperTimer) { clearTimeout(stepperTimer); stepperTimer = null; }
+    if (stepperInterval) { clearInterval(stepperInterval); stepperInterval = null; }
+}
+
+document.querySelectorAll('.stepper-btn').forEach(btn => {
+    const targetId = btn.dataset.target;
+    const dir = parseInt(btn.dataset.dir, 10) || 1;
+    
+    btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const factor = e.shiftKey ? 0.2 : (e.ctrlKey ? 5 : 1);
+        stepCalibInput(targetId, dir, factor);
+        clearStepperTimers();
+        stepperTimer = setTimeout(() => {
+            stepperInterval = setInterval(() => {
+                stepCalibInput(targetId, dir, factor);
+            }, 50);
+        }, 220);
+    });
+
+    btn.addEventListener('mouseup', clearStepperTimers);
+    btn.addEventListener('mouseleave', clearStepperTimers);
+    btn.addEventListener('touchend', clearStepperTimers);
+});
+
+// Mouse Wheel Scrolling on rows & inputs for ultra-precision calibration
+document.querySelectorAll('.calib-row').forEach(row => {
+    row.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const targetId = row.dataset.target;
+        if (!targetId) return;
+        const dir = e.deltaY < 0 ? 1 : -1;
+        const factor = e.shiftKey ? 0.2 : (e.ctrlKey ? 5 : 1);
+        stepCalibInput(targetId, dir, factor);
+    }, { passive: false });
+});
+
+// Presets per active frame
+window.applyFramePreset = function (presetName) {
+    markCalibInteraction();
+    const state = getActiveCalibState();
+    if (activeCalibFrame === 'start') {
+        if (presetName === 'default' || presetName === 'far-left') {
+            Object.assign(state, SPOOL_CALIB_START_DEFAULT);
+        } else if (presetName === 'center') {
+            Object.assign(state, { posX: 0.00, posY: 0.00, posZ: 0.00, rotXDeg: -10.0, rotYDeg: 45.0, rotZDeg: 90.0, scale: 0.65 });
+        } else if (presetName === 'face') {
+            Object.assign(state, { posX: -1.20, posY: 0.00, posZ: 0.00, rotXDeg: 0.0, rotYDeg: 0.0, rotZDeg: 90.0, scale: 0.58 });
+        }
+    } else {
+        if (presetName === 'default' || presetName === 'last-stage') {
+            Object.assign(state, SPOOL_CALIB_END_DEFAULT);
+        } else if (presetName === 'center') {
+            Object.assign(state, { posX: 0.00, posY: 0.20, posZ: 1.50, rotXDeg: -10.0, rotYDeg: 50.0, rotZDeg: 85.0, scale: 1.05 });
+        } else if (presetName === 'far-left') {
+            Object.assign(state, { posX: -6.50, posY: 0.10, posZ: 0.80, rotXDeg: -12.0, rotYDeg: 60.0, rotZDeg: 85.0, scale: 0.90 });
+        } else if (presetName === 'face') {
+            Object.assign(state, { posX: -2.00, posY: 0.10, posZ: 1.00, rotXDeg: 0.0, rotYDeg: 0.0, rotZDeg: 90.0, scale: 0.80 });
+        }
+    }
+    syncCalibInputsFromState();
+};
+
+window.copyCalibConfig = function (target = 'both') {
+    const codeStr = (target === 'both') ? formatBothFramesCode() : formatSingleFrameCode(activeCalibFrame, getActiveCalibState());
+    const btnId = (target === 'both') ? 'btn-copy-both' : 'btn-copy-calib';
+    const defaultText = (target === 'both') ? '📋 Copy Both (Start + End)' : '📄 Copy Active';
+
+    function onCopySuccess() {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '✓ Copied!';
+            btn.style.background = '#16a34a';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.style.background = '';
+            }, 1800);
+        }
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codeStr).then(onCopySuccess).catch(() => {
+            copyFallback(codeStr);
+            onCopySuccess();
+        });
+    } else {
+        copyFallback(codeStr);
+        onCopySuccess();
+    }
+
+    function copyFallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) { }
+        document.body.removeChild(ta);
+    }
+};
+
+window.resetCalibConfig = function () {
+    markCalibInteraction();
+    const state = getActiveCalibState();
+    if (activeCalibFrame === 'start') {
+        Object.assign(state, SPOOL_CALIB_START_DEFAULT);
+    } else {
+        Object.assign(state, SPOOL_CALIB_END_DEFAULT);
+    }
+    syncCalibInputsFromState();
+};
+
+// Studio Tabs Switching
+document.querySelectorAll('.studio-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.studio-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.studio-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const targetId = btn.dataset.tab;
+        const targetPane = document.getElementById(targetId);
+        if (targetPane) targetPane.classList.add('active');
+    });
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   FROSTED GLASS & REEL HOVER CONTROLLER
+   ═══════════════════════════════════════════════════════════════════ */
+function formatGlassCode() {
+    return `// Frosted Glass & Reel Hover Calibration
+const GLASS_HOVER_CALIBRATION = {
+  hoverIntensity: ${GLASS_HOVER_CONFIG.hoverIntensity.toFixed(1)},
+  blur: ${GLASS_HOVER_CONFIG.blur.toFixed(0)},           // px
+  opacity: ${GLASS_HOVER_CONFIG.opacity.toFixed(2)},      // 0.0 to 1.0
+  noiseDensity: ${GLASS_HOVER_CONFIG.noiseDensity.toFixed(2)}, // grain frequency
+  noiseSize: ${GLASS_HOVER_CONFIG.noiseSize.toFixed(0)},        // px
+  noiseOpacity: ${GLASS_HOVER_CONFIG.noiseOpacity.toFixed(2)}  // 0.0 to 1.0
+};`;
+}
+
+function updateGlassAndHover() {
+    const nav = document.getElementById('liquid-glass-nav');
+    if (nav) {
+        const isDark = document.body.classList.contains('dark-mode') || document.documentElement.classList.contains('dark');
+        const bgRgba = isDark 
+            ? `rgba(16, 20, 28, ${Math.max(GLASS_HOVER_CONFIG.opacity * 6, 0.45)})`
+            : `rgba(255, 255, 255, ${GLASS_HOVER_CONFIG.opacity})`;
+        nav.style.setProperty('--glass-bg', bgRgba);
+        nav.style.setProperty('--glass-blur', `${GLASS_HOVER_CONFIG.blur}px`);
+        
+        // Generate SVG noise filter with custom density (baseFrequency)
+        const svg = `<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='${GLASS_HOVER_CONFIG.noiseDensity}' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(#n)'/></svg>`;
+        const dataUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+        nav.style.setProperty('--glass-noise-url', dataUrl);
+        nav.style.setProperty('--glass-noise-size', `${GLASS_HOVER_CONFIG.noiseSize}px`);
+        nav.style.setProperty('--glass-noise-opacity', isDark ? (GLASS_HOVER_CONFIG.noiseOpacity * 0.75).toFixed(2) : GLASS_HOVER_CONFIG.noiseOpacity);
+    }
+
+    const codeDisplay = document.getElementById('glass-code-display');
+    if (codeDisplay) {
+        codeDisplay.textContent = formatGlassCode();
+    }
+}
+
+function onGlassInput() {
+    markCalibInteraction();
+    const getVal = (id, fallback) => {
+        const el = document.getElementById(id);
+        const v = el ? parseFloat(el.value) : fallback;
+        return isNaN(v) ? fallback : v;
+    };
+    GLASS_HOVER_CONFIG.hoverIntensity = getVal('glass-num-hover', GLASS_HOVER_CONFIG.hoverIntensity);
+    GLASS_HOVER_CONFIG.blur = getVal('glass-num-blur', GLASS_HOVER_CONFIG.blur);
+    GLASS_HOVER_CONFIG.opacity = getVal('glass-num-opacity', GLASS_HOVER_CONFIG.opacity);
+    GLASS_HOVER_CONFIG.noiseDensity = getVal('glass-num-noise-density', GLASS_HOVER_CONFIG.noiseDensity);
+    GLASS_HOVER_CONFIG.noiseSize = getVal('glass-num-noise-size', GLASS_HOVER_CONFIG.noiseSize);
+    GLASS_HOVER_CONFIG.noiseOpacity = getVal('glass-num-noise-opacity', GLASS_HOVER_CONFIG.noiseOpacity);
+
+    // Sync sliders
+    const setSlider = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+    };
+    setSlider('glass-hover', GLASS_HOVER_CONFIG.hoverIntensity);
+    setSlider('glass-blur', GLASS_HOVER_CONFIG.blur);
+    setSlider('glass-opacity', GLASS_HOVER_CONFIG.opacity);
+    setSlider('glass-noise-density', GLASS_HOVER_CONFIG.noiseDensity);
+    setSlider('glass-noise-size', GLASS_HOVER_CONFIG.noiseSize);
+    setSlider('glass-noise-opacity', GLASS_HOVER_CONFIG.noiseOpacity);
+
+    updateGlassAndHover();
+}
+
+function onGlassSliderInput(e) {
+    markCalibInteraction();
+    const id = e.target.id;
+    const val = parseFloat(e.target.value);
+    const numId = id.replace('glass-', 'glass-num-');
+    const numEl = document.getElementById(numId);
+    if (numEl) numEl.value = val;
+
+    if (id === 'glass-hover') GLASS_HOVER_CONFIG.hoverIntensity = val;
+    else if (id === 'glass-blur') GLASS_HOVER_CONFIG.blur = val;
+    else if (id === 'glass-opacity') GLASS_HOVER_CONFIG.opacity = val;
+    else if (id === 'glass-noise-density') GLASS_HOVER_CONFIG.noiseDensity = val;
+    else if (id === 'glass-noise-size') GLASS_HOVER_CONFIG.noiseSize = val;
+    else if (id === 'glass-noise-opacity') GLASS_HOVER_CONFIG.noiseOpacity = val;
+
+    updateGlassAndHover();
+}
+
+['glass-hover', 'glass-blur', 'glass-opacity', 'glass-noise-density', 'glass-noise-size', 'glass-noise-opacity'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', onGlassSliderInput);
+});
+
+['glass-num-hover', 'glass-num-blur', 'glass-num-opacity', 'glass-num-noise-density', 'glass-num-noise-size', 'glass-num-noise-opacity'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', onGlassInput);
+        el.addEventListener('change', onGlassInput);
+    }
+});
+
+window.copyGlassConfig = function () {
+    const codeStr = formatGlassCode();
+    const btn = document.getElementById('btn-copy-glass');
+    function onCopySuccess() {
+        if (btn) {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '✓ Copied!';
+            btn.style.background = '#16a34a';
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.style.background = '';
+            }, 1800);
+        }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codeStr).then(onCopySuccess).catch(() => {
+            copyFallback(codeStr);
+            onCopySuccess();
+        });
+    } else {
+        copyFallback(codeStr);
+        onCopySuccess();
+    }
+
+    function copyFallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) { }
+        document.body.removeChild(ta);
+    }
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   DARK / LIGHT THEME CONTROLLER
+   ═══════════════════════════════════════════════════════════════════ */
+window.applyTheme = function (isDark, persist = true) {
+    if (persist) {
+        try {
+            localStorage.setItem('stan_theme', isDark ? 'dark' : 'light');
+        } catch (e) {}
+    }
+
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark-mode');
+    } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark-mode');
+    }
+
+    // Toggle icons in navbar button
+    const moonIcon = document.querySelector('.theme-icon-moon');
+    const sunIcon = document.querySelector('.theme-icon-sun');
+    if (moonIcon && sunIcon) {
+        moonIcon.style.display = isDark ? 'none' : 'flex';
+        sunIcon.style.display = isDark ? 'flex' : 'none';
+    }
+
+    // Three.js scene background, lighting, & shadow adjustments
+    if (typeof scene !== 'undefined' && scene) {
+        const bgHex = isDark ? 0x0c0e14 : 0xffffff;
+        scene.background.setHex(bgHex);
+        if (typeof renderer !== 'undefined' && renderer) {
+            renderer.setClearColor(bgHex, 1);
+        }
+    }
+    if (typeof ambientLight !== 'undefined' && ambientLight) {
+        ambientLight.intensity = isDark ? 0.55 : 0.45;
+    }
+    if (typeof rimLight !== 'undefined' && rimLight) {
+        rimLight.intensity = isDark ? 1.85 : 1.40;
+    }
+    if (typeof contactShadowMat !== 'undefined' && contactShadowMat) {
+        contactShadowMat.opacity = isDark ? 0.78 : 0.58;
+    }
+
+    // Update frosted glass background dynamic variables
+    updateGlassAndHover();
+
+    // Update WebGL Hero Dispersion theme
+    if (window.HeroDispersion && typeof window.HeroDispersion.setTheme === 'function') {
+        window.HeroDispersion.setTheme(isDark);
+    }
+
+    // Update Bambu Lab A1 Mini Studio theme
+    if (window.printerStudio && typeof window.printerStudio.setTheme === 'function') {
+        window.printerStudio.setTheme(isDark);
+    }
+};
+
+window.toggleTheme = function () {
+    const isCurrentlyDark = document.body.classList.contains('dark-mode') || document.documentElement.classList.contains('dark');
+    window.applyTheme(!isCurrentlyDark, true);
+};
+
+// Initial Theme Detection and Application
+const savedTheme = (function () {
+    try {
+        const t = localStorage.getItem('stan_theme');
+        if (t === 'dark' || t === 'light') return t === 'dark';
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+        return false;
+    }
+})();
+window.applyTheme(savedTheme, false);
+
+// Initial Code Readout Render
+syncCalibInputsFromState();
+
+// Initialize WebGL Frosted Glass & 3D Curl-Noise Hero Dispersion
+if (window.HeroDispersion && typeof window.HeroDispersion.init === 'function') {
+    window.HeroDispersion.init({
+        canvasId: 'hero-dispersion-canvas',
+        heroId: 'hero-brand'
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STΔN 3D SHADOW BOX STUDIO INTERACTIVE CONTROLLER
+// ═══════════════════════════════════════════════════════════════════
+function initShadowBoxStudio() {
+    const canvas = document.getElementById('sb-viewport-canvas');
+    if (!canvas || typeof ShadowBoxStudio === 'undefined') return;
+
+    const studio = new ShadowBoxStudio('sb-viewport-canvas', {
+        shape: 'hex',
+        width: 110,
+        height: 110,
+        panelHeight: 70,
+        ledHeight: 85,
+        floorThickness: 3.0,
+        wallThickness: 1.8,
+        strutWidth: 1.0,
+        threshold: 128,
+        invert: false,
+        mirror: true,
+        wallDistance: 250,
+        ledColor: '#ffb347',
+        viewMode: 'shadow-wall'
+    });
+
+    window.shadowBoxStudio = studio;
+
+    // Telemetry & Preview Binding
+    const previewImg = document.getElementById('sb-preview-img');
+    const strutsBadge = document.getElementById('sb-telemetry-struts');
+    const badgeDims = document.getElementById('val-badge-dims');
+    const badgeWeight = document.getElementById('val-badge-weight');
+    const badgePrice = document.getElementById('val-badge-price');
+
+    const bomWeight = document.getElementById('bom-filament-weight');
+    const bomCost = document.getElementById('bom-filament-cost');
+    const bomPrintTime = document.getElementById('bom-print-time');
+    const bomTotal = document.getElementById('bom-total-price');
+
+    studio.onTelemetry = (t) => {
+        if (previewImg && t.previewUrl) previewImg.src = t.previewUrl;
+        if (strutsBadge) strutsBadge.textContent = `${t.bridged} islands bridged • ${t.dropped} dropped`;
+    };
+
+    studio.onBOMUpdate = (bom) => {
+        if (badgeDims) badgeDims.textContent = bom.dimensions;
+        if (badgeWeight) badgeWeight.textContent = `~${bom.filamentGrams}g PLA`;
+        if (badgePrice) badgePrice.textContent = `₹${bom.totalPrice}`;
+
+        if (bomWeight) bomWeight.textContent = `~${bom.filamentGrams} g`;
+        if (bomCost) bomCost.textContent = `₹${Math.round(bom.filamentGrams * 3.50)}`;
+        if (bomPrintTime) bomPrintTime.textContent = `~${bom.printTimeHours} hrs`;
+        if (bomTotal) bomTotal.textContent = `₹${bom.totalPrice}`;
+    };
+
+    // Tab Navigation
+    document.querySelectorAll('.sb-dock-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.sb-dock-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.sb-pane').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            const targetPane = document.getElementById(tab.dataset.tab);
+            if (targetPane) targetPane.classList.add('active');
+        });
+    });
+
+    // View Mode Switcher
+    document.querySelectorAll('.sb-view-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.sb-view-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            studio.updateViewMode(btn.dataset.view);
+            studio.rebuildModel();
+        });
+    });
+
+    // Preset Silhouette Chips
+    const PRESETS = {
+        wolf: `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+                <circle cx="256" cy="190" r="130" fill="#000" />
+                <circle cx="210" cy="170" r="120" fill="#fff" />
+                <path d="M 230 400 L 260 310 L 280 330 L 320 280 L 330 330 L 360 300 L 350 400 Z" fill="#000" />
+                <path d="M 120 400 L 170 340 L 210 400 Z" fill="#000" />
+                <circle cx="340" cy="180" r="16" fill="#000" />
+                <rect x="0" y="390" width="512" height="122" fill="#000" />
+            </svg>
+        `,
+        dragon: `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+                <path d="M 256 70 C 200 120 180 180 230 250 C 180 230 130 270 140 340 C 200 320 220 380 256 420 C 292 380 312 320 372 340 C 382 270 332 230 282 250 C 332 180 312 120 256 70 Z" fill="#000"/>
+                <circle cx="256" cy="220" r="28" fill="#fff"/>
+                <polygon points="256,150 280,200 232,200" fill="#000"/>
+                <rect x="0" y="420" width="512" height="92" fill="#000" />
+            </svg>
+        `,
+        anime: `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+                <circle cx="256" cy="230" r="140" fill="#000" />
+                <circle cx="280" cy="220" r="110" fill="#fff" />
+                <path d="M 200 260 Q 230 240 260 270 Q 240 300 200 260 Z" fill="#000" />
+                <circle cx="230" cy="270" r="8" fill="#fff" />
+                <path d="M 170 160 Q 220 130 260 170 Q 220 200 170 160 Z" fill="#000" />
+                <circle cx="360" cy="140" r="12" fill="#000" />
+                <circle cx="380" cy="190" r="8" fill="#000" />
+                <rect x="0" y="410" width="512" height="102" fill="#000" />
+            </svg>
+        `,
+        stan: `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+                <polygon points="256,60 430,390 82,390" fill="#000"/>
+                <polygon points="256,190 350,370 162,370" fill="#fff"/>
+                <polygon points="256,250 290,320 222,320" fill="#000"/>
+                <rect x="0" y="400" width="512" height="112" fill="#000" />
+            </svg>
+        `
+    };
+
+    document.querySelectorAll('.sb-preset-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const presetKey = chip.dataset.preset;
+            if (PRESETS[presetKey]) {
+                studio.loadFromSvgString(PRESETS[presetKey]);
+            }
+        });
+    });
+
+    // File Upload (Drag & Drop + File Input)
+    const dropzone = document.getElementById('sb-dropzone');
+    const fileInput = document.getElementById('sb-file-input');
+
+    if (dropzone && fileInput) {
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = '#38bdf8';
+            dropzone.style.background = 'rgba(56, 189, 248, 0.1)';
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.style.borderColor = '';
+            dropzone.style.background = '';
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = '';
+            dropzone.style.background = '';
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                studio.loadFromFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                studio.loadFromFile(e.target.files[0]);
+            }
+        });
+    }
+
+    // Parametric Sliders Helper
+    const bindSlider = (sliderId, valId, paramKey, unit = '', scale = 1, onUpdate = null) => {
+        const slider = document.getElementById(sliderId);
+        const valElem = document.getElementById(valId);
+        if (!slider) return;
+
+        slider.addEventListener('input', (e) => {
+            const v = parseFloat(e.target.value) * scale;
+            if (valElem) valElem.textContent = `${slider.value}${unit}`;
+            studio.setParam(paramKey, v);
+            if (onUpdate) onUpdate(v);
+        });
+    };
+
+    bindSlider('sb-slider-threshold', 'sb-val-threshold', 'threshold');
+    bindSlider('sb-slider-strut', 'sb-val-strut', 'strutWidth', 'mm');
+    bindSlider('sb-slider-minarea', 'sb-val-minarea', 'minIslandArea', 'px');
+
+    bindSlider('sb-slider-width', 'sb-val-width', 'width', 'mm');
+    bindSlider('sb-slider-height', 'sb-val-height', 'height', 'mm');
+    bindSlider('sb-slider-pheight', 'sb-val-pheight', 'panelHeight', 'mm', 1, (h) => {
+        if (studio.params.ledHeight < h + 12) {
+            const ledSlider = document.getElementById('sb-slider-ledh');
+            const ledVal = document.getElementById('sb-val-ledh');
+            const newLedH = h + 15;
+            if (ledSlider) { ledSlider.value = newLedH; ledSlider.min = h + 6; }
+            if (ledVal) ledVal.textContent = `${newLedH}mm`;
+            studio.params.ledHeight = newLedH;
+        }
+    });
+
+    bindSlider('sb-slider-ledh', 'sb-val-ledh', 'ledHeight', 'mm');
+    bindSlider('sb-slider-wthick', 'sb-val-wthick', 'wallThickness', 'mm');
+    bindSlider('sb-slider-fthick', 'sb-val-fthick', 'floorThickness', 'mm');
+    bindSlider('sb-slider-walldist', 'sb-val-walldist', 'wallDistance', 'mm', 1, (d) => {
+        if (studio.shadowWall) studio.shadowWall.position.y = d;
+    });
+
+    // Invert & Mirror Toggles
+    const btnInvert = document.getElementById('sb-toggle-invert');
+    if (btnInvert) {
+        btnInvert.addEventListener('click', () => {
+            const next = !studio.params.invert;
+            studio.setParam('invert', next);
+            btnInvert.classList.toggle('active', next);
+        });
+    }
+
+    const btnMirror = document.getElementById('sb-toggle-mirror');
+    if (btnMirror) {
+        btnMirror.addEventListener('click', () => {
+            const next = !studio.params.mirror;
+            studio.setParam('mirror', next);
+            btnMirror.classList.toggle('active', next);
+        });
+    }
+
+    // 7 Shape Cards Selection
+    document.querySelectorAll('.sb-shape-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.sb-shape-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            studio.setParam('shape', card.dataset.shape);
+        });
+    });
+
+    // Camera & Turntable
+    const btnResetCam = document.getElementById('btn-reset-cam');
+    if (btnResetCam) {
+        btnResetCam.addEventListener('click', () => {
+            studio.orbitTheta = -Math.PI / 2;
+            studio.orbitPhi = Math.PI / 4;
+            studio.orbitRadius = studio.params.viewMode === 'assembled-mesh' ? 260 : 380;
+            if (studio.updateCamera) studio.updateCamera();
+        });
+    }
+
+    const btnAutoOrbit = document.getElementById('btn-auto-orbit');
+    if (btnAutoOrbit) {
+        btnAutoOrbit.addEventListener('click', () => {
+            studio.autoOrbit = !studio.autoOrbit;
+            btnAutoOrbit.classList.toggle('active', studio.autoOrbit);
+        });
+    }
+
+    // LED Color Warmth Buttons
+    document.querySelectorAll('[data-color]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const col = btn.dataset.color;
+            studio.setParam('ledColor', col);
+        });
+    });
+
+    // Direct STL & ZIP Downloads
+    const btnDownloadStl = document.getElementById('btn-download-stl');
+    if (btnDownloadStl) {
+        btnDownloadStl.addEventListener('click', () => {
+            studio.downloadFusedStl(`STAN_Shadow_Lamp_${studio.params.shape.toUpperCase()}.stl`);
+        });
+    }
+
+    const btnDownloadZip = document.getElementById('btn-download-zip');
+    if (btnDownloadZip) {
+        btnDownloadZip.addEventListener('click', () => {
+            studio.downloadMultiPlateZip(`STAN_Shadow_Lamp_${studio.params.shape.toUpperCase()}_Bundle.zip`);
+        });
+    }
+
+    // WhatsApp Order Request
+    const btnOrderWa = document.getElementById('btn-order-whatsapp');
+    if (btnOrderWa) {
+        btnOrderWa.addEventListener('click', () => {
+            const shapeName = studio.params.shape.toUpperCase();
+            const dims = `${studio.params.width}x${studio.params.height}x${studio.params.panelHeight}mm`;
+            const price = document.getElementById('bom-total-price')?.textContent || '₹599';
+            const orderId = '#SB-' + Math.floor(1000 + Math.random() * 9000);
+
+            const msg = `Hi STΔN Studio! I just generated a Custom 3D Shadow Box Lamp on your studio generator.%0A%0AOrder ID: ${orderId}%0AShape: ${shapeName}%0ADimensions: ${dims}%0AEstimated Price: ${price}%0A%0AReady to confirm print & shipping!`;
+            const waUrl = `https://wa.me/919999999999?text=${msg}`;
+            window.open(waUrl, '_blank');
+        });
+    }
+}
+
+initShadowBoxStudio();
+
+})();
+</script>
+</body>
+</html>

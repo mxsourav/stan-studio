@@ -11,6 +11,10 @@ desktop.ini
 
 # Dependencies
 node_modules/
+dist/
+
+# Vercel
+.vercel
 
 # Environment Variables & Secrets
 .env
@@ -26,3 +30,16 @@ scratch*
 .agents/
 skills-lock.json
 graphify-out/
+
+# Quarantined Reference Files (Clean-Room Protocol)
+_quarantine_reference_delete_me/
+real website data/
+real website logic/
+promt/
+repo-fresh/
+
+# Session tooling & local-only dirs
+.repo-fresh/
+.zcode/
+supabase/.temp/
+*.zip

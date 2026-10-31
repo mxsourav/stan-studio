@@ -1,0 +1,1707 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Google Analytics (gtag.js) -->
+<!-- stripped: analytics/ads/gate -->
+<!-- stripped: gtag config -->
+<title>Shadow Lamp STL Generator — Make a Shadow Box Lamp</title>
+<meta name="description" content="Make a shadow box lamp online. Upload a photo or SVG, preview the wall shadow in 3D, and download a print-ready shadow lamp STL.">
+<meta name="keywords" content="shadow lamp STL generator, shadow box lamp generator, shadow lamp maker, image to shadow lamp, photo to shadow lamp STL, silhouette lamp STL, 3D printed shadow lamp, LED shadow lamp, wall shadow lamp, SVG to STL lamp, anime shadow lamp, Goku shadow lamp, Spider-Man shadow lamp, Naruto shadow lamp, Batman shadow lamp, Luffy shadow lamp, anime shadow box lamp, superhero shadow lamp, wall shadow lamp STL, shadow lamp for bedroom, shadow lamp for gaming room, character silhouette lamp, shadow lamp 3D model, shadow light box, shadow lightbox STL, free shadow lamp STL, shadow lamp vs lithophane, Pokemon shadow lamp, Eevee shadow lamp, Stitch shadow lamp, Zoro shadow lamp, Demon Slayer shadow lamp, Death Note shadow lamp, Zelda shadow box, Halloween shadow lamp, skeleton shadow lamp, dragon shadow lamp, custom shadow lamp gift, how to make a shadow lamp, shadow lamp print settings">
+<meta name="author" content="Ashish">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="googlebot" content="index, follow">
+<link rel="canonical" href="https://www.oledanimationmaker.com/tools/ShadowBox/tool.html">
+<link rel="alternate" hreflang="en" href="https://www.oledanimationmaker.com/tools/ShadowBox/tool.html">
+<link rel="alternate" hreflang="x-default" href="https://www.oledanimationmaker.com/tools/ShadowBox/tool.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OLED Display Animation Maker">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://www.oledanimationmaker.com/tools/ShadowBox/tool.html">
+<meta property="og:title" content="Shadow Lamp STL Generator — Make a Shadow Box Lamp">
+<meta property="og:description" content="Upload a photo or SVG, preview the wall shadow, and download a 3D-printable shadow lamp STL.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Shadow Lamp STL Generator — Make a Shadow Box Lamp">
+<meta name="twitter:description" content="Upload a photo or SVG, preview the wall shadow, and download a 3D-printable shadow lamp STL.">
+<meta property="og:image" content="https://www.oledanimationmaker.com/tools/images/shadow-box-lamp-og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Shadow box lamp generator: an LED box casting a silhouette shadow on the wall">
+<meta name="twitter:image" content="https://www.oledanimationmaker.com/tools/images/shadow-box-lamp-og.png">
+<meta name="twitter:image:alt" content="Shadow box lamp generator: an LED box casting a silhouette shadow on the wall">
+<meta name="theme-color" content="#00ae42">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💡</text></svg>">
+<link rel="manifest" href="/site.webmanifest">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "Shadow Box Lamp Generator",
+      "alternateName": ["Shadow Lamp STL Generator", "Shadow Lamp Maker"],
+      "applicationCategory": "DesignApplication",
+      "operatingSystem": "Web",
+      "url": "https://www.oledanimationmaker.com/tools/ShadowBox/tool.html",
+      "description": "Browser tool to turn a photo or SVG into a 3D-printable shadow box lamp and download the STL.",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.oledanimationmaker.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Tools", "item": "https://www.oledanimationmaker.com/tools/" },
+        { "@type": "ListItem", "position": 3, "name": "Shadow Box Lamp Generator", "item": "https://www.oledanimationmaker.com/tools/ShadowBox/" },
+        { "@type": "ListItem", "position": 4, "name": "Generator", "item": "https://www.oledanimationmaker.com/tools/ShadowBox/tool.html" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+:root{
+  --bg:#f5f5f5;
+  --card:#fff;
+  --line:#ebebeb;
+  --text:#1c1c1c;
+  --mut:#8a8a8a;
+  --acc:#00ae42;
+  --acc-d:#00963a;
+  --soft:#e9f8ef;
+  --ok:#00ae42;
+  --bad:#e23b3b;
+  --shadow:0 1px 2px rgba(0,0,0,.04);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+[hidden]{display:none!important}
+::selection{background:#c8f0d6}
+:focus-visible{outline:2px solid rgba(0,174,66,.45);outline-offset:2px}
+.app{max-width:none;margin:0;padding:0 0 48px;display:block;background:var(--bg)}
+
+header{
+  position:sticky;top:0;z-index:20;
+  display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+  grid-template-areas:"brand order dl" "desc order dl";
+  column-gap:10px;row-gap:0;align-items:center;
+  min-height:64px;margin:0;
+  padding:8px max(20px,calc((100% - 1240px) / 2));
+  background:#fff;border-bottom:1px solid var(--line);
+}
+header h1{grid-area:brand;margin:0;font-size:16px;font-weight:700;letter-spacing:-.02em}
+header h1 a{display:inline-flex;align-items:center;gap:10px;color:inherit;text-decoration:none}
+header h1 a::before{content:"";width:28px;height:28px;border-radius:8px;flex:none;background:linear-gradient(#fff,#fff) center/10px 10px no-repeat,var(--acc)}
+header p{grid-area:desc;margin:0;color:var(--mut);font-size:12px;min-width:0}
+#orderBtn,#dlOpen{height:36px;padding:0 16px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+#dlOpen{background:var(--acc)}
+#dlOpen:hover{background:var(--acc-d)}
+#orderBtn{background:#1c1c1c}
+#orderBtn:hover{background:#333}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:none}
+.card h2{margin:0 0 10px;font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card h2 em{font-style:normal;font-weight:600;background:#f5f5f5;border-radius:99px;padding:2px 8px;font-size:11px;color:var(--mut)}
+.uploads{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dz{border:1px dashed #d9d9d9;border-radius:8px;padding:16px 12px;text-align:center;color:var(--mut);cursor:pointer;background:#fafafa;min-height:76px;display:flex;flex-direction:column;justify-content:center;gap:2px;font-size:12.5px;transition:border-color .15s,background .15s}
+.dz:hover,.dz.over{border-color:var(--acc);background:var(--soft);color:var(--text)}
+.dz strong{color:var(--text);font-weight:600;font-size:13.5px}
+.dz.has{border-style:solid;border-color:#8ed9a8;background:#f3fbf6}
+.cardrow{display:flex;gap:8px;margin-top:8px}
+
+.main{width:min(1240px,calc(100% - 40px));margin:16px auto 0;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+.side{order:2;display:block;background:#fff;border:1px solid var(--line);border-radius:12px;padding:4px 16px 8px;position:sticky;top:80px;max-height:calc(100vh - 96px);overflow:auto;scrollbar-width:thin;scrollbar-color:#ddd transparent}
+.main>div:last-child{order:1;min-width:0}
+.side>.card,.side>fieldset>.card{background:transparent;border:0;box-shadow:none;border-radius:0;padding:14px 0}
+.side>*+*{border-top:1px solid #f0f0f0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.f label{display:flex;justify-content:space-between;gap:8px;color:var(--mut);font-size:12px;margin-bottom:3px}
+.f label b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:20px;margin:0;cursor:pointer;background:transparent;--p:50%}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:linear-gradient(90deg,var(--acc) var(--p),#e6e6e6 var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:50%;background:#fff;border:2px solid var(--acc);box-shadow:0 1px 2px rgba(0,0,0,.16)}
+input[type=range]::-moz-range-track{height:4px;border-radius:99px;background:#e6e6e6;border:0}
+input[type=range]::-moz-range-progress{height:4px;border-radius:99px;background:var(--acc)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--acc)}
+select,input.num{width:100%;background:#fff;color:var(--text);border:1px solid #e0e0e0;border-radius:8px;padding:7px 8px;font:inherit;font-size:13px}
+input.num:focus,select:focus{border-color:var(--acc);outline:none;box-shadow:0 0 0 3px rgba(0,174,66,.16)}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:10px;cursor:pointer;line-height:1.35}
+.chk input{accent-color:var(--acc);width:15px;height:15px;margin-top:1px;flex:none}
+
+.btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer}
+.btn:hover{background:var(--acc-d)}
+.btn.ghost{background:#fff;color:var(--text);border:1px solid #e0e0e0}
+.btn.ghost:hover{background:#f7f7f7;border-color:#ccc}
+.btn.green{background:var(--acc);color:#fff;text-decoration:none}
+.btn.green:hover{background:var(--acc-d)}
+.btn.sm{padding:4px 10px;font-size:12px;border-radius:7px}
+.btn.disabled{opacity:.4;pointer-events:none;box-shadow:none}
+.lnk{background:none;border:0;color:var(--acc-d);cursor:pointer;font:inherit;font-size:12.5px;padding:0;font-weight:600}
+
+.upl{padding:14px 0 12px}
+.uph{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:14px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--text)}
+.uph em{font-style:normal;font-weight:600;font-size:11px;letter-spacing:0;text-transform:none;background:#f5f5f5;color:var(--mut);border-radius:99px;padding:2px 8px}
+.upl .uph:first-of-type em{background:var(--soft);color:var(--acc-d)}
+.uph button{margin-left:auto}
+.upl .dz+.uph{padding-top:8px}
+
+.shapes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.shapes button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;border:1px solid transparent;border-radius:8px;background:#f5f5f5;color:#666;font:inherit;font-size:11.5px;cursor:pointer}
+.shapes button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+.shapes button:hover{background:#eee;color:var(--text)}
+.shapes button.on{border-color:var(--acc);background:var(--soft);color:var(--acc);font-weight:600}
+#ih_f.off{opacity:.4;pointer-events:none}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+fieldset:disabled{opacity:.45;pointer-events:none}
+
+.views{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.views>.card{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:none;padding:12px}
+.views>.card h2{min-height:32px;margin-bottom:8px;font-size:14px}
+.seg{display:inline-flex;border:0;background:#f2f2f2;border-radius:8px;padding:3px;overflow:visible}
+.seg button{border:0;background:transparent;color:#666;padding:4px 10px;border-radius:6px;font:inherit;font-size:12px;cursor:pointer;text-transform:none;letter-spacing:0}
+.seg button.on{background:#fff;color:var(--acc);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+#view3d,#wallWrap{height:min(560px,calc(100vh - 210px));min-height:360px;border-radius:8px;overflow:hidden}
+#view3d{background:#16161e}
+#view3d canvas{display:block;width:100%;height:100%}
+#wallWrap{background:#8c7d66;display:flex;align-items:center;justify-content:center}
+#wallCanvas{height:100%;max-width:100%;object-fit:contain}
+.hint{color:var(--mut);font-size:12px;margin-top:8px;line-height:1.4}
+
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.stat{padding:12px 14px;border-radius:12px}
+.stat small{display:block;color:var(--mut);font-size:12px;font-weight:500;line-height:1.3}
+.stat strong{display:block;margin-top:4px;font-size:16px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat:has(#s_cost){background:#f3fbf6;border-color:#b7e7c7}
+#s_cost{color:var(--acc);font-size:20px}
+#s_costNote{display:block;margin-top:4px;font-size:11px;font-weight:500;color:#3d8a58;line-height:1.35}
+.matsel{margin-top:8px;width:auto;padding:3px 6px;font-size:12px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--mut)}
+#status{color:var(--mut);font-size:12.5px;margin-top:10px;min-height:18px}
+#status.err{color:var(--bad)}
+details.card{margin-top:12px}
+details summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--text)}
+.notes{color:var(--mut);font-size:13px;line-height:1.5;margin:10px 0 0;padding-left:18px}
+.notes li{margin:4px 0}
+
+.ordhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}
+.ordhead h3{margin:0}
+.ordprice{flex:none;display:flex;align-items:baseline;gap:6px;background:var(--soft);border:1px solid #b7e7c7;border-radius:999px;padding:4px 12px;white-space:nowrap}
+.ordprice small{font-size:11px;font-weight:600;color:var(--acc-d)}
+.ordprice b{font-size:16px;font-weight:700;color:var(--acc)}
+.osteps{margin:8px 0 10px;padding-left:20px;font-size:13.5px}
+.osteps li{margin:6px 0;color:var(--mut)}
+.osteps li b{color:var(--text)}
+.osteps li.done b::before{content:"\2713 ";color:var(--ok)}
+.ordmain{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.ordmain .btn{display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;min-height:40px}
+
+.modal{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:16px}
+.modal.open{display:flex}
+.sheet{background:#fff;border-radius:12px;width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.sheet h3{margin:0 0 4px;font-size:17px;font-weight:700;letter-spacing:-.02em}
+.sheet .sub{color:var(--mut);font-size:13px;line-height:1.45;margin:0 0 14px}
+.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid #e8e8e8;border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer;background:#fff}
+.opt:hover{border-color:#ccc}
+.opt.sel{border-color:var(--acc);background:var(--soft)}
+.opt input{margin-top:2px;accent-color:var(--acc)}
+.opt b{font-size:13.5px}
+.opt .tag{font-size:10.5px;background:var(--acc);color:#fff;border-radius:99px;padding:1px 7px;margin-left:6px;font-weight:600}
+.opt small{display:block;color:var(--mut);font-size:12px;line-height:1.4;margin-top:2px}
+.dlinfo{background:#f7f7f7;border-radius:8px;padding:10px 12px;font-size:12.5px;margin:8px 0;display:grid;gap:3px}
+.dlinfo .ok{color:var(--ok);font-weight:600}
+.dlinfo .bad{color:var(--bad);font-weight:600}
+.sheet .row2{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.sheet .row2 label{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:12.5px}
+.sheet .row2 select{width:auto}
+.sheet .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+#dlPrev{height:200px;border-radius:12px;overflow:hidden;background:#16161e;margin:0 0 8px}
+#dlPrev canvas{display:block;width:100%;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.legend span{background:#f2f2f2;border-radius:99px;padding:2px 8px;font-size:11.5px;color:#666}
+.legend span.bad{background:#fde8e3;color:var(--bad)}
+#dlCustom{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0 0 8px;background:#fafafa}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}
+.cgrid label{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
+.cgrid input{accent-color:var(--acc)}
+.cgrid label.dis{opacity:.4;cursor:default}
+.crow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--mut)}
+.crow label{margin-left:auto;display:flex;gap:6px;align-items:center}
+.crow select{width:auto}
+.sheet.wide{width:min(780px,100%)}
+.cvpanes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cvpane{position:relative;height:250px;border:1px solid var(--line);border-radius:8px;background:#fafafa;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cvpane img{max-width:100%;max-height:100%;object-fit:contain}
+.cvpane img:not([src]){visibility:hidden}
+.cvtag{position:absolute;top:8px;left:8px;background:#fff;color:var(--mut);font-size:11px;font-weight:600;border-radius:99px;padding:2px 8px;z-index:1;border:1px solid var(--line)}
+.cvov{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.86);font-weight:600;font-size:13px}
+.cvpane.cvb .cvov{display:flex}
+
+.wallsheet{background:#fff;border-radius:12px;padding:12px;max-width:min(96vw,1100px);max-height:96vh;display:flex;flex-direction:column;align-items:flex-end;gap:8px;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+#wallImg{max-width:100%;max-height:calc(96vh - 64px);border-radius:10px;display:block;background:#8c7d66}
+
+#busy{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(245,245,245,.72);backdrop-filter:blur(2px);cursor:progress}
+body.busy #busy{display:flex}
+#busy div{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,.08);font-weight:600}
+.spin{width:16px;height:16px;border:2px solid #c8efd4;border-top-color:var(--acc);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media(max-width:1100px){.views{grid-template-columns:1fr}}
+@media(max-width:960px){
+  .main{grid-template-columns:1fr;width:min(1240px,calc(100% - 28px))}
+  .side{order:2;position:static;max-height:none;overflow:visible}
+  .main>div:last-child{order:1}
+}
+@media(max-width:700px){
+  header{padding:12px 14px;grid-template-columns:1fr 1fr;grid-template-areas:"brand brand" "desc desc" "order dl";row-gap:8px}
+  header p{margin-bottom:2px}
+  #orderBtn,#dlOpen{width:100%}
+  .uploads,.stats{grid-template-columns:1fr 1fr}
+  #view3d,#wallWrap{height:340px}
+  .card{padding:12px 14px}
+  .side{padding:2px 14px 4px}
+}
+@media(max-width:620px){.cvpanes{grid-template-columns:1fr}}
+@media(max-width:420px){.ordmain,.stats{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.guide{width:min(1240px,calc(100% - 40px));margin:20px auto 0;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;font-size:14.5px;line-height:1.65;color:var(--text)}
+.guide h2{font-size:19px;letter-spacing:-.01em;margin:0 0 8px}
+.guide h3{font-size:15.5px;margin:20px 0 6px}
+.guide p{margin:0 0 10px;max-width:900px}
+.guide ul{margin:0 0 10px;padding-left:20px;max-width:900px}
+.guide li{margin:3px 0}
+.guide .tbl{overflow-x:auto;margin:6px 0 12px}
+.guide table{border-collapse:collapse;font-size:13.5px;min-width:560px}
+.guide th,.guide td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+.guide th{background:#fafafa}
+@media(max-width:960px){.guide{width:min(1240px,calc(100% - 28px))}}
+@media(max-width:640px){.guide{padding:14px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-contour@3.0.1/dist/d3-contour.min.js"></script>
+<!-- stripped: analytics/ads/gate -->
+<!-- stripped: analytics/ads/gate -->
+<!-- no data-tool: the download is counted as 'shadowlamp' in the run callback below -->
+<!-- stripped: analytics/ads/gate -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="polish">
+/* Kept so older overrides cannot restyle the tool. Layout lives in the main stylesheet. */
+header h1 a.back::before{display:none}
+header h1 a.back:hover{background:#f7f7f7}
+</style>
+<!-- stripped: analytics/ads/gate -->
+<!-- stripped: analytics/ads/gate -->
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1 style="display:flex;align-items:center;gap:12px"><a href="index.html" class="back" style="font-size:13px;font-weight:600;color:var(--mut);padding:6px 10px;border:1px solid #e0e0e0;border-radius:8px;white-space:nowrap" title="Back">&larr; Back</a><a href="index.html" style="color:inherit;text-decoration:none" title="Back to home">Shadow Box Lamp Generator</a></h1>
+    <p>Wall-hung open box with an LED on a tube. The wall panels draw your silhouette on the wall.</p>
+    <button class="btn green" id="orderBtn">Order now</button>
+    <button class="btn" id="dlOpen">Download STL</button>
+  </header>
+
+
+  <div class="main">
+    <div class="side">
+      <div class="card upl">
+        <div class="uph"><span>1 · Shadow design</span><em>required</em><button class="btn ghost sm" id="sample">Sample</button></div>
+        <div class="dz" id="drop"><strong id="figTitle">Drop an image or click to choose</strong><span id="figName">Any image. We convert it to SVG for you</span><input id="file" type="file" accept=".svg,image/*" hidden></div>
+        <div class="uph" style="margin-top:8px"><span>2 · Box picture</span><em>optional</em><button class="btn ghost sm" id="plClear" hidden>Remove</button></div>
+        <div class="dz" id="drop2"><strong id="plTitle">Drop an image or click to choose</strong><span id="plName">Printed on the box floor. Leave empty for a plain box.</span><input id="plInput" type="file" accept=".svg,image/*" hidden></div>
+      </div>
+      <div class="card">
+        <h2>Figure</h2>
+        <div class="grid2">
+          <div class="f"><label>Box centre X <b id="bx_v"></b></label><input type="range" id="bx" min="0" max="100" step="1" value="50"></div>
+          <div class="f"><label>Box centre Y <b id="by_v"></b></label><input type="range" id="by" min="0" max="100" step="1" value="50"></div>
+          <div class="f" style="grid-column:1/3"><label>Figure size (of max reach) <b id="size_v"></b></label><input type="range" id="size" min="40" max="110" step="1" value="100"></div>
+          <div class="f"><label>Shadow width (mm)</label><input type="number" id="shW" class="num" min="50" max="2500" step="10"></div>
+          <div class="f"><label>Shadow length (mm)</label><input type="number" id="shH" class="num" min="50" max="2500" step="10"></div>
+          <div class="hint" id="shHint" style="grid-column:1/3;margin:0">Type a size. The box raises its LED and panels by itself to reach it. <button type="button" class="lnk" id="shAuto" hidden>Back to auto size</button></div>
+        </div>
+        <label class="chk"><input type="checkbox" id="mirror">Mirror horizontally</label>
+        <label class="chk"><input type="checkbox" id="invert">Use the background as the figure</label>
+      </div>
+
+      <div class="card">
+        <h2>Box shape</h2>
+        <div class="shapes" id="shapes">
+          <button data-s="rect" class="on"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/></svg><span>Rectangle</span></button>
+          <button data-s="cyl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.2"/></svg><span>Cylinder</span></button>
+          <button data-s="round"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg><span>Round</span></button>
+          <button data-s="hex"><svg viewBox="0 0 24 24"><polygon points="7.5,4 16.5,4 21,12 16.5,20 7.5,20 3,12"/></svg><span>Hexagon</span></button>
+          <button data-s="oct"><svg viewBox="0 0 24 24"><polygon points="8.5,3 15.5,3 21,8.5 21,15.5 15.5,21 8.5,21 3,15.5 3,8.5"/></svg><span>Octagon</span></button>
+          <button data-s="tri"><svg viewBox="0 0 24 24"><polygon points="12,3.5 21.5,19.5 2.5,19.5"/></svg><span>Triangle</span></button>
+          <button data-s="diamond"><svg viewBox="0 0 24 24"><polygon points="12,2.5 20.5,12 12,21.5 3.5,12"/></svg><span>Diamond</span></button>
+        </div>
+        <h2 style="margin-top:10px">Box size</h2>
+        <div class="grid2">
+          <div class="f"><label><span id="iw_t">Inner width</span> <b id="iw_v"></b></label><input type="range" id="iw" min="60" max="200" step="1" value="110"></div>
+          <div class="f" id="ih_f"><label><span id="ih_t">Inner height</span> <b id="ih_v"></b></label><input type="range" id="ih" min="60" max="220" step="1" value="140"></div>
+          <div class="f"><label>Floor thickness <b id="floor_v"></b></label><input type="range" id="floor" min="2" max="25" step="0.5" value="3"></div>
+          <div class="f"><label>Panel thickness <b id="pt_v"></b></label><input type="range" id="pt" min="1.2" max="3" step="0.1" value="1.6"></div>
+          <div class="f"><label>Panel max height <b id="ph_v"></b></label><input type="range" id="ph" min="20" max="200" step="1" value="48"></div>
+          <div class="f"><label>LED height <b id="led_v"></b></label><input type="range" id="led" min="30" max="220" step="1" value="62"></div>
+          <div class="f"><label>Strut width <b id="strut_v"></b></label><input type="range" id="strut" min="0.6" max="3" step="0.1" value="0.8"></div>
+          <div class="f"><label>Resolution</label><select id="res"><option value="0.3">Draft 0.3 mm</option><option value="0.2">Good 0.2 mm</option><option value="0.15" selected>Fine 0.15 mm</option><option value="0.1">Ultra 0.1 mm (slow)</option></select></div>
+        </div>
+      </div>
+
+      <fieldset id="plCard" disabled>
+        <div class="card">
+          <h2>Box picture settings</h2>
+          <div class="grid2">
+            <div class="f" style="grid-column:1/3"><label>Style</label>
+              <select id="plMode"><option value="sil">Black silhouette (glue on a light floor)</option><option value="cut">Black plate with the image cut out</option></select></div>
+            <div class="f"><label>Size <b id="plSize_v"></b></label><input type="range" id="plSize" min="40" max="100" step="1" value="100"></div>
+            <div class="f"><label>Thickness <b id="plThick_v"></b></label><input type="range" id="plThick" min="0.8" max="3" step="0.2" value="1.2"></div>
+          </div>
+          <label class="chk"><input type="checkbox" id="plInvert">Invert this picture</label>
+        </div>
+      </fieldset>
+    </div>
+
+    <div>
+      <div class="views">
+        <div class="card"><h2>3D <span class="seg"><button id="vAsm" class="on">Assembled</button><button id="vLay">Print layout</button><button id="vReal">Real light</button></span></h2><div id="view3d"></div></div>
+        <div class="card"><h2>Shadow on the wall <button class="btn ghost sm" id="wallBig" type="button" style="text-transform:none;letter-spacing:0">Full screen</button></h2><div id="wallWrap"><canvas id="wallCanvas"></canvas></div><div class="hint">Dark = shadow cast by the printed panels. Amber = part of the figure where light leaks. The dark box with the glowing LED is the lamp itself.</div></div>
+      </div>
+      <div class="stats">
+        <div class="card stat"><small>Shadow size on wall</small><strong id="s_size">-</strong></div>
+        <div class="card stat"><small>Figure lost above panel top</small><strong id="s_lost">-</strong></div>
+        <div class="card stat"><small>Floating detail</small><strong id="s_float">-</strong></div>
+        <div class="card stat"><small>Box outer size</small><strong id="s_box">-</strong></div>
+        <div class="card stat" title="Estimate for solid plastic of all parts, before slicer settings such as infill"><small>Estimated weight</small><strong id="s_wt">-</strong>
+          <select id="mat" class="matsel"><option value="1.24">PLA</option><option value="1.27">PETG</option><option value="1.04">ABS</option><option value="1.07">ASA</option><option value="1.21">TPU</option></select></div>
+        <div class="card stat" title="Estimate: plastic weight x rate + LED lamp and rod + printer and service charge"><small>Estimated cost</small><strong id="s_cost">-</strong><small id="s_costNote" style="margin-top:2px;line-height:1.3"></small></div>
+      </div>
+      <div id="status"></div>
+      <details class="card">
+        <summary>Print and build notes</summary>
+        <ul class="notes">
+          <li>Print in black or dark PLA/PETG so the panels block light fully. Panels print flat, stencil face up is the inside.</li>
+          <li>Stand the panels around the floor rim: top and bottom are the long ones, left and right fit between. Glue the corners and hang by the hole near the top.</li>
+          <li>Put a 5 mm warm-white LED in the socket at the top of the tube and wire it down through the floor.</li>
+          <li>Print the box picture plate in black and glue it on a light floor.</li>
+          <li>Thin struts hold floating pieces and show as thin radial lines in the shadow.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+
+  <section class="guide" aria-labelledby="g-title">
+    <h2 id="g-title">Settings guide: getting a sharp shadow on the wall</h2>
+    <p>Every setting here changes how big the shadow is or how well the panels print. Watch the wall preview and stats while you adjust.</p>
+
+    <h3>Quick recipes</h3>
+    <div class="tbl"><table>
+      <tr><th>Goal</th><th>What to change</th><th>What to watch</th></tr>
+      <tr><td>First lamp, any figure</td><td>Keep the defaults: Rectangle, 110 × 140 mm, Fine 0.15 mm</td><td>Figure lost above panel top close to 0%</td></tr>
+      <tr><td>Bigger shadow on the wall</td><td>Raise Panel max height, or type a Shadow width</td><td>The LED is raised so it stays 6 mm above the panels</td></tr>
+      <tr><td>Lots of fine detail</td><td>Resolution Ultra 0.1 mm, Strut width 0.6 to 0.8 mm</td><td>Floating detail count, and slower rebuilds</td></tr>
+      <tr><td>Quick test print</td><td>Resolution Draft 0.3 mm, smaller Inner width</td><td>Estimated weight</td></tr>
+      <tr><td>Photo as the figure</td><td>In the converter: Automatic threshold, Smoothing 3 to 4</td><td>The SVG result shows one clear shape, not many specks</td></tr>
+    </table></div>
+
+    <h3>Figure</h3>
+    <p><b>Box centre X</b> and <b>Box centre Y</b> (0 to 100%, default 50) say where the box sits inside your picture. The part of the figure right around the box is hidden behind the box itself, and the status line tells you what share of the figure that is. Move the centre onto a part you can lose, such as a body or plain background, rather than a face.</p>
+    <p><b>Figure size</b> runs from 40 to 110% of the maximum reach of the panels. At 100% the far edge of the figure just fits; above that, the outer parts fall past the panel tops and show up in the <b>Figure lost above panel top</b> stat. Lower it until that stat is near 0%.</p>
+    <p><b>Shadow width</b> and <b>Shadow length</b> (50 to 2500 mm) let you type the size you want on the wall. If the box cannot reach it, the tool lowers the LED toward the panel tops and then raises the panels, and tells you the heights it used. Your sliders are not changed, so <b>Back to auto size</b> or moving Figure size returns to your own values. <b>Mirror horizontally</b> flips the figure, and <b>Use the background as the figure</b> swaps shape and background.</p>
+
+    <h3>Box shape and size</h3>
+    <p>Rectangle and Diamond take a width and a height; the other shapes take one diameter. Round has 12 flat walls, while Cylinder is a single round wall. Inner width runs from 60 to 200 mm and inner height from 60 to 220 mm.</p>
+    <ul>
+      <li><b>Panel max height</b> (20 to 200 mm, default 48) is one of the two settings that decide shadow size. Taller panels reach further up the wall.</li>
+      <li><b>LED height</b> (30 to 220 mm, default 62) sets the tube height. The closer the LED is to the panel tops, the bigger the shadow. It is always kept at least 6 mm above the panels.</li>
+      <li><b>Panel thickness</b> (1.2 to 3 mm): the default 1.6 mm suits most printers. Go thicker for a stiffer panel on a large box.</li>
+      <li><b>Floor thickness</b> (2 to 25 mm, default 3) is fine at 3 mm for most lamps.</li>
+      <li><b>Strut width</b> (0.6 to 3 mm, default 0.8) sets the thin bridges that hold floating pieces, like the inside of an eye, to the rest of the panel. Thin struts hide better in the shadow but are weaker.</li>
+      <li><b>Resolution</b> is the grid the stencil is cut on: Draft 0.3, Good 0.2, Fine 0.15 or Ultra 0.1 mm. Use Draft to try ideas, Fine or Ultra for the final file.</li>
+    </ul>
+
+    <h3>Reading the previews and stats</h3>
+    <p>In the wall preview, dark areas are shadow from the panels and <b>amber</b> marks parts of the figure where light leaks through because no panel covers them. Leaks at the outer edge usually go away when you lower Figure size. The 3D view switches between Assembled, Print layout and Real light. <b>Floating detail</b> counts the pieces joined by struts; dropped pieces were too small to print and were left out. Weight assumes solid plastic, so your slicer will show less with infill.</p>
+
+    <h3>Converting a photo or PNG</h3>
+    <p>Any image that is not an SVG opens the converter first. <b>Threshold</b> (default 41) decides which pixels become shape: raise it to keep only the darkest areas, lower it to include lighter greys. <b>Automatic threshold</b> picks a value for you. <b>Smoothing</b> (0 to 4) softens jagged edges, <b>Path simplify</b> reduces points, and <b>Remove specks</b> deletes small islands. <b>Halftone</b> turns grey tones into a dot pattern (Dot spacing 5 to 20); use Solid for logos and silhouettes.</p>
+
+    <h3>Box picture and download</h3>
+    <p>The optional box picture prints on the floor as a black silhouette or a black plate with the image cut out, 40 to 100% in size and 0.8 to 3 mm thick. In the download window, pick your print bed size (180 to 350 mm) and the tool tells you whether the parts fit. If they do not, choose Separate parts.</p>
+  </section>
+</div>
+<div class="modal" id="dlModal">
+  <div class="sheet">
+    <h3>Download STL</h3>
+    <div class="sub">Choose how you want to print it.</div>
+    <div id="dlPrev"></div>
+    <div class="legend" id="dlLegend"></div>
+    <label class="opt sel"><input type="radio" name="dlopt" value="all1" checked><div><b>All in one</b><span class="tag">single print</span><small>The whole box printed as one piece: floor, walls and LED tube fused together. Nothing to assemble.</small></div></label>
+    <label class="opt"><input type="radio" name="dlopt" value="sep"><div><b>Separate parts</b><small>Floor, tube, optional picture plate and every wall as its own STL file (ZIP). Best surface quality, you glue it together.</small></div></label>
+    <label class="opt"><input type="radio" name="dlopt" value="custom"><div><b>Customize</b><small>Pick exactly which parts you want, for example a single wall to reprint.</small></div></label>
+    <div id="dlCustom" hidden>
+      <div class="cgrid" id="dlParts"></div>
+      <div class="crow"><button type="button" class="lnk" id="dlAllOn">Select all</button><button type="button" class="lnk" id="dlAllOff">Clear</button>
+        <label>Layout <select id="dlLay"><option value="flat">Laid flat (print layout)</option><option value="asm">Standing (assembled)</option></select></label></div>
+    </div>
+    <label class="chk" id="dlPlateRow" style="margin:6px 0 0"><input type="checkbox" id="dlPlate" checked>Include the box picture plate in the single print</label>
+    <div class="crow" id="dlFmtRow" style="margin:6px 0"><label style="margin-left:0">Download as <select id="dlFmt"><option value="one">One STL file</option><option value="zip">Separate STL files (ZIP)</option></select></label></div>
+    <div class="dlinfo" id="dlInfo"></div>
+    <div class="row2"><label>Print bed <select id="dlBed"><option value="180">180 mm</option><option value="220">220 mm</option><option value="256" selected>256 mm</option><option value="300">300 mm</option><option value="350">350 mm</option></select></label>
+      <label>Filament <select id="dlMat"><option value="1.24">PLA</option><option value="1.27">PETG</option><option value="1.04">ABS</option><option value="1.07">ASA</option><option value="1.21">TPU</option></select></label></div>
+    <div class="acts"><button class="btn ghost" id="dlCancel">Cancel</button><button class="btn" id="dlGo">Download</button></div>
+  </div>
+</div>
+<div class="modal" id="cvModal">
+  <div class="sheet wide">
+    <h3>Convert your image to SVG</h3>
+    <div class="sub">We trace the dark shape of your picture into an SVG. Adjust it until the result looks right, then press Proceed.</div>
+    <div class="cvpanes">
+      <div class="cvpane"><span class="cvtag">Your image</span><img id="cvOrig" alt="Your image"></div>
+      <div class="cvpane" id="cvResWrap"><span class="cvtag">SVG result</span><img id="cvRes" alt="SVG result"><div class="cvov"><span class="spin"></span><span id="cvMsg">Converting...</span></div></div>
+    </div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="f"><label>Threshold <b id="cvThr_v"></b></label><input type="range" id="cvThr" min="3" max="97" step="1" value="41"></div>
+      <div class="f"><label>Smoothing <b id="cvBlur_v"></b></label><input type="range" id="cvBlur" min="0" max="4" step="1" value="4"></div>
+      <div class="f"><label>Path simplify <b id="cvDetail_v"></b></label><input type="range" id="cvDetail" min="0" max="3" step="0.1" value="0.6"></div>
+      <div class="f"><label>Remove specks <b id="cvSpecks_v"></b></label><input type="range" id="cvSpecks" min="0" max="300" step="2" value="300"></div>
+    </div>
+    <div class="grid2">
+      <div class="f"><label>Shading</label><select id="cvShade"><option value="solid" selected>Solid (flat shadow)</option><option value="half">Halftone (real shading)</option></select></div>
+      <div class="f"><label>Dot spacing <b id="cvDot_v"></b></label><input type="range" id="cvDot" min="5" max="20" step="1" value="9"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="cvAuto">Automatic threshold</label>
+    <label class="chk"><input type="checkbox" id="cvInvert">Invert (trace the light part instead)</label>
+    <label class="chk" id="cvAlphaRow" hidden><input type="checkbox" id="cvAlpha" checked>Use the transparent background as the cut-out</label>
+    <div class="dlinfo" id="cvStat" style="margin-top:8px"></div>
+    <div class="acts"><button class="btn ghost" id="cvCancel">Cancel</button><button class="btn ghost" id="cvDl">Download SVG</button><button class="btn" id="cvGo" disabled>Proceed</button></div>
+  </div>
+</div>
+<div class="modal" id="ordModal">
+  <div class="sheet">
+    <div class="ordhead">
+      <h3>Order your lamp</h3>
+      <div class="ordprice" id="ordPriceBox" title="Estimated cost"><small>Estimated cost</small><b id="ordPrice">-</b></div>
+    </div>
+    <div class="sub">Two quick steps: download the ZIP, then send it to us on WhatsApp.</div>
+    <ol class="osteps">
+      <li id="ordS1"><b>Download the ZIP</b> <span id="ordZipName">(shadow-box-lamp-order.zip)</span>. It holds every part as an STL file, your design and the order details.</li>
+      <li id="ordS2"><b>Order on WhatsApp</b>: opens a chat with +91 81082 27292 and your order details are already typed.</li>
+      <li><b>Attach the ZIP</b> in WhatsApp: tap the paperclip, pick the file from your Downloads folder, then press send.</li>
+    </ol>
+    <div class="dlinfo" id="ordSummary"></div>
+    <div class="ordmain">
+      <button class="btn" id="ordZip" title="Click again to download it again">1. Download ZIP</button>
+      <a class="btn green disabled" id="ordWa" target="_blank" rel="noopener" aria-disabled="true">2. Order on WhatsApp</a>
+    </div>
+    <div class="acts">
+      <button class="btn ghost" id="ordShare" hidden>Share ZIP (phone)</button>
+      <button class="btn ghost" id="ordClose">Close</button>
+    </div>
+  </div>
+</div><div class="modal" id="wallModal">
+  <div class="wallsheet"><button class="btn ghost sm" id="wallClose" type="button">Close</button><img id="wallImg" alt="Shadow on the wall"></div>
+</div>
+<div id="busy"><div><span class="spin"></span>Applying settings...</div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><image width="600" height="600" href="data:image/webp;base64,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"/></svg>`;
+
+let curShape = 'rect';
+const sliders = ['bx','by','size','iw','ih','floor','pt','ph','led','strut','plSize','plThick'];
+const unit = {bx:' %',by:' %',size:' %',iw:' mm',ih:' mm',floor:' mm',pt:' mm',ph:' mm',led:' mm',strut:' mm',plSize:' %',plThick:' mm'};
+const params = () => {
+  const o = {shape:curShape, mirror:$('mirror').checked, invert:$('invert').checked, pitch:+$('res').value,
+             plOn:!!plSrc,plMode:$('plMode').value, plInvert:$('plInvert').checked};
+  sliders.forEach(k => o[k] = +$(k).value); return o;
+};
+
+/* ---------- SVG loading ---------- */
+let src = null; // {W,H,dark,figs}
+function loadSvg(text){
+  return new Promise((resolve, reject) => {
+    const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+    const el = doc.documentElement;
+    if (el.nodeName !== 'svg' || doc.querySelector('parsererror')) return reject(new Error('That file is not a valid SVG.'));
+    const vb = (el.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+    let w, h;
+    if (vb.length === 4 && vb.every(isFinite) && vb[2] > 0 && vb[3] > 0) { w = vb[2]; h = vb[3]; }
+    else {
+      w = parseFloat(el.getAttribute('width')) || 1000; h = parseFloat(el.getAttribute('height')) || 1000;
+      el.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    }
+    const k = 1400 / Math.max(w, h), W = Math.max(8, Math.round(w * k)), H = Math.max(8, Math.round(h * k));
+    el.setAttribute('width', W); el.setAttribute('height', H);
+    const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(el)], {type:'image/svg+xml'}));
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = W; c.height = H;
+      const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0,0,W,H); g.drawImage(img,0,0,W,H);
+      const d = g.getImageData(0,0,W,H).data, dark = new Float32Array(W*H);
+      for (let i=0;i<W*H;i++) dark[i] = 1 - (0.299*d[i*4] + 0.587*d[i*4+1] + 0.114*d[i*4+2]) / 255;
+      URL.revokeObjectURL(url);
+      resolve({W,H,dark,figs:{}});
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not render this SVG.')); };
+    img.src = url;
+  });
+}
+// figure = darkness map with invert / mirror applied, plus its bounding box
+function figure(s, invert, mirror){
+  const key = (invert?1:0) + '|' + (mirror?1:0);
+  if (s.figs[key]) return s.figs[key];
+  const {W,H} = s, d = new Float32Array(W*H);
+  let x0=1e9,y0=1e9,x1=-1,y1=-1;
+  for (let y=0;y<H;y++) for (let x=0;x<W;x++){
+    let v = s.dark[y*W+x]; if (invert) v = 1 - v;
+    const xx = mirror ? W-1-x : x; d[y*W+xx] = v;
+    if (v >= .5){ if(xx<x0)x0=xx; if(xx>x1)x1=xx; if(y<y0)y0=y; if(y>y1)y1=y; }
+  }
+  return (s.figs[key] = {W,H,d,ok:x1>=0,x0,x1,y0,y1});
+}
+function sampleFig(f, x, y){
+  if (x<0||y<0||x>=f.W-1||y>=f.H-1) return 0;
+  const x0=x|0, y0=y|0, fx=x-x0, fy=y-y0, i=y0*f.W+x0, d=f.d;
+  return (d[i]*(1-fx)+d[i+1]*fx)*(1-fy) + (d[i+f.W]*(1-fx)+d[i+f.W+1]*fx)*fy;
+}
+
+/* ---------- mask processing (w x h grids) ---------- */
+function components(mask, w, h){
+  const lab = new Int32Array(w*h), comps = [], st = new Int32Array(w*h);
+  for (let i=0;i<w*h;i++){
+    if (!mask[i] || lab[i]) continue;
+    const id = comps.length+1, px = []; let sp = 0; st[sp++] = i; lab[i] = id;
+    while (sp){
+      const c = st[--sp]; px.push(c); const x = c % w, y = (c / w) | 0;
+      if (x>0   && mask[c-1] && !lab[c-1]){lab[c-1]=id; st[sp++]=c-1;}
+      if (x<w-1 && mask[c+1] && !lab[c+1]){lab[c+1]=id; st[sp++]=c+1;}
+      if (y>0   && mask[c-w] && !lab[c-w]){lab[c-w]=id; st[sp++]=c-w;}
+      if (y<h-1 && mask[c+w] && !lab[c+w]){lab[c+w]=id; st[sp++]=c+w;}
+    }
+    comps.push({id, px});
+  }
+  return {lab, comps};
+}
+function boundary(comp, mask, w, h, cap){
+  const b = [];
+  for (const c of comp.px){
+    const x = c % w, y = (c / w) | 0;
+    if (x===0||y===0||x===w-1||y===h-1||!mask[c-1]||!mask[c+1]||!mask[c-w]||!mask[c+w]) b.push(c);
+  }
+  const step = Math.max(1, Math.ceil(b.length / cap)), out = [];
+  for (let i=0;i<b.length;i+=step) out.push(b[i]);
+  return out;
+}
+function stampLine(mask, w, h, x0, y0, x1, y1, r){
+  const len = Math.hypot(x1-x0, y1-y0), n = Math.max(1, Math.ceil(len*2)), ri = Math.ceil(r);
+  for (let i=0;i<=n;i++){
+    const x = x0 + (x1-x0)*i/n, y = y0 + (y1-y0)*i/n;
+    for (let dy=-ri;dy<=ri;dy++) for (let dx=-ri;dx<=ri;dx++){
+      if (dx*dx+dy*dy > r*r) continue;
+      const px = Math.round(x)+dx, py = Math.round(y)+dy;
+      if (px>=0&&py>=0&&px<w&&py<h) mask[py*w+px] = 1;
+    }
+  }
+}
+function boxBlur(a, w, h){
+  const t = new Float32Array(w*h), o = new Float32Array(w*h);
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++){ const i=y*w+x; t[i] = ((x>0?a[i-1]:0) + a[i] + (x<w-1?a[i+1]:0)) / 3; }
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++){ const i=y*w+x; o[i] = ((y>0?t[i-w]:0) + t[i] + (y<h-1?t[i+w]:0)) / 3; }
+  return o;
+}
+function rdp(pts, eps){
+  const n = pts.length; if (n < 4) return pts;
+  const keep = new Uint8Array(n); keep[0] = keep[n-1] = 1;
+  const st = [[0, n-1]];
+  while (st.length){
+    const [a,b] = st.pop(); let md = 0, mi = -1;
+    const ax=pts[a][0], ay=pts[a][1], dx = pts[b][0]-ax, dy = pts[b][1]-ay, l2 = dx*dx+dy*dy, l = Math.sqrt(l2);
+    for (let i=a+1;i<b;i++){
+      const px = pts[i][0], py = pts[i][1];
+      const d = l2 === 0 ? Math.hypot(px-ax, py-ay) : Math.abs(dy*(px-ax) - dx*(py-ay)) / l;
+      if (d > md){ md = d; mi = i; }
+    }
+    if (md > eps && mi > 0){ keep[mi] = 1; st.push([a,mi],[mi,b]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
+
+/* ---------- geometry helpers ---------- */
+function plain(g){ return g.index ? g.toNonIndexed() : g; }
+function volume(g){
+  const p = g.attributes.position.array; let v = 0;
+  for (let i=0;i<p.length;i+=9){
+    v += p[i]*(p[i+4]*p[i+8]-p[i+5]*p[i+7]) - p[i+1]*(p[i+3]*p[i+8]-p[i+5]*p[i+6]) + p[i+2]*(p[i+3]*p[i+7]-p[i+4]*p[i+6]);
+  }
+  return v/6;
+}
+function orient(g){
+  g = plain(g);
+  if (volume(g) < 0){
+    const p = g.attributes.position.array;
+    for (let i=0;i<p.length;i+=9) for (let k=0;k<3;k++){ const t=p[i+3+k]; p[i+3+k]=p[i+6+k]; p[i+6+k]=t; }
+  }
+  g.computeVertexNormals();
+  return g;
+}
+function merge(list){
+  list = list.map(plain);
+  let n = 0; list.forEach(g => n += g.attributes.position.array.length);
+  const out = new Float32Array(n); let o = 0;
+  list.forEach(g => { out.set(g.attributes.position.array, o); o += g.attributes.position.array.length; });
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(out, 3)); g.computeVertexNormals();
+  return g;
+}
+function discShape(r, holes){
+  const s = new THREE.Shape(); s.absarc(0,0,r,0,Math.PI*2,false);
+  (holes||[]).forEach(h => { const p = new THREE.Path(); p.absarc(0,0,h.r,0,Math.PI*2,true); s.holes.push(p); });
+  return s;
+}
+function rectShape(w, h, holes){
+  const sh = new THREE.Shape(); sh.moveTo(-w/2,-h/2); sh.lineTo(w/2,-h/2); sh.lineTo(w/2,h/2); sh.lineTo(-w/2,h/2); sh.lineTo(-w/2,-h/2);
+  (holes||[]).forEach(o => {
+    const p = new THREE.Path();
+    if (o.r) p.absarc(o.x||0, o.y||0, o.r, 0, Math.PI*2, true);
+    else { const x=o.w/2, y=o.h/2; p.moveTo(-x,-y); p.lineTo(-x,y); p.lineTo(x,y); p.lineTo(x,-y); p.lineTo(-x,-y); }
+    sh.holes.push(p);
+  });
+  return sh;
+}
+const ext = (shape, depth, z) => { const g = new THREE.ExtrudeGeometry(shape, {depth, bevelEnabled:false, curveSegments:40}); g.translate(0,0,z||0); return g; };
+function toSTL(geos){
+  let tris = 0; geos.forEach(g => tris += g.attributes.position.count/3);
+  const buf = new ArrayBuffer(84 + 50*tris), dv = new DataView(buf);
+  const head = 'ShadowBoxLamp'; for (let i=0;i<head.length;i++) dv.setUint8(i, head.charCodeAt(i));
+  dv.setUint32(80, tris, true); let off = 84;
+  geos.forEach(g => {
+    const p = g.attributes.position.array;
+    for (let i=0;i<p.length;i+=9){
+      const ux=p[i+3]-p[i], uy=p[i+4]-p[i+1], uz=p[i+5]-p[i+2], vx=p[i+6]-p[i], vy=p[i+7]-p[i+1], vz=p[i+8]-p[i+2];
+      let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1;
+      [nx/l,ny/l,nz/l].forEach((v,k)=>dv.setFloat32(off+k*4,v,true));
+      for (let k=0;k<9;k++) dv.setFloat32(off+12+k*4, p[i+k], true);
+      dv.setUint16(off+48, 0, true); off += 50;
+    }
+  });
+  return buf;
+}
+function download(buf, name){
+  const a = document.createElement('a'); a.href = URL.createObjectURL(buf instanceof Blob ? buf : new Blob([buf], {type:'model/stl'}));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ---------- box shapes: convex polygons around the LED, listed clockwise ----------
+   Every wall is one flat panel along one polygon side. */
+const regular = (n, R, start) => Array.from({length:n}, (_, k) => { const t = start - 2*Math.PI*k/n; return [R*Math.cos(t), R*Math.sin(t)]; });
+const SHAPES = {
+  rect:    p => { const a = p.iw/2, b = p.ih/2; return [[-a,b],[a,b],[a,-b],[-a,-b]]; },
+  round:   p => regular(12, p.iw/2, Math.PI/2 + Math.PI/12),
+  hex:     p => regular(6,  p.iw/2, Math.PI/2 + Math.PI/6),
+  oct:     p => regular(8,  p.iw/2, Math.PI/2 + Math.PI/8),
+  tri:     p => regular(3,  p.iw/2, Math.PI/2),
+  diamond: p => { const a = p.iw/2, b = p.ih/2; return [[0,b],[a,0],[0,-b],[-a,0]]; },
+  cyl:     p => regular(180, p.iw/2, Math.PI/2 + Math.PI/180)    // pure circle: 180 tiny sides for the optics, one true round tube for the wall
+};
+// per side: outward normal n, tangent t (inside viewer looking out sees u increase to the right),
+// distance d from the LED axis to the side line, and the span u0..u1 of the side along t
+function polyInfo(verts){
+  return verts.map((V, k) => {
+    const W = verts[(k+1)%verts.length], dx = W[0]-V[0], dy = W[1]-V[1], len = Math.hypot(dx,dy), t = [dx/len, dy/len], n = [-t[1], t[0]];
+    return {n, t, d: V[0]*n[0] + V[1]*n[1], u0: V[0]*t[0] + V[1]*t[1], u1: W[0]*t[0] + W[1]*t[1]};
+  });
+}
+// polygon whose sides are moved outward (delta > 0) or inward (delta < 0)
+function offsetPoly(sides, delta){
+  const n = sides.length;
+  return sides.map((s, k) => {
+    const a = sides[(k+n-1)%n], da = a.d + delta, db = s.d + delta, det = a.n[0]*s.n[1] - a.n[1]*s.n[0];
+    return [(da*s.n[1] - db*a.n[1])/det, (a.n[0]*db - s.n[0]*da)/det];
+  });
+}
+const V2 = pts => pts.map(([x,y]) => new THREE.Vector2(x,y));
+// ExtrudeGeometry only cuts a hole when it winds the opposite way to the outline, so force
+// the outline clockwise and every hole counter-clockwise (otherwise the hole is silently filled).
+function polyShape(outer, holes, circles){
+  const o = V2(outer); if (!THREE.ShapeUtils.isClockWise(o)) o.reverse();
+  const sh = new THREE.Shape(o);
+  (holes||[]).forEach(h => { const v = V2(h); if (THREE.ShapeUtils.isClockWise(v)) v.reverse(); sh.holes.push(new THREE.Path(v)); });
+  (circles||[]).forEach(c => { const p = new THREE.Path(); p.absarc(c.x||0, c.y||0, c.r, 0, Math.PI*2, false); sh.holes.push(p); });
+  return sh;
+}
+
+/* ---------- the optics ----------
+   Wall plane z=0. Floor top at z=F. LED at (0,0,F+hL). A panel point at perimeter position p
+   and height zp above the floor throws its shadow on the wall at q*p, where q = (F+hL)/(hL-zp).
+   For a wall point W: q = max over sides of (W.n)/d, and zp = hL - (F+hL)/q. */
+let parts = null, view = 'asm', sim = null;
+let exactMode = false, exactW = 500, figAspect = 1, lastEff = {led: 62, ph: 48};   // typed shadow size, picture proportions, LED / panel heights actually used
+function setStatus(msg, err){ const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+
+// Join every floating piece to the main piece with a thin strut. Nearest-first (like Prim's algorithm):
+// each piece attaches to whatever connected piece is closest, so struts stay short and sit in the gaps.
+function bridgeMask(mask, w, h, mainIdx, wpx, minPx){
+  const {lab, comps} = components(mask, w, h);
+  const mainId = mainIdx >= 0 ? lab[mainIdx] : (comps.length ? comps.reduce((m, c) => c.px.length > m.px.length ? c : m).id : 0);
+  if (!mainId) return null;
+  const sorted = comps.filter(c => c.id !== mainId).sort((a,b) => b.px.length - a.px.length);
+  let dropped = 0; const items = [];
+  const pts = (c, cap) => boundary(c, mask, w, h, cap).map(i => [i % w, (i/w)|0]);
+  sorted.forEach((c, idx) => {
+    if (c.px.length < minPx || idx >= 250){ c.px.forEach(i => mask[i] = 0); dropped++; return; }
+    items.push({b: pts(c, 70), best: Infinity, a: null, t: null, done: false});
+  });
+  const update = (it, target) => {
+    for (const p of it.b) for (const q of target){
+      const dx = p[0]-q[0], dy = p[1]-q[1], d = dx*dx + dy*dy;
+      if (d < it.best){ it.best = d; it.a = p; it.t = q; }
+    }
+  };
+  const mainPts = pts(comps[mainId-1], 900);
+  items.forEach(it => update(it, mainPts));
+  let bridged = 0;
+  for (let n=0; n<items.length; n++){
+    let pick = null;
+    for (const it of items) if (!it.done && (!pick || it.best < pick.best)) pick = it;
+    stampLine(mask, w, h, pick.a[0], pick.a[1], pick.t[0], pick.t[1], wpx/2);
+    pick.done = true; bridged++;
+    for (const it of items) if (!it.done) update(it, pick.b);
+  }
+  return {bridged, dropped};
+}
+
+// mask (w x h, row 0 = top of panel) -> extruded panel geometry; x = along panel, y = up, z = thickness (inner face on top)
+function maskToPanel(mask, w, h, Lh, depth){
+  const pw = w+2, ph = h+2, pad = new Float32Array(pw*ph);
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++) pad[(y+1)*pw + x+1] = mask[y*w+x];
+  const f = pad; // already an anti-aliased field
+  const polys = d3.contours().size([pw,ph]).thresholds([0.5])(f)[0].coordinates;
+  // Map every contour against the PANEL GRID itself (not the largest
+  // contour): the padded mask spans exactly the panel width 2*Lh and height
+  // h rows, so no blob can ever land outside the panel — this removes the
+  // corner flap artifacts on every shape.
+  const k = 2*Lh/w;
+  const toV = ([x,y]) => new THREE.Vector2(-Lh + (x-1)*k, (h+1-y)*k);
+  const ring = r => { let q = rdp(r, 0.4); if (q.length>1 && q[0][0]===q[q.length-1][0] && q[0][1]===q[q.length-1][1]) q = q.slice(0,-1); return q.length >= 3 ? q.map(toV) : null; };
+  const shapes = [];
+  polys.forEach(poly => {
+    const outer = ring(poly[0]); if (!outer) return;
+    const sh = new THREE.Shape(outer);
+    for (let i=1;i<poly.length;i++){ const hh = ring(poly[i]); if (hh) sh.holes.push(new THREE.Path(hh)); }
+    shapes.push(sh);
+  });
+  return orient(new THREE.ExtrudeGeometry(shapes, {depth, bevelEnabled:false, steps:1}));
+}
+
+/* ---------- weight estimate: volume of each part x filament density (solid plastic) ---------- */
+const gramsOf = g => Math.abs(volume(g)) / 1000 * +$('mat').value;           // mm3 -> cm3 -> g
+const fmtG = g => g < 10 ? g.toFixed(1) + ' g' : Math.round(g) + ' g';
+const matName = () => $('mat').selectedOptions[0].text;
+// Price list in rupees. Change these three numbers to change every price on the page.
+const PRICE = {perGram: 5, ledRod: 29, service: 149};   // per gram of plastic / LED lamp + rod / printer and service charge
+const rupees = n => '₹' + Math.round(n).toLocaleString('en-IN');
+const totalG = () => parts ? [parts.floorG, parts.tubeG, parts.plateG, ...parts.panels].filter(Boolean).reduce((n, g) => n + gramsOf(g), 0) : 0;
+function estCost(){
+  const g = totalG(), print = Math.round(g * PRICE.perGram);
+  return {g, print, ledRod: PRICE.ledRod, service: PRICE.service, total: print + PRICE.ledRod + PRICE.service};
+}
+function updateWeight(){
+  if (!parts) return;
+  $('s_wt').textContent = fmtG(totalG());
+  const c = estCost();
+  $('s_cost').textContent = rupees(c.total);
+  $('s_costNote').textContent = `${rupees(c.print)} print (${rupees(PRICE.perGram)}/g) + ${rupees(c.ledRod)} LED & rod + ${rupees(c.service)} service`;
+  if ($('dlModal').classList.contains('open')) updateDl();
+}
+
+/* ---------- pure circle: one round tube wall ----------
+   The stencil is made as a flat strip (length = circumference). The strip's triangles are cut every few mm along
+   its length (so no triangle spans a wide arc), then every point is bent round a cylinder. Cut lines are shared
+   by neighbouring triangles, so the result stays watertight. */
+function splitByX(g, x0, step){
+  const p = g.attributes.position.array, out = [];
+  for (let i=0;i<p.length;i+=9){
+    const xa = p[i], xb = p[i+3], xc = p[i+6];
+    const k0 = Math.floor((Math.min(xa,xb,xc) - x0)/step) + 1, k1 = Math.ceil((Math.max(xa,xb,xc) - x0)/step) - 1;
+    if (k1 < k0){ for (let j=0;j<9;j++) out.push(p[i+j]); continue; }
+    let polys = [[[xa,p[i+1],p[i+2]], [xb,p[i+4],p[i+5]], [xc,p[i+7],p[i+8]]]];
+    for (let k=k0;k<=k1;k++){
+      const cx = x0 + k*step, next = [];
+      for (const poly of polys){
+        let mn = Infinity, mx = -Infinity; for (const v of poly){ if (v[0] < mn) mn = v[0]; if (v[0] > mx) mx = v[0]; }
+        if (mx <= cx || mn >= cx){ next.push(poly); continue; }
+        const L = [], Rr = [];
+        for (let a=0;a<poly.length;a++){
+          const P = poly[a], Q = poly[(a+1)%poly.length], dp = P[0]-cx, dq = Q[0]-cx;
+          if (dp <= 0) L.push(P); if (dp >= 0) Rr.push(P);
+          if ((dp < 0 && dq > 0) || (dp > 0 && dq < 0)){ const t = dp/(dp-dq), I = [cx, P[1]+(Q[1]-P[1])*t, P[2]+(Q[2]-P[2])*t]; L.push(I); Rr.push(I); }
+        }
+        if (L.length >= 3) next.push(L); if (Rr.length >= 3) next.push(Rr);
+      }
+      polys = next;
+    }
+    for (const poly of polys) for (let a=1;a<poly.length-1;a++) out.push(...poly[0], ...poly[a], ...poly[a+1]);
+  }
+  const ng = new THREE.BufferGeometry(); ng.setAttribute('position', new THREE.BufferAttribute(new Float32Array(out), 3)); return ng;
+}
+// flat strip (x along the wall, y up, z thickness with the inner face at z = tp) -> round tube around the Z axis
+function bendToCylinder(g, R, th0, tp, Lh){
+  const p = g.attributes.position.array;
+  for (let i=0;i<p.length;i+=3){
+    const th = th0 - (p[i] + Lh)/R, r = R + tp - p[i+2], y = p[i+1];
+    p[i] = r*Math.cos(th); p[i+1] = r*Math.sin(th); p[i+2] = y;
+  }
+  g.attributes.position.needsUpdate = true; return g;
+}
+
+// smooth shading: average the face normals that meet at the same point, but keep sharp corners (angle above maxDeg stays crisp)
+function creasedNormals(g, maxDeg){
+  const p = g.attributes.position.array, nf = p.length/9, fn = new Float32Array(nf*3), fa = new Float32Array(nf), cosT = Math.cos(maxDeg*Math.PI/180), map = new Map();
+  const key = i => Math.round(p[i]*100) + ',' + Math.round(p[i+1]*100) + ',' + Math.round(p[i+2]*100);
+  for (let f=0; f<nf; f++){
+    const i = f*9, ux = p[i+3]-p[i], uy = p[i+4]-p[i+1], uz = p[i+5]-p[i+2], vx = p[i+6]-p[i], vy = p[i+7]-p[i+1], vz = p[i+8]-p[i+2];
+    const nx = uy*vz-uz*vy, ny = uz*vx-ux*vz, nz = ux*vy-uy*vx, l = Math.hypot(nx,ny,nz) || 1;
+    fn[f*3] = nx/l; fn[f*3+1] = ny/l; fn[f*3+2] = nz/l; fa[f] = l;
+    for (let j=0;j<3;j++){ const k = key(i + j*3); const a = map.get(k); if (a) a.push(f); else map.set(k, [f]); }
+  }
+  const out = new Float32Array(p.length);
+  for (let f=0; f<nf; f++) for (let j=0;j<3;j++){
+    const list = map.get(key(f*9 + j*3)); let sx = 0, sy = 0, sz = 0;
+    for (const h of list){ if (fn[f*3]*fn[h*3] + fn[f*3+1]*fn[h*3+1] + fn[f*3+2]*fn[h*3+2] >= cosT){ sx += fn[h*3]*fa[h]; sy += fn[h*3+1]*fa[h]; sz += fn[h*3+2]*fa[h]; } }
+    const l = Math.hypot(sx,sy,sz) || 1, o = f*9 + j*3; out[o] = sx/l; out[o+1] = sy/l; out[o+2] = sz/l;
+  }
+  g.setAttribute('normal', new THREE.BufferAttribute(out, 3)); return g;
+}
+
+function build(){
+  if (!src) return;
+  const p = params();
+  const fig = figure(src, p.invert, p.mirror);
+  if (!fig.ok){ setStatus('No figure found in this SVG. Try the invert option.', true); return; }
+  const F = p.floor, tp = p.pt, pitch = p.pitch; let hL = p.led, Hp = p.ph;
+  const verts = SHAPES[p.shape](p), sides = polyInfo(verts), nS = sides.length;
+  const cyl = p.shape === 'cyl', Rc = cyl ? sides[0].d : 0, TH0 = Math.PI/2;   // pure circle: radius and where the wall's seam sits
+  const qOf = cyl ? (X, Y) => Math.hypot(X, Y)/Rc
+    : (X, Y) => { let q = -1e9; for (let k=0;k<nS;k++){ const s = sides[k], v = (X*s.n[0] + Y*s.n[1])/s.d; if (v > q) q = v; } return q; };
+
+  // place the figure on the wall: box centre sits at (bx%, by%) of the figure
+  const cx = fig.x0 + p.bx/100*(fig.x1-fig.x0), cy = fig.y0 + p.by/100*(fig.y1-fig.y0);
+  let M = 1e-6;
+  for (let y=fig.y0;y<=fig.y1;y++) for (let x=fig.x0;x<=fig.x1;x++) if (fig.d[y*fig.W+x] >= .5){
+    const v = qOf(x-cx, cy-y); if (v > M) M = v;
+  }
+  // typed shadow size (mm): if the box cannot reach that far, lower the LED toward the panel top, then raise the panels.
+  // The sliders are not touched, so going back to auto size restores your own LED and panel heights.
+  let sf, autoNote = '';
+  if (exactMode){
+    sf = Math.max(50, Math.min(2500, exactW))/(fig.x1-fig.x0);
+    const qN = M*sf/0.98;
+    if ((F+hL)/(hL-Hp) < qN){
+      const gap = 8; let hl2 = (F + qN*Hp)/(qN-1);
+      if (hl2 - Hp < gap){ Hp = Math.min(300, Math.ceil(gap*qN - F - gap)); hl2 = Hp + gap; }
+      hL = Math.max(Hp + 6, Math.ceil(hl2));
+      autoNote = ` To reach this size the LED is ${hL} mm and the panels ${Hp} mm tall.`;
+    }
+  }
+  // The LED has to sit above the panel top or the shadow maths breaks. Raising the panels
+  // lifts the LED with them, so the height slider always rebuilds instead of bailing out.
+  let ledNote = '';
+  if (hL < Hp + 6){
+    hL = Math.ceil(Hp + 6);
+    const led = $('led');
+    if (+led.max < hL) led.max = hL;
+    if (+led.value !== hL){ led.value = hL; labels(); }
+    ledNote = ` LED raised to ${hL} mm so it stays 6 mm above the panels.`;
+  }
+  const qmax = (F+hL)/(hL-Hp), m0 = (F+hL)/hL;
+  if (!exactMode) sf = qmax*0.98/M*(p.size/100); // mm on the wall per source pixel
+  let dk = 0, lost = 0, hidden = 0;
+  for (let y=fig.y0;y<=fig.y1;y++) for (let x=fig.x0;x<=fig.x1;x++) if (fig.d[y*fig.W+x] >= .5){
+    dk++; const q = qOf((x-cx)*sf, (cy-y)*sf);
+    if (q > qmax) lost++; else if (q < m0) hidden++;
+  }
+
+  // one stencil per wall panel
+  const masks = [], meta = []; let bridged = 0, dropped = 0;
+  const strip = Math.max(2, Math.round(4/pitch));
+  if (cyl){
+    // one stencil that wraps all the way round the tube: column = distance along the circumference
+    const C = 2*Math.PI*Rc, w = Math.round(C/pitch), h = Math.round(Hp/pitch), mask = new Uint8Array(w*h), field = new Float32Array(w*h), SS = 3;
+    for (let r=0;r<h;r++){
+      for (let c=0;c<w;c++){
+        let acc = 0;
+        for (let sy=0; sy<SS; sy++){
+          const zp = (h - r - (sy+.5)/SS)*pitch, q = (F+hL)/(hL-zp);
+          for (let sx=0; sx<SS; sx++){
+            const th = TH0 - (c + (sx+.5)/SS)*pitch/Rc, X = q*Rc*Math.cos(th), Y = q*Rc*Math.sin(th);
+            acc += sampleFig(fig, cx + X/sf, cy - Y/sf) >= .5 ? 1 : 0;
+          }
+        }
+        const v = r >= h-strip ? 1 : acc/(SS*SS);
+        field[r*w+c] = v; mask[r*w+c] = v >= .5 ? 1 : 0;
+      }
+    }
+    const res = bridgeMask(mask, w, h, (h-1)*w + (w>>1), Math.max(2, p.strut/pitch), Math.max(6, 0.5/(pitch*pitch)));
+    for (let i=0;i<w*h;i++){ if (mask[i] && field[i] < .5) field[i] = 1; else if (!mask[i] && field[i] >= .5) field[i] = 0; }
+    bridged += res.bridged; dropped += res.dropped;
+    for (let r=0;r<h;r++){ mask[r*w]=0; mask[r*w+w-1]=0; }   // side margin: contours never pinch at the seam corners
+    masks.push({mask, field, w, h, Lh: C/2, ua: 0}); meta.push({Lh: C/2, uc: 0, d: Rc, theta: 0});
+  }
+  (cyl ? [] : sides).forEach((s, k) => {
+    const e = (p.shape === 'rect' && k%2 === 0) ? tp : 0;           // rectangle: long panels cover the short panels' ends
+    const ua = s.u0 - e, ub = s.u1 + e, Lh = (ub-ua)/2, uc = (ua+ub)/2;
+    const w = Math.round((ub-ua)/pitch), h = Math.round(Hp/pitch), mask = new Uint8Array(w*h), field = new Float32Array(w*h);
+    const SS = 3; // 3x3 samples per stencil pixel -> anti-aliased field, so contours are smooth
+    for (let r=0;r<h;r++){
+      for (let c=0;c<w;c++){
+        let acc = 0;
+        for (let sy=0; sy<SS; sy++){
+          const zp = (h - r - (sy+.5)/SS)*pitch, q = (F+hL)/(hL-zp);
+          for (let sx=0; sx<SS; sx++){
+            const u = Math.max(s.u0, Math.min(s.u1, ua + (c + (sx+.5)/SS)*pitch));
+            const X = q*(s.n[0]*s.d + s.t[0]*u), Y = q*(s.n[1]*s.d + s.t[1]*u);
+            acc += sampleFig(fig, cx + X/sf, cy - Y/sf) >= .5 ? 1 : 0;
+          }
+        }
+        const v = r >= h-strip ? 1 : acc/(SS*SS);
+        field[r*w+c] = v; mask[r*w+c] = v >= .5 ? 1 : 0;
+      }
+    }
+    const res = bridgeMask(mask, w, h, (h-1)*w + (w>>1), Math.max(2, p.strut/pitch), Math.max(6, 0.5/(pitch*pitch)));
+    for (let i=0;i<w*h;i++){ if (mask[i] && field[i] < .5) field[i] = 1; else if (!mask[i] && field[i] >= .5) field[i] = 0; }
+    bridged += res.bridged; dropped += res.dropped;
+    for (let r=0;r<h;r++){ mask[r*w]=0; mask[r*w+w-1]=0; }   // side margin: contours never pinch at the bottom corners
+    masks.push({mask, field, w, h, Lh, ua});
+    meta.push({Lh, uc, d: s.d, theta: Math.atan2(s.n[1], s.n[0]) - Math.PI/2});
+  });
+  const panels = cyl
+    ? [(() => {
+        // cut the flat strip every few mm (keeps the round surface smooth, chord error under 0.05 mm), then bend it round
+        const m = masks[0], flat = maskToPanel(m.field, m.w, m.h, m.Lh, tp);
+        const step = Math.max(2, Math.min(5, 2*Rc*Math.acos(Math.max(0, 1 - 0.01/Rc))));   // chord error about 0.01 mm
+        return creasedNormals(orient(bendToCylinder(splitByX(flat, -m.Lh, step), Rc, TH0, tp, m.Lh)), 40);
+      })()]
+    : masks.map(m => maskToPanel(m.field, m.w, m.h, m.Lh, tp));
+
+  // floor: outline, rim that seats the panels, LED tube boss, wire hole and hanging hole
+  const outline = offsetPoly(sides, tp), rimOut = offsetPoly(sides, -0.2), rimIn = offsetPoly(sides, -1.8);
+  const ytop = Math.max(...verts.map(v => v[1]));
+  const floorG = orient(merge([
+    ext(polyShape(outline, [], [{r:2}, {r:3.5, x:0, y:0.6*ytop}]), F, 0),
+    ext(polyShape(rimOut, [rimIn]), 3, F),
+    ext(discShape(6.5, [{r:4.15}]), 6, F)
+  ]));
+  const Ht = hL - 1.5;
+  const tubeG = orient(merge([ ext(discShape(4,[{r:1.6}]), Ht-3, 0), ext(discShape(4,[{r:2.7}]), 3, Ht-3) ]));
+  const fb = {x0:Math.min(...outline.map(v=>v[0])), x1:Math.max(...outline.map(v=>v[0])), y0:Math.min(...outline.map(v=>v[1])), y1:Math.max(...outline.map(v=>v[1]))};
+
+  // optional box picture plate, clipped to the floor shape
+  let plateG = null, plateInfo = '';
+  if (p.plOn){
+    const pf = figure(plSrc || src, p.plInvert, false);
+    if (pf.ok){
+      const pin = offsetPoly(sides, -2.0);
+      const bx0 = Math.min(...pin.map(v=>v[0])), bx1 = Math.max(...pin.map(v=>v[0])), by0 = Math.min(...pin.map(v=>v[1])), by1 = Math.max(...pin.map(v=>v[1]));
+      const pw = bx1-bx0, phh = by1-by0, w = Math.round(pw/pitch), h = Math.round(phh/pitch);
+      const k = Math.min(pw*0.92/(pf.x1-pf.x0+1), phh*0.92/(pf.y1-pf.y0+1)) * (p.plSize/100);
+      const pcx = (pf.x0+pf.x1)/2, pcy = (pf.y0+pf.y1)/2, mx = (bx0+bx1)/2, my = (by0+by1)/2, sil = p.plMode === 'sil', pm = new Uint8Array(w*h);
+      for (let r=0;r<h;r++){
+        const Y = by1 - (r+.5)*pitch;
+        for (let c=0;c<w;c++){
+          const X = bx0 + (c+.5)*pitch;
+          let inside = true;
+          if (cyl) inside = X*X + Y*Y <= (Rc-2.0)*(Rc-2.0);
+          else for (let i=0;i<nS;i++){ const s = sides[i]; if (X*s.n[0] + Y*s.n[1] > s.d - 2.0) { inside = false; break; } }
+          if (!inside || Math.hypot(X,Y) < 6.9) continue;                // outside the floor, or room for the tube boss
+          const d = sampleFig(pf, pcx + (X-mx)/k, pcy - (Y-my)/k) >= .5;
+          pm[r*w+c] = (sil ? d : !d) ? 1 : 0;
+        }
+      }
+      const pr = bridgeMask(pm, w, h, -1, Math.max(2, p.strut/pitch), Math.max(6, 0.5/(pitch*pitch)));
+      if (pr){
+        const pad = new Float32Array((w+2)*(h+2)); for (let y=0;y<h;y++) for (let x=0;x<w;x++) pad[(y+1)*(w+2)+x+1] = pm[y*w+x];
+        const polys = d3.contours().size([w+2,h+2]).thresholds([0.5])(boxBlur(pad, w+2, h+2))[0].coordinates;
+        const toV = ([x,y]) => new THREE.Vector2(bx0 + (x-1)*pitch, by1 - (y-1)*pitch);
+        const ring = r => { let q = rdp(r, 0.4); if (q.length>1 && q[0][0]===q[q.length-1][0] && q[0][1]===q[q.length-1][1]) q = q.slice(0,-1); return q.length >= 3 ? q.map(toV) : null; };
+        const shapes = [];
+        polys.forEach(poly => {
+          const outer = ring(poly[0]); if (!outer) return;
+          const sh = new THREE.Shape(outer);
+          for (let i=1;i<poly.length;i++){ const hh = ring(poly[i]); if (hh) sh.holes.push(new THREE.Path(hh)); }
+          shapes.push(sh);
+        });
+        if (shapes.length){
+          plateG = orient(new THREE.ExtrudeGeometry(shapes, {depth:p.plThick, bevelEnabled:false, steps:1}));
+          plateInfo = ` Floor plate ${pw.toFixed(0)} x ${phh.toFixed(0)} mm, ${pr.bridged} floating piece${pr.bridged===1?'':'s'} bridged.`;
+        }
+      }
+    }
+  }
+  creasedNormals(tubeG, 40); if (cyl) creasedNormals(floorG, 40);        // round parts look round, not faceted
+  parts = {floorG, tubeG, plateG, panels, meta, F, tp, Hp, Ht, fb, cyl, Rc};
+  sim = {masks, sides, verts, fig, cx, cy, sf, F, hL, Hp, qmax, m0, pitch, cyl, Rc, TH0};
+
+  draw3d(); drawWall();
+  const tris = [floorG, tubeG, plateG, ...panels].filter(Boolean).reduce((n,g) => n + g.attributes.position.count/3, 0);
+  $('s_size').textContent = `${Math.round((fig.x1-fig.x0)*sf)} x ${Math.round((fig.y1-fig.y0)*sf)} mm`;
+  figAspect = (fig.y1-fig.y0)/(fig.x1-fig.x0); lastEff = {led: hL, ph: Hp};
+  $('shW').value = Math.round((fig.x1-fig.x0)*sf); $('shH').value = Math.round((fig.y1-fig.y0)*sf);
+  $('shAuto').hidden = !exactMode;
+  $('shHint').firstChild.textContent = autoNote ? autoNote.trim() + ' ' : 'Type a size. The box raises its LED and panels by itself to reach it. ';
+  $('s_lost').textContent = (100*lost/Math.max(1,dk)).toFixed(1) + '%';
+  $('s_float').textContent = `${bridged} bridged${dropped ? ', ' + dropped + ' dropped' : ''}`;
+  $('s_box').textContent = `${(fb.x1-fb.x0).toFixed(0)} x ${(fb.y1-fb.y0).toFixed(0)} x ${(F+Hp).toFixed(0)} mm`;
+  updateWeight();
+  setStatus(`${cyl ? 'One round wall' : nS + ' wall panels'}, ${(tris/1000).toFixed(0)}k triangles.` + plateInfo + (hidden ? ` ${(100*hidden/dk).toFixed(1)}% of the figure sits behind the box itself.` : '') + autoNote + ledNote);
+}
+
+/* simulate what the printed panels project on the wall (smooth edges: the stencil is sampled bilinearly) */
+const LED_R = 2.5, LED_SAMPLES = 10;   // LED dome radius in mm (Cree star: about 5 mm dome): bigger = softer shadow edges
+function drawWall(){
+  const {masks, sides, verts, fig, cx, cy, sf, F, hL, qmax, m0, pitch, cyl, Rc, TH0} = sim, nS = sides.length;
+  const x0 = Math.min(...verts.map(v=>v[0]))*qmax, x1 = Math.max(...verts.map(v=>v[0]))*qmax;
+  const y0 = Math.min(...verts.map(v=>v[1]))*qmax, y1 = Math.max(...verts.map(v=>v[1]))*qmax;
+  const CW = 720, CH = Math.min(1100, Math.round(CW*(y1-y0)/(x1-x0)));
+  const cv = $('wallCanvas'); cv.width = CW; cv.height = CH;
+  const g = cv.getContext('2d'), img = g.createImageData(CW, CH), D = img.data;
+  const LS = [];                                                     // points across the LED face (mm), golden-angle disk
+  for (let k=0;k<LED_SAMPLES;k++){ const rr = LED_R*Math.sqrt((k+.5)/LED_SAMPLES), aa = k*2.399963; LS.push([rr*Math.cos(aa), rr*Math.sin(aa)]); }
+  const WALL = [255,238,200], DARK = [26,18,12], BOX = [58,56,62], BOXEDGE = [34,32,38];
+  const tex = wallTexture(CW, CH);                                   // plaster grain, built once
+  const lcx = (0 - x0)/(x1-x0)*CW, lcy = (y1 - 0)/(y1-y0)*CH;       // lamp centre on the canvas
+  for (let j=0;j<CH;j++){
+    const Y = y1 - (j+.5)/CH*(y1-y0);
+    for (let i=0;i<CW;i++){
+      const X = x0 + (i+.5)/CW*(x1-x0), o = (j*CW+i)*4;
+      let q = -1e9, si = 0;
+      if (cyl) q = Math.hypot(X, Y)/Rc;
+      else for (let k=0;k<nS;k++){ const s = sides[k], v = (X*s.n[0] + Y*s.n[1])/s.d; if (v > q){ q = v; si = k; } }
+      // warm light from the lamp: bright near the box, darker toward the corners of the wall
+      const dn = Math.hypot((i-lcx)/CW, (j-lcy)/CH), glow = Math.max(.3, Math.min(1.1, 1.15 - 1.6*dn));
+      const grain = (0.88 + 0.16*tex[j*CW+i]) * glow;
+      let r = WALL[0]*grain, gg = WALL[1]*grain, bb = WALL[2]*grain;
+      if (q < m0){                                                    // the box itself, with a darker rim
+        const c = q > m0*0.93 ? BOXEDGE : BOX; r=c[0]; gg=c[1]; bb=c[2];
+      } else {
+        let t = 0;
+        if (q < qmax){
+          // Soft shadow: the LED is not a point, so cast a ray from many points across its face and average.
+          // Where only part of the LED can see the wall the shadow is partly lit - that gives real soft edges,
+          // and the halftone dots blend into gray exactly as they will on the printed lamp.
+          const s = sides[si], m = masks[si];
+          const at = cyl ? (x,y) => (y>=0 && y<m.h) ? m.field[y*m.w + ((x % m.w) + m.w) % m.w] : 0
+                         : (x,y) => (x>=0 && x<m.w && y>=0 && y<m.h) ? m.field[y*m.w+x] : 0;
+          let acc = 0;
+          for (let li=0; li<LS.length; li++){
+            const lx = LS[li][0], ly = LS[li][1], dx = X - lx, dy = Y - ly;
+            let sp, px, py;
+            if (cyl){
+              const A = dx*dx + dy*dy, Bq = 2*(lx*dx + ly*dy), Cq = lx*lx + ly*ly - Rc*Rc, disc = Bq*Bq - 4*A*Cq;
+              if (disc < 0) continue;
+              sp = (-Bq + Math.sqrt(disc))/(2*A);
+            } else {
+              const den = s.n[0]*dx + s.n[1]*dy; if (den <= 1e-9) continue;
+              sp = (s.d - (s.n[0]*lx + s.n[1]*ly))/den;
+            }
+            px = lx + sp*dx; py = ly + sp*dy;
+            const zp = hL - sp*(hL + F);
+            const u = cyl ? (((TH0 - Math.atan2(py, px)) % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI) * Rc : px*s.t[0] + py*s.t[1];
+            const fx = (u - m.ua)/pitch - .5, fy = m.h - zp/pitch - .5, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx-ix, ty = fy-iy;
+            acc += (at(ix,iy)*(1-tx) + at(ix+1,iy)*tx)*(1-ty) + (at(ix,iy+1)*(1-tx) + at(ix+1,iy+1)*tx)*ty;
+          }
+          t = acc/LS.length;
+        }
+        t *= .93;
+        r += (DARK[0]-r)*t; gg += (DARK[1]-gg)*t; bb += (DARK[2]-bb)*t;
+        if (t < .1 && sampleFig(fig, cx + X/sf, cy - Y/sf) >= .95){ r=255; gg=176; bb=60; }   // leak: figure not covered by a panel
+      }
+      D[o]=Math.min(255,r); D[o+1]=Math.min(255,gg); D[o+2]=Math.min(255,bb); D[o+3]=255;
+    }
+  }
+  g.putImageData(img,0,0);
+  // the LED glowing in the middle of the box
+  const lr = Math.max(6, CW*0.028), gr = g.createRadialGradient(lcx, lcy, 0, lcx, lcy, lr*2);
+  gr.addColorStop(0, 'rgba(255,248,225,1)'); gr.addColorStop(.45, 'rgba(255,214,140,.95)'); gr.addColorStop(1, 'rgba(255,200,110,0)');
+  g.fillStyle = gr; g.beginPath(); g.arc(lcx, lcy, lr*2, 0, 2*Math.PI); g.fill();
+}
+
+/* soft plaster grain: three octaves of smooth value noise, cached per canvas size */
+let _wallTex = null;
+function wallTexture(W, H){
+  if (_wallTex && _wallTex.W === W && _wallTex.H === H) return _wallTex.a;
+  const a = new Float32Array(W*H); let seed = 12345;
+  const rnd = () => (seed = (seed*1664525 + 1013904223) >>> 0) / 4294967296;
+  [[2,.5],[8,.3],[40,.2]].forEach(([sc,wt]) => {
+    const gw = Math.ceil(W/sc)+2, gh = Math.ceil(H/sc)+2, grid = new Float32Array(gw*gh);
+    for (let k=0;k<grid.length;k++) grid[k] = rnd();
+    for (let j=0;j<H;j++){ const fy = j/sc, iy = fy|0, ty = fy-iy;
+      for (let i=0;i<W;i++){ const fx = i/sc, ix = fx|0, tx = fx-ix;
+        const v = (grid[iy*gw+ix]*(1-tx) + grid[iy*gw+ix+1]*tx)*(1-ty) + (grid[(iy+1)*gw+ix]*(1-tx) + grid[(iy+1)*gw+ix+1]*tx)*ty;
+        a[j*W+i] += v*wt; } }
+  });
+  _wallTex = {W, H, a}; return a;
+}
+
+/* part sets: flat print layout, or the standing box */
+function layoutSet(){
+  const {floorG, tubeG, plateG, panels, meta, Hp, fb} = parts, set = [];
+  set.push({geo:floorG.clone(), kind:'body', id:'floor'});
+  const t = tubeG.clone(); t.translate(fb.x1 + 25, 0, 0); set.push({geo:t, kind:'tube', id:'tube'});
+  if (plateG){ const pl = plateG.clone(); pl.translate(fb.x1 + 25 + 60, 0, 0); set.push({geo:pl, kind:'plate', id:'plate'}); }
+  let y = fb.y0 - 14, xr = 0;
+  if (parts.cyl){            // the round wall prints standing up, beside the other parts
+    const c = panels[0].clone(); c.translate(fb.x1 + 25 + 60 + (plateG ? 60 : 0) + parts.Rc + parts.tp + 15, 0, 0);
+    set.push({geo:c, kind:'wall', id:'w0'}); return set;
+  }
+  panels.forEach((pg, i) => {
+    const wd = 2*meta[i].Lh;
+    if (xr > 0 && xr + wd > 250){ xr = 0; y -= Hp + 10; }
+    const c = pg.clone(); c.translate(xr + meta[i].Lh, y - Hp, 0); xr += wd + 8; set.push({geo:c, kind:'wall', id:'w'+i});
+  });
+  return set;
+}
+function assembledSet(sink = 0, withPlate = true){
+  const {floorG, tubeG, plateG, panels, meta, F, tp} = parts, set = [];
+  set.push({geo:floorG.clone(), kind:'body', id:'floor'});
+  const t = tubeG.clone(); t.translate(0,0,F-sink); set.push({geo:t, kind:'tube', id:'tube'});
+  if (plateG && withPlate){ const pl = plateG.clone(); pl.translate(0,0,F-sink); set.push({geo:pl, kind:'plate', id:'plate'}); }
+  if (parts.cyl){ const c = panels[0].clone(); c.translate(0, 0, F - sink); set.push({geo:c, kind:'wall', id:'w0'}); return set; }
+  panels.forEach((pg, i) => {
+    const m = meta[i], c = pg.clone();
+    c.rotateX(Math.PI/2); c.translate(m.uc, m.d + tp, F - sink); c.rotateZ(m.theta);
+    set.push({geo:c, kind:'wall', id:'w'+i});
+  });
+  return set;
+}
+
+/* ---------- 3D preview ---------- */
+let scene, camera, renderer, controls, group, framed = false, hemi, dirL, extras;
+function init3d(){
+  const el = $('view3d');
+  renderer = new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(devicePixelRatio);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;   // real shadow mapping for the 'Real light' view
+  el.appendChild(renderer.domElement);
+  scene = new THREE.Scene(); scene.background = new THREE.Color(0x1b1b33);
+  camera = new THREE.PerspectiveCamera(40, 1, 1, 4000); camera.up.set(0,0,1);
+  hemi = new THREE.HemisphereLight(0xfff0dd, 0x201810, 0.85); scene.add(hemi);
+  dirL = new THREE.DirectionalLight(0xffffff, 0.65); dirL.position.set(40,-60,200); scene.add(dirL);
+  extras = new THREE.Group(); scene.add(extras);
+  controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true;
+  group = new THREE.Group(); scene.add(group);
+  let touched = false; controls.addEventListener('start', () => { touched = true; });
+  const resize = () => {
+    const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return;
+    renderer.setSize(w,h,false); camera.aspect = w/h; camera.updateProjectionMatrix();
+    if (!touched && parts){ framed = false; draw3d(); }          // keep the whole model in view until the user moves the camera
+  };
+  new ResizeObserver(resize).observe(el); resize();
+  (function loop(){ requestAnimationFrame(loop); controls.update(); renderer.render(scene,camera); })();
+}
+/* ─── STAN studio. engraved branding (negative 3D, zero projection impact) ──
+   A thin white veneer sits 0.3 mm above a darkened cavity plate on the floor
+   top face; the glyph outlines are real holes in the veneer (counters kept as
+   surface islands), so the letters read as recessed dark cuts with crisp
+   self-shadowing. The floor is solid, so no light/projection path changes. */
+let stanFont = null;
+(function loadStanFont(){
+  new THREE.FontLoader().loadAsync('/assets/helvetiker_bold.typeface.json')
+    .then(f => { stanFont = f; if (parts) draw3d(); })
+    .catch(() => {});
+})();
+function mountEngraving(parent){
+  if (!stanFont || !sim) return;
+  const vs = sim.verts; let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+  vs.forEach(v => { minX = Math.min(minX, v[0]); maxX = Math.max(maxX, v[0]); minY = Math.min(minY, v[1]); maxY = Math.max(maxY, v[1]); });
+  const txt = 'STΔN studio.';
+  const size = 8.2;
+  const glyphs = stanFont.generateShapes(txt, size);
+  const counters = [];
+  glyphs.forEach(g => (g.holes || []).forEach(h => counters.push(h)));
+  const w = maxX - minX;
+  const box = new THREE.Box3().setFromPoints(glyphs.flatMap(s => s.getPoints()));
+  const gw = (box.max.x - box.min.x) || 1;
+  const ven = new THREE.Shape();
+  const vw = Math.min(w * 0.72, gw + 10), vh = size + 6;
+  const vx = (minX + maxX) / 2 - vw / 2, vy = minY + 4;
+  ven.moveTo(vx, vy); ven.lineTo(vx + vw, vy); ven.lineTo(vx + vw, vy + vh); ven.lineTo(vx, vy + vh); ven.closePath();
+  glyphs.forEach(g => {
+    const pts = g.getPoints();
+    const h = new THREE.Path();
+    pts.forEach((pt, i) => i === 0 ? h.moveTo(pt.x, pt.y) : h.lineTo(pt.x, pt.y));
+    h.closePath();
+    ven.holes.push(h);
+  });
+  const veneer = new THREE.ExtrudeGeometry(ven, { depth: 0.3, bevelEnabled: false, curveSegments: 6 });
+  const veneerMesh = new THREE.Mesh(veneer, new THREE.MeshStandardMaterial({ color: 0xf5f5f7, roughness: 0.78, metalness: 0.02 }));
+  veneerMesh.position.z = sim.F + 0.12;
+  parent.add(veneerMesh);
+  const cavity = new THREE.Mesh(new THREE.BoxGeometry(vw, vh, 0.1), new THREE.MeshStandardMaterial({ color: 0x35353b, roughness: 0.9, metalness: 0.0 }));
+  cavity.position.set(vx + vw / 2, vy + vh / 2, sim.F + 0.02);
+  parent.add(cavity);
+  counters.forEach(c => {
+    const island = new THREE.ExtrudeGeometry(new THREE.Shape(c.getPoints()), { depth: 0.3, bevelEnabled: false, curveSegments: 6 });
+    const m = new THREE.Mesh(island, new THREE.MeshStandardMaterial({ color: 0xf5f5f7, roughness: 0.78, metalness: 0.02 }));
+    m.position.z = sim.F + 0.12;
+    parent.add(m);
+  });
+}
+
+function draw3d(){
+  while (group.children.length) { const m = group.children.pop(); m.geometry.dispose(); }
+  while (extras.children.length) { const o = extras.children.pop(); if (o.geometry) o.geometry.dispose(); }
+  const real = view === 'real';
+  hemi.intensity = real ? 0.06 : 1.0; dirL.visible = !real; scene.background.set(real ? 0x07070b : 0x1b1b33);
+  const set = view === 'lay' ? layoutSet() : assembledSet();
+  const col = {wall:0xf5f5f7, body:0xf5f5f7, tube:0xffc233, plate:0x15151c};
+  set.forEach(({geo, kind}) => {
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color:col[kind], roughness:.78, metalness:.02, side:THREE.DoubleSide}));
+    if (real) mesh.castShadow = kind !== 'tube';                       // the printed panels, floor and picture plate block the light
+    group.add(mesh);
+  });
+  if (!real) { try { mountEngraving(group); } catch (e) { console.warn('engraving skipped:', e); } }
+  if (real){
+    // A real lamp on a real wall: a point light at the LED, the actual printed geometry casts the shadow.
+    const {hL, F, qmax, verts} = sim, ext = Math.max(...verts.map(v => Math.max(Math.abs(v[0]), Math.abs(v[1])))) * qmax, W = ext*2.1;
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(W, W), new THREE.MeshStandardMaterial({color:0xefe2c6, roughness:1, metalness:0}));
+    wall.position.z = -0.1; wall.receiveShadow = true; extras.add(wall);
+    // Cree-style star LED mounted at the top of the tube, facing DOWN: a wide cone (not a bulb), brightest straight down
+    const led = new THREE.SpotLight(0xffe2b0, 6, 0, THREE.MathUtils.degToRad(88), 1, 0);
+    led.position.set(0, 0, F + hL); led.target.position.set(0, 0, 0); led.castShadow = true;
+    led.shadow.mapSize.set(4096, 4096); led.shadow.camera.near = 1; led.shadow.camera.far = W*2; led.shadow.bias = -0.0004; led.shadow.radius = 4;
+    extras.add(led); extras.add(led.target);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 12), new THREE.MeshBasicMaterial({color:0xfff3d0})); bulb.position.set(0, 0, F + hL - 0.5); extras.add(bulb);
+    const star = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 1.6, 6), new THREE.MeshStandardMaterial({color:0xd8d8dc, roughness:.5, metalness:.3}));   // the 20 mm aluminium star board
+    star.rotation.x = Math.PI/2; star.position.set(0, 0, F + hL + 1.3); extras.add(star);
+    if (!framed){
+      const vf = THREE.MathUtils.degToRad(camera.fov), hf = 2*Math.atan(Math.tan(vf/2)*camera.aspect), d = (W/2)/Math.tan(Math.min(vf, hf)/2) * 1.05;
+      controls.target.set(0, 0, 0); camera.position.set(0, -d*0.3, d*0.95); controls.update(); framed = true;
+    }
+    return;
+  }
+  if (!framed){
+    const box = new THREE.Box3().setFromObject(group), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+    controls.target.copy(c);
+    // fit a sphere around the model into the narrower of the vertical / horizontal view angles, so it is never cropped
+    const vf = THREE.MathUtils.degToRad(camera.fov), hf = 2*Math.atan(Math.tan(vf/2)*camera.aspect);
+    const d = (size.length()/2) / Math.sin(Math.min(vf, hf)/2) * 0.9;
+    const dir = view === 'asm' ? new THREE.Vector3(0.35,-0.9,0.95).normalize() : new THREE.Vector3(0,-0.2,1).normalize();
+    camera.position.copy(c).addScaledVector(dir, d); controls.update(); framed = true;
+  }
+}
+
+/* ---------- wiring ---------- */
+let plSrc = null, timer = 0, token = 0;
+const setBusy = on => document.body.classList.toggle('busy', on);
+const labels = () => sliders.forEach(id => $(id+'_v').textContent = $(id).value + unit[id]);
+
+// run a change: show the loading overlay (it blocks all clicks), let the browser paint it, then build
+function schedule(){
+  labels(); setBusy(true);
+  const my = ++token; clearTimeout(timer);
+  timer = setTimeout(() => requestAnimationFrame(() => setTimeout(() => {
+    if (my !== token) return;
+    try { build(); } catch(e){ console.error(e); setStatus('Build failed: ' + e.message, true); }
+    finally { setBusy(false); }
+  }, 30)), 60);
+}
+function setDz(dz, titleId, nameId, has, name){
+  dz.classList.toggle('has', has);
+  $(titleId).textContent = has ? 'Loaded' : 'Drop an image or click to choose';
+  $(nameId).textContent = name;
+}
+async function useSvg(text, name){
+  setBusy(true);
+  try { src = await loadSvg(text); lastSvg = {text, name: name || 'design.svg'}; framed = false; setDz($('drop'), 'figTitle', 'figName', true, name || 'Sample'); schedule(); }
+  catch(e){ setStatus(e.message, true); setBusy(false); }
+}
+function usePlate(file){ handleUpload(file, (svg, name) => usePlateText(svg, name)); }
+async function usePlateText(text, name){
+  setBusy(true);
+  try {
+    plSrc = await loadSvg(text);
+    setDz($('drop2'), 'plTitle', 'plName', true, name);
+    $('plClear').hidden = false; $('plCard').disabled = false; schedule();
+  } catch(err){ setStatus(err.message, true); setBusy(false); }
+}
+function clearPlate(){
+  plSrc = null; setDz($('drop2'), 'plTitle', 'plName', false, 'Printed on the box floor. Leave empty for a plain box.');
+  $('plClear').hidden = true; $('plCard').disabled = true; schedule();
+}
+
+// sliders: label follows the thumb, the build runs once on release
+sliders.forEach(id => { $(id).addEventListener('input', labels); $(id).addEventListener('change', schedule); });
+['res','invert','mirror','plMode','plInvert'].forEach(id => $(id).addEventListener('change', schedule));
+
+function wireDrop(dz, input, handler){
+  dz.addEventListener('click', e => { if (e.target !== input) input.click(); });
+  input.addEventListener('change', e => { const f = e.target.files[0]; if (f) handler(f); e.target.value = ''; });
+  ['dragover','dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+  dz.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handler(f); });
+}
+/* ---------- image -> SVG converter ----------
+   Any picture (photo, PNG, JPG, WEBP) is traced into an SVG silhouette. The user sees the original and
+   the SVG side by side, can adjust the trace, and presses Proceed to start the lamp with it. */
+const CV = {W:0, H:0, lum:null, alpha:null, hasAlpha:false, name:'', done:null, svg:'', svgUrl:''};
+const readDataURL = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error('Could not read that file.')); r.readAsDataURL(f); });
+const loadImg = url => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('That file is not a supported image.')); im.src = url; });
+
+// SVGs go straight in; everything else goes through the converter first
+async function handleUpload(file, done){
+  if (file.type === 'image/svg+xml' || /\.svg$/i.test(file.name)){ try { done(await file.text(), file.name); } catch(e){ setStatus(e.message, true); } return; }
+  try { await openConverter(file, done); } catch(e){ closeCv(); setStatus(e.message, true); }
+}
+const cvBusy = (on, msg) => { $('cvResWrap').classList.toggle('cvb', on); if (msg) $('cvMsg').textContent = msg; $('cvGo').disabled = on || !CV.svg; };
+function closeCv(){ $('cvModal').classList.remove('open'); }
+
+async function openConverter(file, done){
+  CV.name = file.name.replace(/\.[^.]+$/, '') || 'image'; CV.done = done; CV.svg = '';
+  $('cvModal').classList.add('open'); $('cvOrig').removeAttribute('src'); $('cvRes').removeAttribute('src'); $('cvStat').textContent = '';
+  cvBusy(true, 'Reading your image...');
+  const url = await readDataURL(file), im = await loadImg(url);
+  const sc = Math.min(1, 900/Math.max(im.naturalWidth, im.naturalHeight)), W = Math.max(8, Math.round(im.naturalWidth*sc)), H = Math.max(8, Math.round(im.naturalHeight*sc));
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d', {willReadFrequently:true}); g.drawImage(im, 0, 0, W, H);
+  const d = g.getImageData(0, 0, W, H).data, lum = new Float32Array(W*H), alpha = new Float32Array(W*H); let transp = 0;
+  for (let i=0;i<W*H;i++){
+    const a = d[i*4+3]/255; if (a < .98) transp++;
+    alpha[i] = a; lum[i] = a * (1 - (0.299*d[i*4] + 0.587*d[i*4+1] + 0.114*d[i*4+2])/255);   // dark pixels = shape, transparent = background
+  }
+  Object.assign(CV, {W, H, lum, alpha, hasAlpha: transp > W*H*0.02});
+  $('cvOrig').src = url;
+  $('cvAlphaRow').hidden = !CV.hasAlpha; $('cvAlpha').checked = true; $('cvInvert').checked = false; $('cvAuto').checked = false;
+  cvLabels(); cvRun();
+}
+const cvLabels = () => { $('cvThr_v').textContent = $('cvThr').value; $('cvBlur_v').textContent = $('cvBlur').value; $('cvDetail_v').textContent = $('cvDetail').value; $('cvSpecks_v').textContent = $('cvSpecks').value + ' px'; $('cvDot_v').textContent = $('cvDot').value + ' px'; $('cvDot').disabled = $('cvShade').value !== 'half'; $('cvThr').disabled = $('cvAuto').checked; };
+function cvRun(){
+  cvBusy(true, 'Converting to SVG...');
+  setTimeout(() => { try { cvTrace(); } catch(e){ console.error(e); $('cvStat').textContent = 'Conversion failed: ' + e.message; CV.svg = ''; } cvBusy(false); }, 50);
+}
+function otsu(a){
+  const bins = new Float64Array(256); let n = 0;
+  for (let i=0;i<a.length;i++){ bins[Math.min(255, Math.floor(a[i]*255.999))]++; n++; }
+  let sum = 0; for (let i=0;i<256;i++) sum += i*bins[i];
+  let wB = 0, sB = 0, best = -1, thr = 127;
+  for (let i=0;i<256;i++){
+    wB += bins[i]; if (!wB) continue; const wF = n - wB; if (!wF) break;
+    sB += i*bins[i]; const mB = sB/wB, mF = (sum - sB)/wF, v = wB*wF*(mB-mF)*(mB-mF);
+    if (v > best){ best = v; thr = i; }
+  }
+  return (thr + 0.5)/255;
+}
+const ringArea = r => { let s = 0; for (let i=0,j=r.length-1;i<r.length;j=i++) s += (r[j][0]+r[i][0])*(r[j][1]-r[i][1]); return Math.abs(s/2); };
+function cvTrace(){
+  const {W, H} = CV, inv = $('cvInvert').checked, useA = CV.hasAlpha && $('cvAlpha').checked;
+  const blur = +$('cvBlur').value, eps = +$('cvDetail').value, specks = +$('cvSpecks').value, base = useA ? CV.alpha : CV.lum;
+  const pw = W+2, ph = H+2; let f = new Float32Array(pw*ph);
+  for (let y=0;y<H;y++) for (let x=0;x<W;x++){ const v = base[y*W+x]; f[(y+1)*pw + x+1] = inv ? 1 - v : v; }
+  for (let b=0;b<blur;b++) f = boxBlur(f, pw, ph);
+  let t = $('cvAuto').checked ? otsu(f) : +$('cvThr').value/100;
+  t = Math.max(0.03, Math.min(0.97, t)); if ($('cvAuto').checked) $('cvThr').value = Math.round(t*100);
+  cvLabels();
+  let polys;
+  if ($('cvShade').value === 'half'){
+    // Halftone: a 45-degree dot screen. Light parts of the picture get bigger holes in the solid body,
+    // so the lamp casts a darker or lighter shadow there (the dots blur together on the wall like real shading).
+    const cell = +$('cvDot').value, tb = t*0.7, g = new Float32Array(pw*ph), R = Math.SQRT1_2, rmax = 0.35*cell;
+    for (let y=0;y<ph;y++) for (let x=0;x<pw;x++){
+      const i = y*pw+x, fv = f[i], body = Math.max(0, Math.min(1, (fv - tb)*40 + .5));
+      if (body <= 0){ g[i] = 0; continue; }
+      const U = (x+y)*R, V = (x-y)*R, cu = Math.round(U/cell)*cell, cv = Math.round(V/cell)*cell;
+      const px = Math.max(0, Math.min(pw-1, Math.round((cu+cv)*R))), py = Math.max(0, Math.min(ph-1, Math.round((cu-cv)*R)));
+      const tone = Math.max(0, Math.min(1, (f[py*pw+px] - tb)/(1 - tb)));      // 1 = darkest
+      const cover = 0.62 + 0.38*tone, r = Math.min(rmax, cell*Math.sqrt((1 - cover)/Math.PI));
+      const dist = Math.hypot(U - cu, V - cv);
+      g[i] = body * (1 - Math.max(0, Math.min(1, r - dist + .5)));
+    }
+    polys = d3.contours().size([pw, ph]).thresholds([0.5])(g)[0].coordinates;
+  } else polys = d3.contours().size([pw, ph]).thresholds([t])(f)[0].coordinates;
+  const fmt = v => Math.round(v*10)/10; let d = '', shapes = 0, pts = 0;
+  polys.forEach(poly => {
+    if (ringArea(poly[0]) < specks) return;
+    const rings = [poly[0], ...poly.slice(1).filter(h => ringArea(h) >= specks)];
+    rings.forEach(r => {
+      const q = eps > 0 ? rdp(r, eps) : r; if (q.length < 4) return;
+      d += 'M' + q.slice(0,-1).map(p => fmt(p[0]-1) + ' ' + fmt(p[1]-1)).join('L') + 'Z'; pts += q.length - 1;
+    });
+    shapes++;
+  });
+  if (CV.svgUrl) URL.revokeObjectURL(CV.svgUrl);
+  if (!shapes){ CV.svg = ''; CV.svgUrl = ''; $('cvRes').removeAttribute('src'); $('cvStat').textContent = 'No shape found. Try the invert option or move the threshold.'; return; }
+  CV.svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}"><path fill-rule="evenodd" d="${d}"/></svg>`;
+  CV.svgUrl = URL.createObjectURL(new Blob([CV.svg], {type:'image/svg+xml'}));
+  $('cvRes').src = CV.svgUrl;
+  $('cvStat').textContent = `Converted: ${shapes} shape${shapes === 1 ? '' : 's'}, ${pts.toLocaleString()} points, ${(CV.svg.length/1024).toFixed(0)} KB`;
+}
+['cvThr','cvBlur','cvDetail','cvSpecks','cvDot'].forEach(id => { $(id).addEventListener('input', cvLabels); $(id).addEventListener('change', cvRun); });
+['cvAuto','cvInvert','cvAlpha','cvShade'].forEach(id => $(id).addEventListener('change', () => { cvLabels(); cvRun(); }));
+$('cvCancel').onclick = closeCv;
+$('cvModal').addEventListener('click', e => { if (e.target === $('cvModal')) closeCv(); });
+$('cvDl').onclick = () => { if (!CV.svg) return; const a = document.createElement('a'); a.href = CV.svgUrl; a.download = CV.name + '.svg'; document.body.appendChild(a); a.click(); a.remove(); };
+$('cvGo').onclick = () => { if (!CV.svg) return; const svg = CV.svg, name = CV.name + '.svg', done = CV.done; closeCv(); done(svg, name); };
+
+// (legacy) SVG files are used as-is; JPG / PNG / WEBP are wrapped in an SVG so the same pipeline handles them
+async function fileToSvgText(f){
+  if (f.type === 'image/svg+xml' || /\.svg$/i.test(f.name)) return f.text();
+  const url = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error('Could not read that file.')); r.readAsDataURL(f); });
+  const dim = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok([im.naturalWidth, im.naturalHeight]); im.onerror = () => no(new Error('That file is not a supported image.')); im.src = url; });
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${dim[0]} ${dim[1]}"><image width="${dim[0]}" height="${dim[1]}" href="${url}"/></svg>`;
+}
+wireDrop($('drop'), $('file'), f => handleUpload(f, (svg, name) => useSvg(svg, name)));
+wireDrop($('drop2'), $('plInput'), usePlate);
+$('plClear').onclick = clearPlate;
+$('sample').onclick = () => useSvg(SAMPLE_SVG, 'Sample (swordsman)');
+
+// minimal ZIP writer (stored, no compression) so each part can be its own STL file
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n=0;n<256;n++){ let c = n; for (let k=0;k<8;k++) c = c&1 ? 0xEDB88320 ^ (c>>>1) : c>>>1; t[n] = c>>>0; } return t; })();
+const crc32 = u => { let c = ~0; for (let i=0;i<u.length;i++) c = CRC_T[(c ^ u[i]) & 255] ^ (c>>>8); return ~c>>>0; };
+function makeZip(files){
+  const enc = new TextEncoder(), chunks = [], central = []; let off = 0;
+  files.forEach(f => {
+    const name = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true); lh.setUint16(12,0x21,true);
+    lh.setUint32(14,crc,true); lh.setUint32(18,sz,true); lh.setUint32(22,sz,true); lh.setUint16(26,name.length,true);
+    chunks.push(new Uint8Array(lh.buffer), name, f.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true); ch.setUint16(14,0x21,true);
+    ch.setUint32(16,crc,true); ch.setUint32(20,sz,true); ch.setUint32(24,sz,true); ch.setUint16(28,name.length,true); ch.setUint32(42,off,true);
+    central.push(new Uint8Array(ch.buffer), name);
+    off += 30 + name.length + sz;
+  });
+  const csz = central.reduce((n,c) => n + c.length, 0), end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0,0x06054b50,true); end.setUint16(8,files.length,true); end.setUint16(10,files.length,true); end.setUint32(12,csz,true); end.setUint32(16,off,true);
+  return new Blob([...chunks, ...central, new Uint8Array(end.buffer)], {type:"application/zip"});
+}
+
+// download dialog: All in one / Separate parts / Customize
+const partTitle = id => id === "floor" ? "Floor with rim" : id === "tube" ? "LED tube" : id === "plate" ? "Box picture plate" : (parts && parts.cyl ? "Round wall" : "Wall " + (+id.slice(1) + 1));
+const partName = id => id === "floor" ? "floor" : id === "tube" ? "led-tube" : id === "plate" ? "picture-plate" : (parts && parts.cyl ? "round-wall" : "wall-" + (+id.slice(1) + 1));
+function buildParts(){
+  const items = [["floor","Floor with rim"],["tube","LED tube"],["plate","Box picture plate"]].map(([id,t]) => ({id, t, off: id === "plate" && !parts.plateG}));
+  parts.panels.forEach((_, i) => items.push({id:"w"+i, t: parts.cyl ? "Round wall" : "Wall " + (i+1)}));
+  $("dlParts").innerHTML = items.map(it => `<label class="${it.off ? "dis" : ""}"><input type="checkbox" data-id="${it.id}" ${it.off ? "disabled" : "checked"}>${it.t}${it.off ? " (none added)" : ""}</label>`).join("");
+  $("dlParts").querySelectorAll("input").forEach(c => c.addEventListener("change", updateDl));
+}
+const picked = () => [...$("dlParts").querySelectorAll("input:checked")].map(c => c.dataset.id);
+function setFor(opt){
+  if (opt === "all1") return assembledSet(0.3, $("dlPlate").checked);
+  if (opt === "sep") return layoutSet();
+  const want = picked();
+  return ($("dlLay").value === "asm" ? assembledSet(0.3, true) : layoutSet()).filter(x => want.includes(x.id));
+}
+// each part centred on the bed with its lowest point at z = 0, ready to slice on its own
+function centred(geo){
+  const g = geo.clone(); g.computeBoundingBox(); const b = g.boundingBox;
+  g.translate(-(b.min.x+b.max.x)/2, -(b.min.y+b.max.y)/2, -b.min.z); g.computeBoundingBox(); return g;
+}
+const DL_NAMES = {all1:"shadow-box-lamp-all-in-one.stl", sep:"shadow-box-lamp-separate-parts.stl", custom:"shadow-box-lamp-custom.stl"};
+const dlOpt = () => document.querySelector("input[name=dlopt]:checked").value;
+const dlZip = () => dlOpt() !== "all1" && $("dlFmt").value === "zip";
+function updateDl(){
+  if (!parts) return;
+  document.querySelectorAll(".opt").forEach(o => o.classList.toggle("sel", o.querySelector("input").checked));
+  const opt = dlOpt(), set = setFor(opt), box = new THREE.Box3();
+  $("dlPlateRow").hidden = !(parts.plateG && opt === "all1");
+  $("dlCustom").hidden = opt !== "custom";
+  $("dlFmtRow").hidden = opt === "all1";
+  if (!set.length){ $("dlInfo").innerHTML = "<div class=\"bad\">Select at least one part.</div>"; $("dlGo").disabled = true; drawPrev([], 0); $("dlLegend").innerHTML = ""; return; }
+  $("dlGo").disabled = false;
+  const bed0 = +$("dlBed").value, V3 = () => new THREE.Vector3();
+  let plates;
+  if (dlZip()){
+    // separate files: every part gets its own print bed
+    plates = set.map((x, i) => { const g = centred(x.geo), s = g.boundingBox.getSize(V3()); return {items:[{geo:g, kind:x.kind}], shift:[0,0], over: s.x > bed0 || s.y > bed0, label:"Plate " + (i+1) + ": " + partTitle(x.id) + " · " + fmtG(gramsOf(x.geo))}; });
+  } else {
+    // one file: all selected parts share one bed
+    const b = new THREE.Box3(); set.forEach(x => { x.geo.computeBoundingBox(); b.union(x.geo.boundingBox); });
+    const s = b.getSize(V3()), c = b.getCenter(V3());
+    plates = [{items:set, shift:[-c.x, -c.y], over: s.x > bed0 || s.y > bed0, label:"1 plate, " + set.length + " part" + (set.length === 1 ? "" : "s") + " · " + fmtG(set.reduce((n, x) => n + gramsOf(x.geo), 0))}];
+  }
+  $("dlLegend").innerHTML = plates.map(p => `<span class="${p.over ? "bad" : ""}">${p.label}</span>`).join("");
+  drawPrev(plates, bed0);
+  const bed = +$("dlBed").value, tris = set.reduce((n,x) => n + x.geo.attributes.position.count/3, 0);
+  let sz, line;
+  if (dlZip()){
+    // separate files: the biggest single part decides if it fits the bed
+    sz = new THREE.Vector3(); set.forEach(x => { const s = centred(x.geo).boundingBox.getSize(new THREE.Vector3()); sz.max(s); });
+    line = `${set.length} plate${set.length === 1 ? "" : "s"}, one part each (ZIP) &middot; largest part <b>${sz.x.toFixed(0)} x ${sz.y.toFixed(0)} x ${sz.z.toFixed(0)} mm</b> &middot; ${(tris/1000).toFixed(0)}k triangles`;
+  } else {
+    set.forEach(x => { x.geo.computeBoundingBox(); box.union(x.geo.boundingBox); });
+    sz = box.getSize(new THREE.Vector3());
+    line = `Size: <b>${sz.x.toFixed(0)} x ${sz.y.toFixed(0)} x ${sz.z.toFixed(0)} mm</b> &middot; ${(tris/1000).toFixed(0)}k triangles${opt === "custom" ? " &middot; " + set.length + " part" + (set.length === 1 ? "" : "s") + " in one file" : ""}`;
+  }
+  const fits = sz.x <= bed && sz.y <= bed;
+  const wtotal = set.reduce((n, x) => n + gramsOf(x.geo), 0);
+  $("dlInfo").innerHTML = `<div>${line}</div>` +
+    `<div>Estimated weight: <b>${fmtG(wtotal)}</b> in ${matName()} <span style="color:var(--mut)">(solid plastic, less with infill)</span></div>` +
+    `<div class="${fits ? "ok" : "bad"}">${fits ? (dlZip() ? "Every part fits" : "Fits") + " on a " + bed + " mm bed" : "Too big for a " + bed + " mm bed. " + (dlZip() ? "Use a larger bed." : "Choose Separate STL files, fewer parts, or a larger bed.")}</div>` +
+    (opt === "all1" ? "<div>Print standing as shown, floor on the bed. Check the thin wall details in your slicer preview. Feed the LED wire down through the tube.</div>" : "");
+}
+// live preview of the selected parts
+let pv = null;
+function initPrev(){
+  if (pv) return;
+  const el = $("dlPrev"), r = new THREE.WebGLRenderer({antialias:true}); r.setPixelRatio(devicePixelRatio); el.appendChild(r.domElement);
+  const sc = new THREE.Scene(); sc.background = new THREE.Color(0x1b1b33);
+  const cam = new THREE.PerspectiveCamera(40, 1, 1, 4000); cam.up.set(0,0,1); cam.position.set(60,-160,150);
+  sc.add(new THREE.HemisphereLight(0xfff0dd, 0x201810, 1.0));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(80,-120,200); sc.add(dl);
+  const ctl = new THREE.OrbitControls(cam, r.domElement); ctl.enableDamping = true;
+  const grp = new THREE.Group(); sc.add(grp);
+  pv = {r, sc, cam, ctl, grp};
+  const resize = () => { const w = el.clientWidth, h = el.clientHeight; if (w && h){ r.setSize(w, h, false); cam.aspect = w/h; cam.updateProjectionMatrix(); } };
+  new ResizeObserver(resize).observe(el); resize();
+  (function loop(){ requestAnimationFrame(loop); if ($("dlModal").classList.contains("open")){ ctl.update(); r.render(sc, cam); } })();
+}
+// plates = print beds: [{items:[{geo,kind}], label, over, shift:[x,y]}], each drawn as its own bed in a grid
+function drawPrev(plates, bed){
+  initPrev();
+  while (pv.grp.children.length){ const m = pv.grp.children.pop(); m.geometry.dispose(); m.material.dispose(); }
+  if (!plates.length) return;
+  const col = {wall:0xf4f1ea, body:0xc9c3e6, tube:0xffc233, plate:0x15151c};
+  const cols = Math.ceil(Math.sqrt(plates.length)), gap = 26;
+  plates.forEach((pl, i) => {
+    const cx = (i % cols)*(bed+gap), cy = -Math.floor(i / cols)*(bed+gap);
+    const slabGeo = new THREE.BoxGeometry(bed, bed, 2);
+    const slab = new THREE.Mesh(slabGeo, new THREE.MeshStandardMaterial({color: pl.over ? 0x7a3b3b : 0x34345a, roughness:.9}));
+    slab.position.set(cx, cy, -1); pv.grp.add(slab);
+    const edge = new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), new THREE.LineBasicMaterial({color: pl.over ? 0xff8a7a : 0x8a8ad0}));
+    edge.position.copy(slab.position); pv.grp.add(edge);
+    pl.items.forEach(({geo, kind}) => {
+      const g = geo.clone(); g.translate(cx + pl.shift[0], cy + pl.shift[1], 0);
+      pv.grp.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({color:col[kind], roughness:.6, metalness:.05, side:THREE.DoubleSide})));
+    });
+  });
+  const box = new THREE.Box3().setFromObject(pv.grp), c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  const dir = pv.cam.position.clone().sub(pv.ctl.target).normalize();
+  const d = Math.max(size.x / pv.cam.aspect, size.y) / (2*Math.tan(THREE.MathUtils.degToRad(pv.cam.fov/2))) * 1.05 + size.z*0.8;
+  pv.ctl.target.copy(c); pv.cam.position.copy(c).addScaledVector(dir, d); pv.ctl.update();
+}
+$("dlOpen").onclick = () => { if (!parts) return; buildParts(); $("dlModal").classList.add("open"); updateDl(); };
+$("dlCancel").onclick = () => $("dlModal").classList.remove("open");
+$("dlModal").addEventListener("click", e => { if (e.target === $("dlModal")) $("dlModal").classList.remove("open"); });
+document.querySelectorAll("input[name=dlopt]").forEach(r => r.addEventListener("change", () => { if (r.value === "sep" && r.checked) $("dlFmt").value = "zip"; updateDl(); }));
+["dlPlate","dlBed","dlLay","dlFmt"].forEach(id => $(id).addEventListener("change", updateDl));
+$("dlAllOn").onclick = () => { $("dlParts").querySelectorAll("input:not(:disabled)").forEach(c => c.checked = true); updateDl(); };
+$("dlAllOff").onclick = () => { $("dlParts").querySelectorAll("input").forEach(c => c.checked = false); updateDl(); };
+// signed out, the shared download gate asks for a free account first and saves the file after sign in
+$("dlGo").onclick = () => {
+  const opt = dlOpt(), set = setFor(opt), zip = dlZip();
+  $("dlModal").classList.remove("open");
+  const run = () => {
+    if (window.oledToolUse) window.oledToolUse('shadowlamp');
+    if (zip){
+      const files = set.map((x, i) => ({name: "plate-" + (i+1) + "-" + partName(x.id) + ".stl", data: new Uint8Array(toSTL([centred(x.geo)]))}));
+      download(makeZip(files), "shadow-box-lamp-parts.zip");
+    } else download(toSTL(set.map(x => x.geo)), DL_NAMES[opt]);
+  };
+  if (window.oledDownloadGate) window.oledDownloadGate(run); else run();
+};
+/* ---------- order: build a ZIP, download it, open WhatsApp to the shop number ----------
+   A web page cannot attach a file to a WhatsApp chat, so the customer attaches the downloaded ZIP. */
+const WA_NUMBER = '918509986008';                      // +91 81082 27292
+let lastSvg = null, lastZip = null;
+function orderLines(){
+  const p = params(), shapeName = {rect:'Rectangle', cyl:'Cylinder (pure circle)', round:'Round', hex:'Hexagon', oct:'Octagon', tri:'Triangle', diamond:'Diamond'}[p.shape];
+  const size = p.shape === 'rect' || p.shape === 'diamond' ? `${p.iw} x ${p.ih} mm` : `${p.iw} mm diameter`;
+  return [
+    `Shape: ${shapeName} (${size})`,
+    `Box outer size: ${$('s_box').textContent}`,
+    `Shadow size on wall: ${$('s_size').textContent}`,
+    `Panels: ${parts.panels.length}, LED height ${lastEff.led} mm, panel height ${lastEff.ph} mm`,
+    `Estimated weight: ${$('s_wt').textContent} in ${matName()}`,
+    `Estimated cost: ${rupees(estCost().total)} (print ${rupees(estCost().print)} + LED & rod ${rupees(PRICE.ledRod)} + service ${rupees(PRICE.service)})`,
+    `Design file: ${lastSvg ? lastSvg.name : 'sample'}`
+  ];
+}
+function buildOrderZip(){
+  const enc = new TextEncoder(), lines = orderLines();
+  const files = layoutSet().map((x, i) => ({name: 'plate-' + (i+1) + '-' + partName(x.id) + '.stl', data: new Uint8Array(toSTL([centred(x.geo)]))}));
+  files.push({name: 'order-details.txt', data: enc.encode('Shadow Box Lamp order\n' + new Date().toLocaleString() + '\n\n' + lines.join('\n') + '\n')});
+  if (lastSvg) files.push({name: 'design.svg', data: enc.encode(lastSvg.text)});
+  return makeZip(files);
+}
+// Clicking "Order now" only opens the window. The customer then presses 1) Download ZIP and 2) Order on WhatsApp.
+function placeOrder(){
+  if (!parts) return;
+  lastZip = buildOrderZip();
+  const text = ['Hi! I would like to order a shadow box lamp.', ...orderLines(), "I'm attaching the ZIP file with the STL files."].join('\n');
+  $('ordWa').href = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(text);
+  $('ordWa').classList.add('disabled'); $('ordWa').setAttribute('aria-disabled', 'true');   // unlocked once the ZIP is downloaded
+  $('ordS1').classList.remove('done'); $('ordZip').textContent = '1. Download ZIP';
+  const cost = estCost();
+  $('ordPrice').textContent = rupees(cost.total);
+  $('ordPriceBox').title = `${rupees(cost.print)} print (${rupees(PRICE.perGram)}/g) + ${rupees(cost.ledRod)} LED & rod + ${rupees(cost.service)} service`;
+  $('ordSummary').innerHTML = orderLines().map(l => '<div>' + l.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</div>').join('');
+  const probe = new File([''], 'a.zip', {type: 'application/zip'});
+  $('ordShare').hidden = !(navigator.canShare && navigator.canShare({files: [probe]}));
+  $('ordModal').classList.add('open');
+}
+$('orderBtn').onclick = placeOrder;
+$('ordClose').onclick = () => $('ordModal').classList.remove('open');
+$('ordModal').addEventListener('click', e => { if (e.target === $('ordModal')) $('ordModal').classList.remove('open'); });
+$('ordZip').onclick = () => {
+  if (!lastZip) return;
+  download(lastZip, 'shadow-box-lamp-order.zip');
+  $('ordS1').classList.add('done'); $('ordZip').textContent = '✓ Downloaded';
+  $('ordWa').classList.remove('disabled'); $('ordWa').removeAttribute('aria-disabled');   // now the customer can order
+};
+$('ordShare').onclick = async () => {
+  if (!lastZip) return;
+  try { await navigator.share({files: [new File([lastZip], 'shadow-box-lamp-order.zip', {type: 'application/zip'})], text: 'Shadow box lamp order'}); } catch(e){ /* cancelled */ }
+};
+
+// typed shadow size (mm). Width and length keep the picture's proportions. Moving the size slider goes back to auto size.
+$('shW').addEventListener('change', () => { const v = +$('shW').value; if (v >= 50){ exactMode = true; exactW = Math.min(2500, v); schedule(); } });
+$('shH').addEventListener('change', () => { const v = +$('shH').value; if (v >= 50){ exactMode = true; exactW = Math.min(2500, v / figAspect); schedule(); } });
+$('size').addEventListener('input', () => { exactMode = false; });
+$('shAuto').onclick = () => { exactMode = false; schedule(); };
+
+// full screen view of the wall shadow
+$('wallBig').onclick = () => { $('wallImg').src = $('wallCanvas').toDataURL('image/png'); $('wallModal').classList.add('open'); };
+$('wallClose').onclick = () => $('wallModal').classList.remove('open');
+$('wallModal').addEventListener('click', e => { if (e.target === $('wallModal')) $('wallModal').classList.remove('open'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('wallModal').classList.remove('open'); });
+
+function setView(v){
+  view = v; framed = false; $('vAsm').classList.toggle('on', v === 'asm'); $('vLay').classList.toggle('on', v === 'lay'); $('vReal').classList.toggle('on', v === 'real'); parts && draw3d();
+}
+// one filament choice shared by the stats tile and the download popup
+$('mat').addEventListener('change', () => { $('dlMat').value = $('mat').value; updateWeight(); });
+$('dlMat').addEventListener('change', () => { $('mat').value = $('dlMat').value; updateWeight(); });
+$('vAsm').onclick = () => setView('asm');
+$('vLay').onclick = () => setView('lay');
+$('vReal').onclick = () => setView('real');
+
+// box shape picker
+const SHAPE_LABELS = {rect:['Inner width','Inner height'], cyl:['Diameter',null], round:['Diameter',null], hex:['Diameter',null], oct:['Diameter',null], tri:['Diameter',null], diamond:['Width','Height']};
+function setShape(s){
+  curShape = s;
+  document.querySelectorAll('#shapes button').forEach(b => b.classList.toggle('on', b.dataset.s === s));
+  const L = SHAPE_LABELS[s];
+  $('iw_t').textContent = L[0]; $('ih_t').textContent = L[1] || 'Inner height';
+  $('ih_f').classList.toggle('off', !L[1]);
+}
+document.querySelectorAll('#shapes button').forEach(b => b.addEventListener('click', () => { if (curShape !== b.dataset.s){ setShape(b.dataset.s); framed = false; schedule(); } }));
+
+labels();
+init3d();
+useSvg(SAMPLE_SVG, 'Sample (swordsman)');
+</script>
+<script>
+// paints the orange fill of every slider (the CSS reads --p); runs on input and also catches values set by code
+(function(){
+  const paint = () => document.querySelectorAll('input[type=range]').forEach(r => r.style.setProperty('--p', ((r.value - r.min) / ((r.max - r.min) || 1) * 100) + '%'));
+  document.addEventListener('input', paint); paint(); setInterval(paint, 500);
+})();
+</script><!-- stripped: analytics/ads/gate -->
+<!-- stripped: analytics/ads/gate -->
+</body>
+</html>

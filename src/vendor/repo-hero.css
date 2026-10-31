@@ -1,0 +1,152 @@
+/* ─── repo hero CSS (verbatim rules) ─── */
+
+        #webgl-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            z-index: 1;
+            pointer-events: none; /* Passes all scroll & wheel events through to window */
+        }
+
+        .scroll-spacer {
+            height: 220vh;
+            width: 100%;
+            pointer-events: none;
+        }
+
+        .crimson-dot {
+            color: #ff0033; /* High-contrast electric scarlet red */
+            display: inline-block;
+            font-weight: 800;
+            transition: color 0.35s ease;
+        }
+
+        body.dark-mode .nav-brand-stan,
+        body.dark-mode .nav-brand-studio,
+        body.dark-mode .hero-stan,
+        body.dark-mode .hero-studio {
+            color: #ffffff;
+        }
+
+        body.dark-mode .crimson-dot {
+            color: #ff1a40; /* High-contrast radiant scarlet red in dark mode */
+        }
+
+        body.dark-mode .hero-scroll-cue {
+            background: #ffffff;
+            color: #0b0d11;
+        }
+
+        body.dark-mode .hero-scroll-cue svg {
+            stroke: #0b0d11;
+        }
+
+        body.dark-mode .hero-scroll-cue:hover {
+            background: #f1f5f9;
+        }
+
+        .hero-brand {
+            position: fixed;
+            top: 50%;
+            right: 17%;
+            transform: translateY(-50%);
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            user-select: none;
+            pointer-events: auto;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            transition: color 0.35s ease;
+            will-change: transform, opacity, filter;
+        }
+
+        #hero-dispersion-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            z-index: 31; /* Above DOM hero lockup */
+            pointer-events: none;
+            opacity: 1;
+        }
+
+        .hero-stan {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 92px;
+            font-weight: 800;
+            line-height: 0.78;
+            letter-spacing: -0.03em;
+            color: #000000;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 2px;
+            margin: 0;
+            padding: 0;
+            transition: color 0.35s ease;
+        }
+
+        .delta-symbol-hero {
+            width: 68px;
+            height: 68px;
+            display: inline-block;
+            vertical-align: -3px;
+            margin: 0 2px;
+        }
+
+        .hero-studio {
+            font-family: 'Antapani', -apple-system, sans-serif;
+            font-size: 42px;
+            font-weight: 800; /* Bold as before */
+            line-height: 0.82;
+            letter-spacing: -0.02em;
+            color: #000000;
+            text-align: center;
+            margin: 0;
+            margin-top: 6px; /* ZERO awkward gap between STAN and studio. */
+            padding: 0;
+            display: block;
+            transition: color 0.35s ease;
+        }
+
+        .hero-scroll-cue {
+            margin-top: 38px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #181a1e;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+            border: none;
+            outline: none;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .hero-scroll-cue:hover {
+            transform: translateY(2px) scale(1.05);
+            background: #000000;
+        }
+
+        .hero-scroll-cue svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
