@@ -33,8 +33,9 @@ export default function About() {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 sm:pt-36 pb-20 space-y-16 sm:space-y-24">
         {/* 1. Hero & Manifesto Section */}
         <div className="text-center max-w-4xl mx-auto space-y-5">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1 text-[11px] sm:text-xs uppercase tracking-wider text-zinc-400">
-            STUDIO MANIFESTO &bull; EST. 2027
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1 text-[11px] sm:text-xs uppercase tracking-wider text-zinc-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>ST&Delta;N STUDIO &bull; LAUNCHING SUPER SOON</span>
           </div>
 
           <h1 className="font-['Playfair_Display',serif] text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-white leading-[1.12]">
