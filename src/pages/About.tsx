@@ -32,18 +32,17 @@ export default function About() {
       {/* Main Container */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-28 sm:pt-36 pb-20 space-y-16 sm:space-y-24">
         {/* 1. Hero & Manifesto Section */}
-        <div className="text-center max-w-4xl mx-auto space-y-5">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1 text-[11px] sm:text-xs uppercase tracking-wider text-zinc-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>ST&Delta;N STUDIO &bull; LAUNCHING SUPER SOON</span>
+        <div className="text-center max-w-3xl mx-auto space-y-4">
+          <div className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.2em] text-zinc-500">
+            [STUDIO MANIFESTO // KOLKATA]
           </div>
 
-          <h1 className="font-['Playfair_Display',serif] text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-white leading-[1.12]">
+          <h1 className="font-['Playfair_Display',serif] text-3xl sm:text-4xl lg:text-5xl font-light tracking-tight text-zinc-100 leading-[1.18]">
             Built by a Maker, <br className="hidden sm:inline" />
-            <span className="text-zinc-200">For the Makers.</span>
+            <span className="text-zinc-300">For the Makers.</span>
           </h1>
 
-          <p className="text-base sm:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-zinc-400 font-normal max-w-2xl mx-auto leading-relaxed">
             No student project should ever stall out because of overpriced commercial printing bureaus or rigid minimum order quantities.
           </p>
         </div>
