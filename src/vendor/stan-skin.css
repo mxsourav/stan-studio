@@ -60,11 +60,10 @@
   overflow: hidden;
 }
 :is(html #stan-tool) .stan-build-card {
-  flex: 0 0 28%;
-  max-height: 28%;
+  flex: 0 0 auto !important;
+  max-height: none !important;
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: visible !important;
 }
 :is(html #stan-tool) .stan-cta-row {
   flex-shrink: 0;

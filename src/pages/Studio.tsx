@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Wordmark from '../components/Wordmark';
 import CheckoutPortal from '../components/CheckoutPortal';
 import { mountShadowTool, type ToolBridge } from '../utils/shadowToolLoader';
@@ -13,13 +13,6 @@ import '../vendor/stan-skin.css';
  */
 
 type Tab = 'artwork' | 'optics' | 'export';
-type ViewKey = 'asm' | 'lay' | 'real';
-
-const VIEWS: Array<{ key: ViewKey; target: string; label: string }> = [
-  { key: 'asm', target: 'vAsm', label: '3D Enclosure' },
-  { key: 'lay', target: 'vLay', label: 'Flat Nesting' },
-  { key: 'real', target: 'vReal', label: 'Raytraced Lit' },
-];
 
 const SHAPES: Array<{ s: string; label: string }> = [
   { s: 'rect', label: 'Rect L×W' },
@@ -33,6 +26,7 @@ const SHAPES: Array<{ s: string; label: string }> = [
 ];
 
 export default function Studio() {
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const bridgeRef = useRef<ToolBridge | null>(null);
   const columnRef = useRef<HTMLElement | null>(null);
@@ -40,7 +34,6 @@ export default function Studio() {
   const [booted, setBooted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('artwork');
-  const [view, setView] = useState<ViewKey>('asm');
   const [shape, setShape] = useState('rect');
   const [figName, setFigName] = useState('Sample (swordsman)');
   const [status, setStatus] = useState('');
@@ -115,11 +108,16 @@ export default function Studio() {
     bridgeRef.current?.click(id);
   }, []);
 
-  const pickView = (v: ViewKey) => {
-    setView(v);
-    const target = VIEWS.find((x) => x.key === v);
-    if (target) click(target.target);
-  };
+  const handleBack = useCallback(() => {
+    // If the browser history has a previous entry in this session, going back returns
+    // to the exact scroll position from where the user clicked into the studio.
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/', { viewTransition: true });
+    }
+  }, [navigate]);
+
   const pickShape = (s: string) => {
     setShape(s);
     if (s === 'rect' || s === 'rect2') {
@@ -146,14 +144,21 @@ export default function Studio() {
 
   return (
     <div className="min-h-screen overflow-y-auto lg:h-screen lg:overflow-hidden bg-[#070708] text-white">
-      {/* Mobile top header: brand + Home link */}
+      {/* Mobile top header: brand + Back button */}
       <header className="flex lg:hidden items-center justify-between px-4 py-3 border-b border-white/[0.08] bg-[#070708]/90 backdrop-blur-2xl sticky top-0 z-30">
         <span className="flex items-center">
           <Wordmark size={15} />
         </span>
-        <Link to="/" viewTransition className="text-[12px] font-medium text-white/60 transition hover:text-white">
-          Home
-        </Link>
+        <button
+          type="button"
+          onClick={handleBack}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11.5px] font-medium text-white/70 transition hover:border-white/25 hover:bg-white/10 hover:text-white"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          <span>Back</span>
+        </button>
       </header>
 
       <div className="flex flex-col lg:block p-3 sm:p-4 lg:p-0 gap-4 max-w-2xl mx-auto lg:max-w-none">
@@ -162,34 +167,24 @@ export default function Studio() {
           <div ref={containerRef} />
         </main>
 
-        {/* Controls dock: View switcher, Tabs, Shapes, and Sliders */}
+        {/* Controls dock: Tabs, Shapes, and Sliders */}
         <aside className="order-2 relative w-full flex flex-col gap-3 p-3.5 sm:p-5 bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent bg-[#0a0a0c]/60 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/[0.16] border-t-white/[0.35] rounded-[22px] sm:rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)] lg:fixed lg:bottom-4 lg:left-4 lg:top-4 lg:w-[400px] xl:w-[420px] lg:overflow-y-auto">
           {/* Desktop-only header inside dock */}
           <div className="hidden lg:flex items-center justify-between px-1 pb-1">
             <span className="flex items-center">
               <Wordmark size={14} />
             </span>
-            <Link to="/" viewTransition className="text-[11.5px] font-medium text-white/50 transition hover:text-white/85">
-              Home
-            </Link>
-          </div>
-
-          {/* View switcher */}
-          <div className="rounded-2xl bg-black/40 p-1 border border-white/10">
-            <div className="flex gap-1">
-              {VIEWS.map((v) => (
-                <button
-                  key={v.key}
-                  type="button"
-                  onClick={() => pickView(v.key)}
-                  className={`flex-1 whitespace-nowrap rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-medium transition ${
-                    view === v.key ? 'bg-white/15 text-white shadow-sm' : 'text-white/55 hover:text-white/85'
-                  }`}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
+            <button
+              type="button"
+              onClick={handleBack}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/60 transition hover:border-white/25 hover:bg-white/10 hover:text-white"
+              title="Return to studio showcase"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              <span>Back</span>
+            </button>
           </div>
 
           {/* Tabs */}
@@ -400,23 +395,29 @@ export default function Studio() {
       {/* Build Data card — portaled into the tool column, flowing under the viewports */}
       {booted && columnRef.current &&
         createPortal(
-          <div className="stan-build-card rounded-[22px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/70 p-4 shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)] backdrop-blur-2xl backdrop-saturate-[180%]">
-            <div className="mb-2.5 flex items-center justify-between">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Build Data</h2>
-              <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-[9.5px] text-white/50">LIVE</span>
+          <div className="stan-build-card rounded-[22px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/70 p-3 sm:p-3.5 shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)] backdrop-blur-2xl backdrop-saturate-[180%]">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[10.5px] font-semibold uppercase tracking-wider text-white/70">Build Data</h2>
+                <span className="flex items-center gap-1 rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-[8.5px] uppercase tracking-wider text-white/60">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                  Live
+                </span>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <BuildStat label="Volume" value={build.volume} />
               <BuildStat label="Filament" value={build.filament} />
               <BuildStat label="Est. time" value={build.time} />
+              <BuildStat label="BOM Total" value={telemetry.s_cost || '—'} highlight />
             </div>
-            <div className="mt-2.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[10.5px] uppercase tracking-wide text-white/45">BOM total</span>
-                <span className="font-mono text-[14px] font-semibold text-white">{telemetry.s_cost || '—'}</span>
+
+            <div className="mt-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[10px] leading-relaxed text-white/50">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span className="font-mono text-white/75">{telemetry.s_costNote || 'Standard PLA breakdown'}</span>
+                {status && <span className="text-white/40">{status}</span>}
               </div>
-              <p className="mt-0.5 text-[10px] leading-snug text-white/40">{telemetry.s_costNote}</p>
-              {status && <p className="mt-2 border-t border-white/[0.06] pt-2 text-[10px] leading-snug text-white/45">{status}</p>}
             </div>
           </div>,
           columnRef.current,
@@ -519,11 +520,19 @@ function ToolSlider({
 }
 
 
-function BuildStat({ label, value }: { label: string; value: string }) {
+function BuildStat({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-2.5 py-2">
-      <p className="text-[9.5px] uppercase tracking-wide text-white/45">{label}</p>
-      <p className="mt-0.5 truncate font-mono text-[11.5px] text-white/90">{value}</p>
+    <div
+      className={`rounded-xl border px-2.5 py-1.5 transition-colors ${
+        highlight
+          ? 'border-white/25 bg-white/[0.08] shadow-[0_0_15px_rgba(255,255,255,0.05)]'
+          : 'border-white/[0.08] bg-white/[0.04]'
+      }`}
+    >
+      <p className="text-[9px] uppercase tracking-wider text-white/45 font-medium">{label}</p>
+      <p className={`mt-0.5 truncate font-mono text-[12px] font-semibold ${highlight ? 'text-white' : 'text-white/90'}`}>
+        {value}
+      </p>
     </div>
   );
 }
