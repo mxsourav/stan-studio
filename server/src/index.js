@@ -124,9 +124,15 @@ app.patch('/api/admin/orders/:orderId', async (req, res) => {
   res.json({ ok: true, order: data });
 });
 
-app.listen(PORT, () => {
-  console.log(`[server] STΔN studio. order pipeline listening on :${PORT}`);
-});
+// Standalone listen (dev / Render / Railway). On Vercel the app is mounted
+// as a serverless function via api/index.js — never bind a port there.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`[server] STΔN studio. order pipeline listening on :${PORT}`);
+  });
+}
+
+export default app;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Titan Mail — admin inbox (IMAP sync + SMTP send)
