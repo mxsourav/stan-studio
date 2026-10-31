@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import Home from './pages/Home';
 import Studio from './pages/Studio';
 import Admin from './pages/Admin';
+import { ADMIN_ALLOWED, IS_ADMIN_HOST } from './lib/host';
 
 function ScrollReset() {
   const { pathname } = useLocation();
@@ -13,23 +14,16 @@ function ScrollReset() {
 }
 
 /**
- * Domain isolation: the admin panel exists ONLY on admin.* hosts
- * (admin.mxsourav.dev). On the store domains the /admin route redirects
- * home and no admin links are rendered. localhost keeps full access so
- * local development can reach both sides.
+ * Domain isolation: on admin.* hosts (admin.mxsourav.dev) the admin panel
+ * renders at the clean root URL — every path serves it, the store never
+ * appears there. On store domains /admin redirects home (no admin surface),
+ * while localhost keeps both sides reachable for development.
  */
-const HOSTNAME = window.location.hostname;
-const IS_ADMIN_HOST = HOSTNAME.startsWith('admin.');
-const ADMIN_ALLOWED = IS_ADMIN_HOST || HOSTNAME === 'localhost' || HOSTNAME === '127.0.0.1';
-
 function AppRoutes() {
   if (IS_ADMIN_HOST) {
-    // The admin subdomain boots straight into the passkey gate; every other
-    // path folds into it — the store never renders here.
     return (
       <Routes>
-        <Route path="/admin" element={<Admin />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        <Route path="*" element={<Admin />} />
       </Routes>
     );
   }

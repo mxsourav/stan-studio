@@ -7,6 +7,7 @@ import {
   adminUpdateStatus,
   type AdminOrder,
 } from '../lib/orderPipeline';
+import { IS_ADMIN_HOST } from '../lib/host';
 import {
   adminFetchEmailBody,
   adminFetchEmails,
@@ -100,9 +101,11 @@ export default function Admin() {
             >
               Unlock
             </button>
-            <Link to="/" className="text-center text-[12px] text-white/40 transition hover:text-white/70">
-              Back to site
-            </Link>
+            {!IS_ADMIN_HOST && (
+              <Link to="/" className="text-center text-[12px] text-white/40 transition hover:text-white/70">
+                Back to site
+              </Link>
+            )}
           </form>
         </div>
       </div>
