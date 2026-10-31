@@ -55,7 +55,7 @@ export default function Home() {
         : { x: window.innerWidth / 2 - 40, y: window.innerHeight / 2 - 40, w: 80, h: 80 },
     );
     sessionStorage.setItem('stan-warp', '1');
-    setTimeout(() => navigate('/studio'), 520);
+    setTimeout(() => navigate('/studio', { viewTransition: true }), 520);
   }, []);
 
   const runWarp = (overlay: HTMLDivElement | null) => {

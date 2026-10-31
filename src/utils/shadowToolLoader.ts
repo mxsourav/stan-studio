@@ -68,6 +68,15 @@ export async function mountShadowTool(
   if (stats) stats.style.display = 'none';
   if (statusEl) statusEl.style.display = 'none';
 
+  // The wall caption is a compact chip inside the card; the full wording
+  // lives in the native hover tooltip.
+  const hint = domRoot.querySelector('.hint') as HTMLElement | null;
+  if (hint) {
+    const full = (hint.textContent || '').trim();
+    if (full) hint.title = full;
+    hint.textContent = 'Dark = shadow · Amber = light leaks · Dark box = the lamp';
+  }
+
   // The right column hosts the viewports; our build-data card portals below.
   const column = domRoot.querySelector('.main > div:last-child') as HTMLElement | null;
 

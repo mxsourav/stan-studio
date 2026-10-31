@@ -139,7 +139,7 @@ export default function Studio() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070708] text-white">
+    <div className="h-screen overflow-hidden bg-[#070708] text-white">
       {/* Left frosted glass dock — our original UI driving the stock engine */}
       <aside className="stan-dock slim-scroll fixed bottom-4 left-4 top-4 z-[5] flex w-[450px] min-w-[440px] flex-col gap-3 overflow-y-auto p-5 bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent bg-[#0a0a0c]/60 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/[0.16] border-t-white/[0.35] rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)]">
         <div className="flex items-center justify-between px-1 pb-1">
@@ -147,7 +147,7 @@ export default function Studio() {
             <BrandBadge size={26} />
             <Wordmark size={14} />
           </span>
-          <Link to="/" className="text-[11.5px] font-medium text-white/50 transition hover:text-white/85">
+          <Link to="/" viewTransition className="text-[11.5px] font-medium text-white/50 transition hover:text-white/85">
             Home
           </Link>
         </div>
@@ -383,7 +383,7 @@ export default function Studio() {
       {/* Build Data card — portaled into the tool column, flowing under the viewports */}
       {booted && columnRef.current &&
         createPortal(
-          <div className="stan-build-card mt-3 rounded-[22px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/70 p-4 shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)] backdrop-blur-2xl backdrop-saturate-[180%]">
+          <div className="stan-build-card rounded-[22px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/70 p-4 shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)] backdrop-blur-2xl backdrop-saturate-[180%]">
             <div className="mb-2.5 flex items-center justify-between">
               <h2 className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Build Data</h2>
               <span className="rounded-full bg-white/[0.08] px-2 py-0.5 font-mono text-[9.5px] text-white/50">LIVE</span>

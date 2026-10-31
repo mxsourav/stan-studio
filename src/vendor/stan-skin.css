@@ -42,21 +42,29 @@
   min-height: 0;
   min-width: 0;
 }
+/* ── Strict 70/30 vertical split: workspace (views + CTAs) fills the top,
+   the Build Data card owns the bottom 30% with internal scrolling ── */
 :is(html #stan-tool) .views {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
   grid-template-rows: minmax(0, 1fr);
 }
 :is(html #stan-tool) .views .card {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 :is(html #stan-tool) .stan-build-card {
-  flex-shrink: 0;
+  flex: 0 0 30%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 :is(html #stan-tool) .stan-cta-row {
   flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 /* ── Viewport cards: authentic visionOS frosted glass with refractive edges ── */
@@ -90,8 +98,32 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* Wall card hosts the caption as a floating chip pinned inside the card —
+   it can never spill onto the CTA row below */
+:is(html #stan-tool) .views .card:has(> #wallWrap) {
+  position: relative;
+}
 :is(html #stan-tool) .hint {
-  color: rgba(255, 255, 255, 0.45);
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  z-index: 2;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+  background: rgba(10, 10, 12, 0.72);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 5px 10px;
+  pointer-events: auto;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Glass pill buttons (Full screen) */
@@ -373,40 +405,6 @@
   border-top-color: #ffffff;
 }
 
-/* ── Ultra-slim scrollbar: explicit selectors for the scroll containers ── */
-html #stan-tool::-webkit-scrollbar,
-html #stan-tool ::-webkit-scrollbar,
-.stan-dock::-webkit-scrollbar,
-.stan-dock ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-html #stan-tool::-webkit-scrollbar-track,
-html #stan-tool ::-webkit-scrollbar-track,
-.stan-dock::-webkit-scrollbar-track,
-.stan-dock ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
-}
-html #stan-tool::-webkit-scrollbar-thumb,
-html #stan-tool ::-webkit-scrollbar-thumb,
-.stan-dock::-webkit-scrollbar-thumb,
-.stan-dock ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-}
-html #stan-tool::-webkit-scrollbar-button,
-.stan-dock::-webkit-scrollbar-button {
-  display: none;
-  width: 0;
-  height: 0;
-}
-html #stan-tool,
-.stan-dock,
-html #stan-tool .stan-tool-dom {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.04);
-}
-
 /* ── Stock sidebar carrier: hidden (our dock drives it via the bridge) ── */
 #stan-tool .stan-side-carrier {
   display: none !important;
@@ -476,44 +474,6 @@ html #stan-tool .stan-tool-dom {
   border-color: #ffffff;
 }
 
-/* ── Stock sidebar carrier: hidden (our dock drives it via the bridge) ── */
-#stan-tool .stan-side-carrier {
-  display: none !important;
-}
-
-/* ── Native select popups: dark options ── */
-:is(html #stan-tool, .stan-dock) select option,
-:is(html #stan-tool, .stan-dock) select optgroup {
-  background: #121216;
-  color: #ffffff;
-}
-
-/* ── Modal inner tiles: dark glass ── */
-:is(html #stan-tool) #dlPrev {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-}
-:is(html #stan-tool) .legend {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  color: rgba(255, 255, 255, 0.6);
-}
-:is(html #stan-tool) #dlInfo {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  color: rgba(255, 255, 255, 0.65);
-}
-:is(html #stan-tool) #dlInfo b {
-  color: rgba(255, 255, 255, 0.9);
-}
-:is(html #stan-tool) #dlInfo .ok {
-  color: #7ee2a8;
-}
-
-
 /* ── Order modal: dark glass checkout (fixes the white #ordSummary bug) ── */
 :is(html #stan-tool) .dlinfo,
 :is(html #stan-tool) #ordSummary {
@@ -555,13 +515,6 @@ html #stan-tool .stan-tool-dom {
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   overscroll-behavior: contain;
-}
-:is(html #stan-tool) #ordModal .sheet::-webkit-scrollbar {
-  width: 8px;
-}
-:is(html #stan-tool) #ordModal .sheet::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
 }
 :is(html #stan-tool) #ordModal .sheet .stan-checkout {
   order: 40;
