@@ -25,7 +25,7 @@ function SpotlightCard({ item }: { item: WhyItem }) {
   return (
     <div
       ref={ref}
-      className="group relative h-full overflow-hidden rounded-[18px] sm:rounded-2xl border border-white/[0.12] border-t-white/[0.3] bg-[#0d0d10]/80 p-5 backdrop-blur-2xl transition-[border-color,box-shadow] duration-300 hover:border-white/25 hover:shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.35)] flex items-start gap-4 cursor-default select-none"
+      className="group relative h-full overflow-hidden rounded-2xl border border-white/[0.12] border-t-white/[0.3] bg-[#0d0d10]/80 p-3 sm:p-5 backdrop-blur-2xl transition-[border-color,box-shadow] duration-300 hover:border-white/25 hover:shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.35)] flex flex-col sm:flex-row items-start gap-2.5 sm:gap-4 cursor-default select-none"
     >
       {/* spotlight cursor glow */}
       <div
@@ -36,14 +36,14 @@ function SpotlightCard({ item }: { item: WhyItem }) {
             'radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.08), transparent 65%)',
         }}
       />
-      <div className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.1] border-t-white/[0.25] bg-white/[0.06] text-white">
+      <div className="relative z-10 flex h-7 w-7 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl border border-white/[0.1] border-t-white/[0.25] bg-white/[0.06] text-white [&>svg]:w-3.5 [&>svg]:h-3.5 sm:[&>svg]:w-5 sm:[&>svg]:h-5">
         {item.icon}
       </div>
       <div className="relative z-10 space-y-1">
-        <h3 className="text-sm sm:text-base font-semibold text-white leading-snug">
+        <h3 className="text-[11.5px] sm:text-base font-semibold text-white leading-tight sm:leading-snug">
           {item.title}
         </h3>
-        <p className="text-xs text-zinc-400 leading-relaxed">
+        <p className="text-[9.5px] sm:text-xs text-zinc-400 leading-snug sm:leading-relaxed">
           {item.desc}
         </p>
       </div>
@@ -117,23 +117,23 @@ export default function WhyChooseStudio({ className = '' }: { className?: string
   ];
 
   return (
-    <section className={`space-y-8 ${className}`}>
-      <div className="text-center max-w-3xl mx-auto space-y-3">
-        <h2 className="font-['Playfair_Display',serif] text-3xl sm:text-4xl font-normal tracking-tight text-white">
+    <section className={`space-y-5 sm:space-y-8 ${className}`}>
+      <div className="text-center max-w-3xl mx-auto space-y-1.5 sm:space-y-3 px-1 sm:px-0">
+        <h2 className="font-['Playfair_Display',serif] text-2xl sm:text-4xl font-normal tracking-tight text-white">
           Why Choose ST&Delta;N studio?
         </h2>
-        <p className="text-base sm:text-lg text-zinc-400 leading-relaxed">
+        <p className="text-xs sm:text-lg text-zinc-400 leading-normal sm:leading-relaxed max-w-2xl mx-auto">
           We are committed to powering student and independent maker builds across India by focusing on what matters most:
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto items-stretch">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-5 max-w-6xl mx-auto items-stretch">
         {items.map((item, idx) => (
           <SpotlightCard key={idx} item={item} />
         ))}
       </div>
 
-      <p className="text-sm sm:text-base text-zinc-400 leading-relaxed max-w-3xl mx-auto text-center font-medium pt-2">
+      <p className="text-[11px] sm:text-base text-zinc-400 leading-normal sm:leading-relaxed max-w-3xl mx-auto text-center font-medium pt-1 sm:pt-2 px-1">
         Backed by our physical maker presence in Maniktala, Kolkata, we combine hands-on additive manufacturing with the accessibility of modern browser-based CAD tools, making precision digital fabrication frictionless for every learner.
       </p>
     </section>
