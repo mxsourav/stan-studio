@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Studio from './pages/Studio';
+import About from './pages/About';
 import Admin from './pages/Admin';
 import { ADMIN_ALLOWED, IS_ADMIN_HOST } from './lib/host';
 
@@ -31,6 +32,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/studio" element={<Studio />} />
+      <Route path="/about" element={<About />} />
       {ADMIN_ALLOWED ? (
         <Route path="/admin" element={<Admin />} />
       ) : (

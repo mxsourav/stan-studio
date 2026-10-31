@@ -525,3 +525,91 @@
 :is(html #stan-tool) #ordModal .sheet .stan-checkout input {
   color-scheme: dark;
 }
+
+/* ── Mobile Viewport Optimization (< 1024px) ── */
+@media (max-width: 1023px) {
+  :is(html #stan-tool),
+  :is(html #stan-tool) .stan-tool-dom {
+    padding: 0;
+    height: auto;
+  }
+
+  :is(html #stan-tool) .main {
+    gap: 12px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :is(html #stan-tool) .main > div:last-child {
+    overflow: visible;
+    height: auto;
+    padding: 0;
+    gap: 12px;
+  }
+
+  :is(html #stan-tool) .views {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: visible;
+  }
+
+  :is(html #stan-tool) .views .card {
+    min-height: 280px;
+    height: auto;
+    flex-shrink: 0;
+    overflow: visible;
+    padding: 12px;
+    border-radius: 22px;
+  }
+
+  :is(html #stan-tool) #view3d {
+    min-height: 280px;
+    height: 340px;
+    border-radius: 16px;
+  }
+
+  :is(html #stan-tool) #wallWrap {
+    min-height: 280px;
+    height: 340px;
+    border-radius: 16px;
+  }
+
+  :is(html #stan-tool) .hint {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 12px;
+  }
+
+  :is(html #stan-tool) .stan-cta-row {
+    flex-shrink: 0;
+    margin-bottom: 2px;
+    gap: 10px;
+  }
+
+  :is(html #stan-tool) .stan-build-card {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+    border-radius: 22px;
+    padding: 14px;
+  }
+
+  :is(html #stan-tool) .sheet {
+    width: min(500px, calc(100vw - 20px));
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  :is(html #stan-tool) #ordModal .sheet {
+    width: min(460px, calc(100vw - 20px));
+    max-height: calc(100vh - 32px);
+    padding: 16px;
+    border-radius: 22px;
+  }
+}

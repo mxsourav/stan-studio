@@ -1,8 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import RepoHero from '../components/RepoHero';
 import StudioShowcase from '../components/StudioShowcase';
 import Wordmark, { BrandBadge } from '../components/Wordmark';
+import Footer from '../components/Footer';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -42,18 +43,25 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#070708] text-white">
       {/* Top navigation */}
-      <header className="glass-subtle fixed inset-x-4 top-4 z-40 flex items-center justify-between rounded-2xl px-5 py-3">
-        <span className="flex items-center gap-3">
-          <BrandBadge size={30} />
-          <Wordmark size={18} />
+      <header className="glass-subtle fixed inset-x-2.5 sm:inset-x-4 top-2.5 sm:top-4 z-40 flex items-center justify-between rounded-xl sm:rounded-2xl px-3.5 sm:px-5 py-2 sm:py-3">
+        <span className="flex items-center gap-2.5 sm:gap-3">
+          <BrandBadge size={26} />
+          <Wordmark size={16} />
         </span>
-        <nav className="flex items-center gap-1 text-[13px] font-medium">
+        <nav className="flex items-center gap-2 text-[12px] sm:text-[13px] font-medium">
+          <Link
+            to="/about"
+            className="text-zinc-400 hover:text-white transition-colors px-2 py-1"
+          >
+            About
+          </Link>
           <button
             type="button"
             onClick={(e) => warpToStudio(e.currentTarget)}
-            className="segment-pill px-4 py-1.5"
+            className="segment-pill px-3 sm:px-4 py-1.5"
           >
-            Shadow Lamp Studio
+            <span className="hidden sm:inline">Shadow Lamp Studio</span>
+            <span className="sm:hidden">Studio</span>
           </button>
         </nav>
       </header>
@@ -64,15 +72,8 @@ export default function Home() {
       {/* Showcase — bento portfolio, spotlight + tilt, live tools in glass modals */}
       <StudioShowcase onLaunchStudio={warpToStudio} />
 
-      <footer className="relative z-40 border-t border-white/[0.06] bg-[#070708] px-6 py-8">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <span className="flex items-center gap-2.5">
-            <BrandBadge size={24} />
-            <Wordmark size={15} />
-          </span>
-          <p className="text-[12px] text-white/35">Precision 3D print studio · India</p>
-        </div>
-      </footer>
+      {/* Industrial studio-grade footer with interactive VisionOS legal reader */}
+      <Footer onOpenStudio={() => warpToStudio(null)} />
 
       {/* Cinematic warp overlay into the studio */}
       {warp && (

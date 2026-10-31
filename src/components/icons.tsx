@@ -194,7 +194,122 @@ export function IconArrowRight(props: IconProps) {
 export function IconRulerFill(props: IconProps) {
   return (
     <svg {...base({ ...props, fill: 'currentColor', stroke: 'none' })}>
-      <path d="M15.2 2.9a1.2 1.2 0 0 1 1.7 0l4.2 4.2a1.2 1.2 0 0 1 0 1.7l-12.3 12.3a1.2 1.2 0 0 1-1.7 0L2.9 16.9a1.2 1.2 0 0 1 0-1.7L15.2 2.9zm-1 3l1.6 1.6-1.6 1.6 1.1 1.1 1.6-1.6 1.6 1.6-1.6 1.6 1.1 1.1 1.6-1.6 1.2 1.2-10.6 10.6-1.2-1.2 1.6-1.6-1.1-1.1-1.6 1.6-1.6-1.6 1.6-1.6-1.1-1.1-1.6 1.6-1.6-1.6 1.6-1.6-1.1-1.1-1.6 1.6-1.2-1.2L14.2 5.9z" />
+      <path d="M15.2 2.9a1.2 1.2 0 0 1 1.7 0l4.2 4.2a1.2 1.2 0 0 1 0 1.7l-12.3 12.3a1.2 1.2 0 0 1-1.7 0L2.9 16.9a1.2 1.2 0 0 1 0-1.7L15.2 2.9zm-1 3l1.6 1.6-1.6 1.6 1.1 1.1 1.6-1.6 1.6 1.6-1.6 1.6 1.1 1.1 1.6-1.6 1.2 1.2-10.6 10.6-1.2-1.2 1.6-1.6-1.1-1.1-1.6 1.6-1.6-1.6 1.6-1.6-1.1-1.1-1.6 1.6-1.2-1.2L14.2 5.9z" />
+    </svg>
+  );
+}
+
+export function IconDocText(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M14 2.5H6.2A2.7 2.7 0 0 0 3.5 5.2v13.6a2.7 2.7 0 0 0 2.7 2.7h11.6a2.7 2.7 0 0 0 2.7-2.7V8.5L14 2.5z" />
+      <path d="M14 2.5v6h6" />
+      <path d="M7.5 13h9" />
+      <path d="M7.5 17h6" />
+    </svg>
+  );
+}
+
+export function IconDocTextFill(props: IconProps) {
+  return (
+    <svg {...base({ ...props, fill: 'currentColor', stroke: 'none' })}>
+      <path d="M13.5 2.5H6.2A2.7 2.7 0 0 0 3.5 5.2v13.6a2.7 2.7 0 0 0 2.7 2.7h11.6a2.7 2.7 0 0 0 2.7-2.7V9l-6.5-6.5zm-5 11.5h7a.9.9 0 0 1 0 1.8h-7a.9.9 0 0 1 0-1.8zm0 3.8h4.5a.9.9 0 0 1 0 1.8h-4.5a.9.9 0 0 1 0-1.8zm5-9.8v-4.2l4.8 4.2h-4.8z" />
+    </svg>
+  );
+}
+
+export function IconShieldCheck(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 21.5c-4.5-2.2-8-6.5-8-12V4.5L12 2l8 2.5v5c0 5.5-3.5 9.8-8 12z" />
+      <path d="M9 11.5l2 2 4.2-4.2" />
+    </svg>
+  );
+}
+
+export function IconShieldCheckFill(props: IconProps) {
+  return (
+    <svg {...base({ ...props, fill: 'currentColor', stroke: 'none' })}>
+      <path d="M12 2.1a1 1 0 0 0-.6.2L3.8 4.8a1 1 0 0 0-.6.9v4.1c0 6 3.8 10.7 8.5 12.9a1 1 0 0 0 .8 0c4.7-2.2 8.5-6.9 8.5-12.9V5.7a1 1 0 0 0-.6-.9l-7.6-2.5a1 1 0 0 0-.4-.2zm3.8 8.4l-4.4 4.4a.9.9 0 0 1-1.3 0l-2.2-2.2a.9.9 0 1 1 1.3-1.3l1.5 1.6 3.8-3.8a.9.9 0 0 1 1.3 1.3z" />
+    </svg>
+  );
+}
+
+export function IconTruck(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M2.5 5.5h11v10.5h-11z" />
+      <path d="M13.5 8.5h4.2l2.8 3.5v4h-7" />
+      <circle cx="6.5" cy="17.5" r="2" />
+      <circle cx="17.5" cy="17.5" r="2" />
+    </svg>
+  );
+}
+
+export function IconTruckFill(props: IconProps) {
+  return (
+    <svg {...base({ ...props, fill: 'currentColor', stroke: 'none' })}>
+      <path d="M2.5 4.5A1.5 1.5 0 0 0 1 6v9a1.5 1.5 0 0 0 1.5 1.5h1.1a3 3 0 0 1 5.8 0h3.2a3 3 0 0 1 5.8 0H20a1.5 1.5 0 0 0 1.5-1.5v-3.8a1.5 1.5 0 0 0-.4-1.1l-2.8-3.2A1.5 1.5 0 0 0 17.2 6H14.5V4.5A1.5 1.5 0 0 0 13 3H2.5zm4 14a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-3-10h4.2l2 2.5h-6.2V8.5z" />
+    </svg>
+  );
+}
+
+export function IconWrench(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M14.7 6.3a4.5 4.5 0 0 0-5.7 5.7L2.8 18.2a1.5 1.5 0 0 0 2.1 2.1l6.2-6.2a4.5 4.5 0 0 0 5.7-5.7l-2.4-2.4 2.4-2.4-2.1-2.1z" />
+    </svg>
+  );
+}
+
+export function IconPin(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12 21.5s-7-6.8-7-12a7 7 0 1 1 14 0c0 5.2-7 12-7 12z" />
+      <circle cx="12" cy="9.5" r="2.5" />
+    </svg>
+  );
+}
+
+export function IconPinFill(props: IconProps) {
+  return (
+    <svg {...base({ ...props, fill: 'currentColor', stroke: 'none' })}>
+      <path d="M12 2a7.5 7.5 0 0 0-7.5 7.5c0 5.6 6.8 12.5 7.1 12.8.2.2.6.2.8 0 .3-.3 7.1-7.2 7.1-12.8A7.5 7.5 0 0 0 12 2zm0 10a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
+    </svg>
+  );
+}
+
+export function IconEnvelope(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
+      <path d="M3 6.5l9 6.5 9-6.5" />
+    </svg>
+  );
+}
+
+export function IconEnvelopeFill(props: IconProps) {
+  return (
+    <svg {...base({ ...props, fill: 'currentColor', stroke: 'none' })}>
+      <path d="M4 4.5h16a2.5 2.5 0 0 1 2.5 2.5v10a2.5 2.5 0 0 1-2.5 2.5H4A2.5 2.5 0 0 1 1.5 17V7a2.5 2.5 0 0 1 2.5-2.5zm15.7 3l-7.3 5.3a.8.8 0 0 1-.8 0L4.3 7.5l-.8 1 7.3 5.3a2.3 2.3 0 0 0 2.4 0l7.3-5.3-.8-1z" />
+    </svg>
+  );
+}
+
+export function IconWhatsApp(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M20.5 11.8A8.5 8.5 0 0 1 8 19.3L3.5 20.5l1.3-4.3A8.5 8.5 0 1 1 20.5 11.8z" />
+      <path d="M9.5 8.5c-.3-.7-.6-.7-.9-.7h-.7c-.3 0-.7.1-1 .5-.4.4-1.3 1.3-1.3 3.1 0 1.8 1.4 3.6 1.6 3.8.2.3 2.6 4.2 6.5 5.7 3.3 1.3 3.9.9 4.6.8.7-.1 2.3-1 2.6-1.9.3-1 .3-1.8.2-1.9-.1-.2-.4-.3-.8-.5s-2.3-1.1-2.7-1.3-.6-.2-.9.2c-.3.4-1 1.3-1.3 1.5-.2.3-.5.3-.9.1-.4-.2-1.7-.6-3.2-2-1.2-1.1-2-2.4-2.2-2.8-.2-.4 0-.6.2-.8.2-.2.4-.5.6-.7.2-.2.3-.4.4-.6.1-.2 0-.5-.1-.7s-.9-2.3-1.3-3z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconArrowUpRight(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M7 17L17 7" />
+      <path d="M8.5 7H17v8.5" />
     </svg>
   );
 }

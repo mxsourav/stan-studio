@@ -139,68 +139,86 @@ export default function Studio() {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-[#070708] text-white">
-      {/* Left frosted glass dock — our original UI driving the stock engine */}
-      <aside className="stan-dock slim-scroll fixed bottom-4 left-4 top-4 z-[5] flex w-[450px] min-w-[440px] flex-col gap-3 overflow-y-auto p-5 bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent bg-[#0a0a0c]/60 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/[0.16] border-t-white/[0.35] rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)]">
-        <div className="flex items-center justify-between px-1 pb-1">
-          <span className="flex items-center gap-2.5">
-            <BrandBadge size={26} />
-            <Wordmark size={14} />
-          </span>
-          <Link to="/" viewTransition className="text-[11.5px] font-medium text-white/50 transition hover:text-white/85">
-            Home
-          </Link>
-        </div>
+    <div className="min-h-screen overflow-y-auto lg:h-screen lg:overflow-hidden bg-[#070708] text-white">
+      {/* Mobile top header: brand + Home link */}
+      <header className="flex lg:hidden items-center justify-between px-4 py-3 border-b border-white/[0.08] bg-[#070708]/90 backdrop-blur-2xl sticky top-0 z-30">
+        <span className="flex items-center gap-2.5">
+          <BrandBadge size={26} />
+          <Wordmark size={15} />
+        </span>
+        <Link to="/" viewTransition className="text-[12px] font-medium text-white/60 transition hover:text-white">
+          Home
+        </Link>
+      </header>
 
-        {/* View switcher */}
-        <div className="rounded-2xl bg-black/40 p-1 border border-white/10">
-          <div className="flex gap-1">
-            {VIEWS.map((v) => (
-              <button
-                key={v.key}
-                type="button"
-                onClick={() => pickView(v.key)}
-                className={`flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-[12px] font-medium transition ${
-                  view === v.key ? 'bg-white/15 text-white shadow-sm' : 'text-white/55 hover:text-white/85'
-                }`}
-              >
-                {v.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="flex flex-col lg:block p-3 sm:p-4 lg:p-0 gap-4 max-w-2xl mx-auto lg:max-w-none">
+        {/* Tool host: 3D viewport, shadow on wall, CTAs, and Build Data */}
+        <main className="order-1 relative w-full h-auto rounded-[22px] sm:rounded-[28px] border border-white/[0.08] bg-[#070708] lg:fixed lg:bottom-4 lg:left-[466px] lg:right-4 lg:top-4 lg:h-[calc(100vh-32px)] lg:overflow-hidden">
+          <div ref={containerRef} />
+        </main>
 
-        {/* Tabs */}
-        <div className="rounded-2xl bg-black/40 p-1 border border-white/10">
-          <div className="flex gap-1">
-            {([
-              ['artwork', 'Artwork'],
-              ['optics', 'Optics & Box'],
-              ['export', 'Export & Order'],
-            ] as Array<[Tab, string]>).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setTab(key)}
-                className={`flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-[12px] font-medium transition ${
-                  tab === key ? 'bg-white/15 text-white shadow-sm' : 'text-white/55 hover:text-white/85'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+        {/* Controls dock: View switcher, Tabs, Shapes, and Sliders */}
+        <aside className="order-2 relative w-full flex flex-col gap-3 p-3.5 sm:p-5 bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent bg-[#0a0a0c]/60 backdrop-blur-3xl backdrop-saturate-[200%] border border-white/[0.16] border-t-white/[0.35] rounded-[22px] sm:rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_0_20px_rgba(255,255,255,0.03)] lg:fixed lg:bottom-4 lg:left-4 lg:top-4 lg:w-[450px] lg:min-w-[440px] lg:overflow-y-auto">
+          {/* Desktop-only header inside dock */}
+          <div className="hidden lg:flex items-center justify-between px-1 pb-1">
+            <span className="flex items-center gap-2.5">
+              <BrandBadge size={26} />
+              <Wordmark size={14} />
+            </span>
+            <Link to="/" viewTransition className="text-[11.5px] font-medium text-white/50 transition hover:text-white/85">
+              Home
+            </Link>
           </div>
-        </div>
+
+          {/* View switcher */}
+          <div className="rounded-2xl bg-black/40 p-1 border border-white/10">
+            <div className="flex gap-1">
+              {VIEWS.map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  onClick={() => pickView(v.key)}
+                  className={`flex-1 whitespace-nowrap rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-medium transition ${
+                    view === v.key ? 'bg-white/15 text-white shadow-sm' : 'text-white/55 hover:text-white/85'
+                  }`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="rounded-2xl bg-black/40 p-1 border border-white/10">
+            <div className="flex gap-1">
+              {([
+                ['artwork', 'Artwork'],
+                ['optics', 'Optics & Box'],
+                ['export', 'Export & Order'],
+              ] as Array<[Tab, string]>).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key)}
+                  className={`flex-1 whitespace-nowrap rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-medium transition ${
+                    tab === key ? 'bg-white/15 text-white shadow-sm' : 'text-white/55 hover:text-white/85'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
         {tab === 'artwork' && (
           <>
-          <section className="rounded-[24px] border border-white/[0.1] border-t-white/[0.22] bg-white/[0.04] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-[12.5px] font-semibold text-white/90">Primary Stencil Mask</h2>
+          <section className="rounded-[20px] sm:rounded-[24px] border border-white/[0.1] border-t-white/[0.22] bg-white/[0.04] p-3.5 sm:p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
+            <div className="mb-3 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+              <h2 className="text-[12px] sm:text-[12.5px] font-semibold text-white/90">Primary Stencil Mask</h2>
               <button
                 type="button"
                 onClick={() => click('sample')}
-                className="rounded-full border border-white/[0.16] bg-white/[0.08] px-3 py-1.5 text-[11.5px] font-semibold text-white transition hover:bg-white/[0.16]"
+                className="rounded-full border border-white/[0.16] bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-white/[0.16] shrink-0"
               >
                 Load Katana Preset
               </button>
@@ -265,15 +283,15 @@ export default function Studio() {
 
         {tab === 'optics' && (
           <>
-            <section className="rounded-[24px] border border-white/[0.1] border-t-white/[0.22] bg-white/[0.04] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
-              <h2 className="mb-2.5 text-[12.5px] font-semibold text-white/90">Box shape</h2>
-              <div className="grid grid-cols-4 gap-1.5">
+            <section className="rounded-[20px] sm:rounded-[24px] border border-white/[0.1] border-t-white/[0.22] bg-white/[0.04] p-3.5 sm:p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
+              <h2 className="mb-2.5 text-[12px] sm:text-[12.5px] font-semibold text-white/90">Box shape</h2>
+              <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
                 {SHAPES.map((s) => (
                   <button
                     key={s.s}
                     type="button"
                     onClick={() => pickShape(s.s)}
-                    className={`rounded-xl border px-2 py-2.5 text-[11.5px] font-medium transition ${
+                    className={`rounded-xl border px-1 sm:px-2 py-2 sm:py-2.5 text-[10px] sm:text-[11.5px] font-medium transition ${
                       shape === s.s
                         ? 'border-white/60 bg-white/15 text-white'
                         : 'border-white/[0.08] bg-white/[0.04] text-white/60 hover:text-white/85'
@@ -374,11 +392,7 @@ export default function Studio() {
           </div>
         )}
       </aside>
-
-      {/* Tool host: styles, DOM and scripts are injected here */}
-      <main className="fixed bottom-4 left-[466px] right-4 top-4 z-10 h-[calc(100vh-32px)] overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#070708]">
-        <div ref={containerRef} />
-      </main>
+    </div>
 
       {/* Build Data card — portaled into the tool column, flowing under the viewports */}
       {booted && columnRef.current &&
