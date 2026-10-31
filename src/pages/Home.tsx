@@ -97,10 +97,10 @@ export default function Home() {
         <StudioShowcase onLaunchStudio={warpToStudio} />
       </div>
 
-      {/* Why Choose STΔN studio? — Frosted Glass Layer over the filament roll stage extending till footer */}
-      <section className="relative z-30 border-t border-white/[0.08] bg-[#070708]/80 backdrop-blur-2xl backdrop-saturate-[180%] shadow-[0_-24px_60px_rgba(0,0,0,0.85)]">
-        {/* Soft ambient blur veil extending seamlessly above the section header */}
-        <div className="pointer-events-none absolute inset-x-0 -top-24 h-24 bg-gradient-to-t from-[#070708]/80 to-transparent backdrop-blur-md" />
+      {/* Why Choose STΔN studio? — Subtle Frosted Glass Layer over the filament roll stage extending till footer */}
+      <section className="relative z-30 border-t border-white/[0.08] bg-[#070708]/30 backdrop-blur-md backdrop-saturate-[140%]">
+        {/* Soft subtle ambient blur veil extending seamlessly above the section header */}
+        <div className="pointer-events-none absolute inset-x-0 -top-20 h-20 bg-gradient-to-t from-[#070708]/30 to-transparent backdrop-blur-[6px]" />
         
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-12 sm:pb-16">
           <WhyChooseStudio />
