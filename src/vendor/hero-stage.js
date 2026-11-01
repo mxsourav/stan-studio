@@ -1030,16 +1030,16 @@ function render() {
     /* Dynamic Stage Interpolation: Smooth transition from Initial to Last Stage Pose */
     const isPhone = typeof window !== 'undefined' && window.innerWidth < 768;
 
-    // Desktop vs Phone calibration:
-    // On desktop, the spool rests on the left at (-6.90) to leave room for the right-hand showcase.
-    // On phone, the spool is centered in the background (X = -3.53) directly behind the cards.
-    const startX = isPhone ? -3.45 : SPOOL_CALIB_START.posX;
+    // Responsive calibration:
+    // On mobile, the spool starts in the exact iconic angled wheel pose matching user screenshot:
+    // left rim grazes the left edge, cylinder frames right behind STAN studio., wire peels to the right.
+    const startX = isPhone ? -1.55 : SPOOL_CALIB_START.posX;
     const endX = isPhone ? -3.53 : SPOOL_CALIB_END.posX;
-    const startY = isPhone ? 0.00 : SPOOL_CALIB_START.posY;
+    const startY = isPhone ? -0.05 : SPOOL_CALIB_START.posY;
     const endY = isPhone ? 0.44 : SPOOL_CALIB_END.posY;
-    const startZ = isPhone ? 0.10 : SPOOL_CALIB_START.posZ;
+    const startZ = isPhone ? 0.25 : SPOOL_CALIB_START.posZ;
     const endZ = isPhone ? 1.45 : SPOOL_CALIB_END.posZ;
-    const startScale = isPhone ? 0.68 : SPOOL_CALIB_START.scale;
+    const startScale = isPhone ? 1.36 : SPOOL_CALIB_START.scale;
     const endScale = isPhone ? 0.96 : SPOOL_CALIB_END.scale;
 
     const curPosX = THREE.MathUtils.lerp(startX, endX, p);
@@ -1051,11 +1051,11 @@ function render() {
     stage.position.set(curPosX, curPosY, curPosZ);
     stage.scale.set(curScale, curScale, curScale);
 
-    const rotStartX = isPhone ? 30.0 : SPOOL_CALIB_START.rotXDeg;
-    const rotEndX = isPhone ? 14.0 : SPOOL_CALIB_END.rotXDeg;
-    const rotStartY = isPhone ? 35.0 : SPOOL_CALIB_START.rotYDeg;
+    const rotStartX = isPhone ? 2.4 : SPOOL_CALIB_START.rotXDeg;
+    const rotEndX = isPhone ? -13.0 : SPOOL_CALIB_END.rotXDeg;
+    const rotStartY = isPhone ? 89.8 : SPOOL_CALIB_START.rotYDeg;
     const rotEndY = isPhone ? 66.0 : SPOOL_CALIB_END.rotYDeg;
-    const rotStartZ = isPhone ? -8.0 : SPOOL_CALIB_START.rotZDeg;
+    const rotStartZ = isPhone ? 8.0 : SPOOL_CALIB_START.rotZDeg;
     const rotEndZ = isPhone ? 78.5 : SPOOL_CALIB_END.rotZDeg;
 
     const curRotXDeg = THREE.MathUtils.lerp(rotStartX, rotEndX, p);
@@ -1082,7 +1082,7 @@ function render() {
     spoolPose.position.set(hoverShiftX, hoverShiftY, 0.0);
 
     /* 3. Spool Stays Anchored in Viewport (Zero off-screen exit) */
-    spoolAnchor.position.x = isPhone ? 0.0 : -1.40;
+    spoolAnchor.position.x = isPhone ? THREE.MathUtils.lerp(-1.40, 0.0, p) : -1.40;
 
     /* 4. Local Tangent Peel Mechanics (Zero Kinks, C2-Continuous Flow):
           P_anc, P0, P1, P2, P3 are computed in local spool frame along the pure circumferential
