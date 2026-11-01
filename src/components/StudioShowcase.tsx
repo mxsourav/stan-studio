@@ -247,19 +247,7 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
   );
 
   return (
-    <section
-      className="relative z-40 px-3 sm:px-6 pb-10 pt-12 sm:pt-14"
-      style={{
-        background: `linear-gradient(
-          to bottom,
-          #070708 0%,
-          #070708 calc(100% - 110px),
-          rgba(7, 7, 8, 0.88) calc(100% - 65px),
-          rgba(7, 7, 8, 0.65) calc(100% - 30px),
-          rgba(7, 7, 8, 0.50) 100%
-        )`,
-      }}
-    >
+    <section className="relative z-40 bg-[#070708] px-3 sm:px-6 pb-8 sm:pb-12 pt-12 sm:pt-14">
       {/* Apple-grade seamless multi-stop progressive scrim veil from 3D hero into studio showcase */}
       <div
         aria-hidden
@@ -302,15 +290,29 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
         <div className="absolute left-1/2 top-36 h-80 w-[560px] -translate-x-1/2 rounded-full bg-[#ff2d55]/[0.035] blur-[140px]" />
       </div>
 
-      {/* Seamless bottom progressive blur blending into the Why Choose frosted glass stage */}
+      {/* Downward-facing Apple-grade seamless multi-stop progressive scrim veil from showcase into frosted glass stage */}
       <div
         aria-hidden
-        className="pointer-events-none absolute bottom-0 inset-x-0 h-32"
+        className="pointer-events-none absolute -bottom-32 sm:-bottom-48 inset-x-0 h-32 sm:h-48 z-40"
         style={{
-          maskImage: 'linear-gradient(to bottom, transparent 0%, black 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 100%)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+          background: `linear-gradient(
+            to bottom,
+            #070708 0%,
+            rgba(7, 7, 8, 0.99) 15.5%,
+            rgba(7, 7, 8, 0.96) 22.5%,
+            rgba(7, 7, 8, 0.90) 29%,
+            rgba(7, 7, 8, 0.80) 35.3%,
+            rgba(7, 7, 8, 0.67) 41.2%,
+            rgba(7, 7, 8, 0.52) 47.1%,
+            rgba(7, 7, 8, 0.38) 52.9%,
+            rgba(7, 7, 8, 0.25) 58.8%,
+            rgba(7, 7, 8, 0.15) 64.7%,
+            rgba(7, 7, 8, 0.08) 71%,
+            rgba(7, 7, 8, 0.035) 77.5%,
+            rgba(7, 7, 8, 0.012) 84.5%,
+            rgba(7, 7, 8, 0.003) 91.9%,
+            rgba(7, 7, 8, 0) 100%
+          )`,
         }}
       />
 

@@ -103,7 +103,7 @@ export default function Home() {
         id="why-choose-section"
         className="frosted-glass-stage relative z-30 bg-[#070708]/50 sm:bg-[#070708]/55 backdrop-blur-[24px] sm:backdrop-blur-[32px] backdrop-saturate-[140%]"
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-12 sm:pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 sm:pt-36 pb-12 sm:pb-16">
           <WhyChooseStudio />
         </div>
       </section>
