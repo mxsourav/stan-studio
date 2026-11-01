@@ -220,12 +220,12 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
               <ul className="space-y-1.5 text-[11.5px] sm:text-[12px] text-zinc-400">
                 <li>
                   <a
-                    href="https://instagram.com"
+                    href="https://instagram.com/bystanstudio"
                     target="_blank"
                     rel="noreferrer"
                     className="hover:text-white transition-colors"
                   >
-                    Instagram
+                    Instagram (@bystanstudio)
                   </a>
                 </li>
                 <li>

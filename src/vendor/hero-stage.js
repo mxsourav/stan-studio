@@ -1033,13 +1033,13 @@ function render() {
     // Desktop vs Phone calibration:
     // On desktop, the spool rests on the left at (-6.90) to leave room for the right-hand showcase.
     // On phone, the spool is centered in the background (X = -3.53) directly behind the cards.
-    const startX = isPhone ? -3.30 : SPOOL_CALIB_START.posX;
+    const startX = isPhone ? -3.45 : SPOOL_CALIB_START.posX;
     const endX = isPhone ? -3.53 : SPOOL_CALIB_END.posX;
-    const startY = isPhone ? 0.05 : SPOOL_CALIB_START.posY;
+    const startY = isPhone ? 0.00 : SPOOL_CALIB_START.posY;
     const endY = isPhone ? 0.44 : SPOOL_CALIB_END.posY;
-    const startZ = isPhone ? 0.20 : SPOOL_CALIB_START.posZ;
+    const startZ = isPhone ? 0.10 : SPOOL_CALIB_START.posZ;
     const endZ = isPhone ? 1.45 : SPOOL_CALIB_END.posZ;
-    const startScale = isPhone ? 1.05 : SPOOL_CALIB_START.scale;
+    const startScale = isPhone ? 0.68 : SPOOL_CALIB_START.scale;
     const endScale = isPhone ? 0.96 : SPOOL_CALIB_END.scale;
 
     const curPosX = THREE.MathUtils.lerp(startX, endX, p);
@@ -1051,9 +1051,16 @@ function render() {
     stage.position.set(curPosX, curPosY, curPosZ);
     stage.scale.set(curScale, curScale, curScale);
 
-    const curRotXDeg = THREE.MathUtils.lerp(SPOOL_CALIB_START.rotXDeg, SPOOL_CALIB_END.rotXDeg, p);
-    const curRotYDeg = THREE.MathUtils.lerp(SPOOL_CALIB_START.rotYDeg, SPOOL_CALIB_END.rotYDeg, p);
-    const curRotZDeg = THREE.MathUtils.lerp(SPOOL_CALIB_START.rotZDeg, SPOOL_CALIB_END.rotZDeg, p);
+    const rotStartX = isPhone ? 30.0 : SPOOL_CALIB_START.rotXDeg;
+    const rotEndX = isPhone ? 14.0 : SPOOL_CALIB_END.rotXDeg;
+    const rotStartY = isPhone ? 35.0 : SPOOL_CALIB_START.rotYDeg;
+    const rotEndY = isPhone ? 66.0 : SPOOL_CALIB_END.rotYDeg;
+    const rotStartZ = isPhone ? -8.0 : SPOOL_CALIB_START.rotZDeg;
+    const rotEndZ = isPhone ? 78.5 : SPOOL_CALIB_END.rotZDeg;
+
+    const curRotXDeg = THREE.MathUtils.lerp(rotStartX, rotEndX, p);
+    const curRotYDeg = THREE.MathUtils.lerp(rotStartY, rotEndY, p);
+    const curRotZDeg = THREE.MathUtils.lerp(rotStartZ, rotEndZ, p);
 
     const baseRotX = (curRotXDeg * Math.PI) / 180;
     const baseRotY = (curRotYDeg * Math.PI) / 180;
