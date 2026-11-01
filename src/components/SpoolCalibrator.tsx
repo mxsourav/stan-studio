@@ -53,13 +53,13 @@ export default function SpoolCalibrator() {
   const [device, setDevice] = useState<'phone' | 'desktop'>('phone');
   const [activeParam, setActiveParam] = useState<ParamKey>('posX');
   const [coords, setCoords] = useState<SpoolCoords>({
-    posX: -1.55,
-    posY: -0.05,
-    posZ: 0.25,
-    rotXDeg: 2.4,
-    rotYDeg: 89.8,
-    rotZDeg: 8.0,
-    scale: 1.36,
+    posX: -3.75,
+    posY: -0.14,
+    posZ: -1.78,
+    rotXDeg: 15.5,
+    rotYDeg: 31.0,
+    rotZDeg: 1.6,
+    scale: 1.48,
   });
   const [copied, setCopied] = useState(false);
 

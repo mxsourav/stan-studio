@@ -448,13 +448,13 @@ const SPOOL_CALIB_START = { ...SPOOL_CALIB_START_DEFAULT };
 const SPOOL_CALIB_END = { ...SPOOL_CALIB_END_DEFAULT };
 
 const SPOOL_CALIB_PHONE_START_DEFAULT = Object.freeze({
-    posX: -1.55,
-    posY: -0.05,
-    posZ: 0.25,
-    rotXDeg: 2.4,
-    rotYDeg: 89.8,
-    rotZDeg: 8.0,
-    scale: 1.36
+    posX: -3.75,
+    posY: -0.14,
+    posZ: -1.78,
+    rotXDeg: 15.5,
+    rotYDeg: 31.0,
+    rotZDeg: 1.6,
+    scale: 1.48
 });
 
 const SPOOL_CALIB_PHONE_START = { ...SPOOL_CALIB_PHONE_START_DEFAULT };
