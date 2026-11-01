@@ -28,7 +28,21 @@
         body.dark-mode .nav-brand-studio,
         body.dark-mode .hero-stan,
         body.dark-mode .hero-studio {
-            color: #ffffff;
+            color: #cac5bb;
+        }
+
+        body.dark-mode .hero-stan {
+            color: #cac5bb;
+            background: linear-gradient(180deg, #eae7e1 0%, #cac5bb 55%, #b3ada2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        body.dark-mode .hero-studio {
+            color: #cac5bb;
+            background: linear-gradient(180deg, #eae7e1 0%, #cac5bb 55%, #b3ada2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         body.dark-mode .crimson-dot {
@@ -36,7 +50,7 @@
         }
 
         body.dark-mode .hero-scroll-cue {
-            background: #ffffff;
+            background: #cac5bb;
             color: #0b0d11;
         }
 
@@ -53,7 +67,7 @@
             top: 50%;
             right: 17%;
             transform: translateY(-50%);
-            z-index: 30;
+            z-index: 3;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -75,7 +89,7 @@
             width: 100vw;
             height: 100vh;
             display: block;
-            z-index: 31; /* Above DOM hero lockup */
+            z-index: 2; /* Sits over spool (z:1) and behind frosted glass (z:30) */
             pointer-events: none;
             opacity: 1;
         }

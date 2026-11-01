@@ -248,15 +248,46 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
 
   return (
     <section className="relative z-40 bg-[#070708] px-3 sm:px-6 pb-10 pt-12 sm:pt-14">
-      {/* Smooth Apple-grade gradient transition from 3D hero into studio showcase */}
+      {/* Apple-grade seamless multi-stop progressive scrim veil from 3D hero into studio showcase */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-36 sm:-top-52 inset-x-0 h-36 sm:h-52 bg-gradient-to-t from-[#070708] via-[#070708]/85 to-transparent"
+        className="pointer-events-none absolute -top-48 sm:-top-80 inset-x-0 h-48 sm:h-80"
+        style={{
+          background: `linear-gradient(
+            to bottom,
+            rgba(7, 7, 8, 0) 0%,
+            rgba(7, 7, 8, 0.003) 8.1%,
+            rgba(7, 7, 8, 0.012) 15.5%,
+            rgba(7, 7, 8, 0.035) 22.5%,
+            rgba(7, 7, 8, 0.08) 29%,
+            rgba(7, 7, 8, 0.15) 35.3%,
+            rgba(7, 7, 8, 0.25) 41.2%,
+            rgba(7, 7, 8, 0.38) 47.1%,
+            rgba(7, 7, 8, 0.52) 52.9%,
+            rgba(7, 7, 8, 0.67) 58.8%,
+            rgba(7, 7, 8, 0.80) 64.7%,
+            rgba(7, 7, 8, 0.90) 71%,
+            rgba(7, 7, 8, 0.96) 77.5%,
+            rgba(7, 7, 8, 0.99) 84.5%,
+            #070708 100%
+          )`,
+        }}
+      />
+      {/* Progressive depth diffusion veil */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-36 sm:-top-56 inset-x-0 h-36 sm:h-56"
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.6) 65%, black 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.6) 65%, black 100%)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+        }}
       />
 
-      {/* ambient orbs */}
+      {/* ambient orbs — strictly clamped inside showcase bounds to avoid bleeding into 3D scene */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-16 h-80 w-[560px] -translate-x-1/2 rounded-full bg-[#ff2d55]/[0.05] blur-[120px]" />
+        <div className="absolute left-1/2 top-36 h-80 w-[560px] -translate-x-1/2 rounded-full bg-[#ff2d55]/[0.035] blur-[140px]" />
       </div>
 
       <div className="relative mx-auto max-w-6xl">

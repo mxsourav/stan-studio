@@ -425,13 +425,13 @@ const matUnrolledStrand = new THREE.MeshPhysicalMaterial({
    3D STAGE & SPOOL (CONFIGURABLE VIA 3D CALIBRATOR)
    ═══════════════════════════════════════════════════════════════════ */
 const SPOOL_CALIB_START_DEFAULT = Object.freeze({
-    posX: -1.90,
-    posY: -0.15,
-    posZ: 0.00,
-    rotXDeg: 0.0,
-    rotYDeg: 90.0,
-    rotZDeg: -8.0,
-    scale: 1.42
+    posX: -2.62,
+    posY: -0.39,
+    posZ: -3.74,
+    rotXDeg: 2.9,
+    rotYDeg: 109.9,
+    rotZDeg: -151.9,
+    scale: 1.71
 });
 
 const SPOOL_CALIB_END_DEFAULT = Object.freeze({
@@ -1127,16 +1127,23 @@ function render() {
     spoolAnchor.position.x = isPhone ? THREE.MathUtils.lerp(-1.40, 0.0, p) : -1.40;
 
     /* 4. Local Tangent Peel Mechanics (Zero Kinks, C2-Continuous Flow):
-          P_anc, P0, P1, P2, P3 are computed in local spool frame along the pure circumferential
-          tangent and transformed smoothly into stage coordinate space */
+          On phone: peel from iconic top-right rim (PEEL_RAD = 18 deg).
+          On desktop: peel from opposite upper rim (195 deg = 18 deg + 177 deg) so filament
+          emerges gracefully from the top rather than the underside of the roll. */
     const traverseY = Math.sin(p * Math.PI * 6.0) * (halfW * 0.40);
 
-    const anchorAngle = PEEL_RAD - 0.28;
+    const peelAngle = isPhone ? PEEL_RAD : (195 * Math.PI / 180);
+    const tangentSign = isPhone ? 1.0 : -1.0;
+    const cosPeel = Math.cos(peelAngle);
+    const sinPeel = Math.sin(peelAngle);
+    const tLocalPeel = new THREE.Vector3(-sinPeel * tangentSign, 0, cosPeel * tangentSign);
+
+    const anchorAngle = peelAngle - 0.28 * tangentSign;
     const _pAncLocal = new THREE.Vector3(currentR * Math.cos(anchorAngle), traverseY, currentR * Math.sin(anchorAngle));
-    _p0Local.set(currentR * cosP, traverseY, currentR * sinP);
-    _p1Local.copy(_p0Local).addScaledVector(tLocal, 0.40);
-    _p2Local.copy(_p0Local).addScaledVector(tLocal, 0.85);
-    const _p3Local = _p0Local.clone().addScaledVector(tLocal, 1.45);
+    _p0Local.set(currentR * cosPeel, traverseY, currentR * sinPeel);
+    _p1Local.copy(_p0Local).addScaledVector(tLocalPeel, 0.40);
+    _p2Local.copy(_p0Local).addScaledVector(tLocalPeel, 0.85);
+    const _p3Local = _p0Local.clone().addScaledVector(tLocalPeel, 1.45);
 
     spoolAnchor.updateMatrixWorld(true);
     spoolPose.updateMatrix();

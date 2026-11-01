@@ -196,9 +196,9 @@
 
             vDust = dispProgress;
 
-            // ─── SYNCHRONIZED END: ALL TIERS FADE OUT TOGETHER AT FULL UNROLL ───
-            float unifiedFadeOut = 1.0 - smoothstep(0.70 + aRandom.x * 0.12, 0.94 + aRandom.y * 0.04, uScrollProgress);
-            vAlpha = alpha * unifiedFadeOut;
+            // ─── PERSISTENT ATMOSPHERIC DUST: NEVER DISAPPEARS ───
+            // Particles stay suspended in space around spool & behind frosted glass
+            vAlpha = alpha;
 
             // ABSOLUTE ZERO LEAKAGE: Inactive / at-rest particles are completely clipped out
             // NEVER renders on top of DOM text -> ZERO DOUBLE LAYER, ZERO BOLD FEEL
@@ -232,6 +232,22 @@
             // ZERO UPLIFT: Explodes directly in place in 3D isotropic space
             vec3 worldDisp = position + (disperseDir * maxSpread * dispProgress);
             worldDisp.z += aRandomDir.z * 35.0 * dispProgress;
+
+            // Continuous organic ambient drift & Brownian micro-floating in 3D space ("random moves")
+            vec3 driftCoord = (position * 0.035) + vec3(uTime * 0.20, uTime * 0.16, aRandom.y * 8.0);
+            vec3 ambientDrift = vec3(
+                snoise(driftCoord),
+                snoise(driftCoord + vec3(43.7, 17.9, 91.2)),
+                snoise(driftCoord + vec3(82.1, 63.4, 38.5))
+            ) * (9.0 + aRandom.w * 11.0) * dispProgress;
+
+            vec3 harmonicDrift = vec3(
+                sin(uTime * 1.5 + aRandom.x * 6.283) * 4.0,
+                cos(uTime * 1.3 + aRandom.y * 6.283) * 4.5,
+                sin(uTime * 1.7 + aRandom.z * 6.283) * 3.5
+            ) * dispProgress;
+
+            worldDisp += ambientDrift + harmonicDrift;
 
             // ══════════════════════════════════════════════════════════════
             // DELAYED DENSE HOVER CROWD WITH NATURAL INERTIAL DECAY
@@ -303,46 +319,43 @@
                 return;
             }
 
-            // Natural Titanium, Natural Silver, and White Particle Shader
-            // Finely balanced alloy mix: crisp pure white specks, luminous natural silver,
-            // and warm-neutral brushed titanium alloy with dimensional depth and subtle metallic shimmer.
+            // 100% Natural Titanium Particle Shader (Zero pure white)
+            // Authentic aerospace & Apple Natural Titanium metallic alloy palette:
+            // rich warm-neutral brushed titanium with dimensional shading and subtle metallic glints
             vec3 col;
             if (uIsDark > 0.5) {
                 float seed = vRandom.x;
                 float tintSeed = vRandom.y;
 
-                if (seed < 0.32) {
-                    // 1. Crisp Pure White Particles (~32%)
-                    col = vec3(1.0, 1.0, 1.0);
-                } else if (seed < 0.62) {
-                    // 2. Natural Silver Particles (~30%: luminous, cool-neutral metallic silver)
-                    vec3 silverLight = vec3(0.93, 0.94, 0.96);
-                    vec3 silverMid   = vec3(0.82, 0.84, 0.87);
-                    col = mix(silverMid, silverLight, tintSeed);
-                } else if (seed < 0.88) {
-                    // 3. Natural Titanium Particles (~26%: warm-neutral titanium alloy patina)
-                    vec3 titaniumWarm = vec3(0.82, 0.80, 0.76); // Apple Natural Titanium highlight
-                    vec3 titaniumMid  = vec3(0.70, 0.68, 0.64); // Brushed natural titanium
-                    col = mix(titaniumMid, titaniumWarm, tintSeed);
+                if (seed < 0.35) {
+                    // 1. Luminous Brushed Titanium Highlight
+                    vec3 tiLight = vec3(0.86, 0.84, 0.80); // #DCD6CC
+                    vec3 tiBase  = vec3(0.80, 0.78, 0.74); // #CCC7BD
+                    col = mix(tiBase, tiLight, tintSeed);
+                } else if (seed < 0.72) {
+                    // 2. Signature Natural Titanium (Warm-neutral brushed titanium patina)
+                    vec3 tiMid   = vec3(0.78, 0.76, 0.72); // #C7C2B8
+                    vec3 tiWarm  = vec3(0.72, 0.70, 0.66); // #B8B3A8
+                    col = mix(tiWarm, tiMid, tintSeed);
                 } else {
-                    // 4. Deep Titanium Alloy (~12%: darker alloy flecks providing contrast & depth)
-                    vec3 titaniumDeep = vec3(0.56, 0.54, 0.51);
-                    vec3 titaniumSatin = vec3(0.64, 0.62, 0.59);
-                    col = mix(titaniumDeep, titaniumSatin, tintSeed);
+                    // 3. Deep Raw Titanium Alloy (Dimensional shadow grains & contrast)
+                    vec3 tiDeep  = vec3(0.60, 0.58, 0.54); // #99948A
+                    vec3 tiRaw   = vec3(0.68, 0.66, 0.62); // #ADA89E
+                    col = mix(tiDeep, tiRaw, tintSeed);
                 }
 
-                // Subtle dynamic metallic shimmer as particles disperse and tumble in 3D space
-                float shimmer = sin(uTime * 3.2 + vRandom.z * 16.0) * 0.5 + 0.5;
-                col += (col * 0.10) * shimmer;
+                // Subtle dynamic metallic shimmer as titanium particles float in 3D space
+                float shimmer = sin(uTime * 2.8 + vRandom.z * 14.0) * 0.5 + 0.5;
+                col += (col * 0.08) * shimmer;
             } else {
-                // Light mode: metallic graphite & slate titanium
+                // Light mode: dark graphite titanium
                 float seed = vRandom.x;
-                if (seed < 0.30) {
-                    col = vec3(0.06, 0.06, 0.07);
-                } else if (seed < 0.65) {
-                    col = vec3(0.20, 0.21, 0.22);
+                if (seed < 0.35) {
+                    col = vec3(0.12, 0.12, 0.13);
+                } else if (seed < 0.70) {
+                    col = vec3(0.22, 0.23, 0.24);
                 } else {
-                    col = vec3(0.34, 0.35, 0.37);
+                    col = vec3(0.32, 0.33, 0.35);
                 }
             }
 
@@ -434,8 +447,8 @@
         const isDark = document.body.classList.contains('dark-mode') || document.documentElement.classList.contains('dark');
         state.isDark = isDark;
 
-        const textCol = isDark ? '#ffffff' : '#000000';
-        const cueBgCol = isDark ? '#ffffff' : '#181a1e';
+        const textCol = isDark ? '#cac5bb' : '#141416';
+        const cueBgCol = isDark ? '#cac5bb' : '#181a1e';
         const cueIconCol = isDark ? '#0b0d11' : '#ffffff';
 
         const positions = [];
