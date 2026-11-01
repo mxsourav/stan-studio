@@ -47,6 +47,14 @@ const PARAMS: ParamMeta[] = [
 ];
 
 export default function SpoolCalibrator() {
+  // Hidden from UI for now per user request (preserved intact for future calibration)
+  // Can also be toggled with #calibrate in the URL
+  const isHidden = typeof window !== 'undefined'
+    ? !window.location.search.includes('calibrate') && !window.location.hash.includes('calibrate')
+    : true;
+
+  if (isHidden) return null;
+
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false); // Compact Bottom Strip by default!
   const [isGhost, setIsGhost] = useState(false); // Peek / Ghost mode for 100% visibility

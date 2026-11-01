@@ -1192,6 +1192,30 @@ function render() {
     }
 
     /* Hero brand dispersion handled via WebGL & Curl Noise in lib/hero-dispersion.js */
+    // Ensure dust particles are never visible through the frosted glass section
+    // ("it will there but when the glass came then it will not visible through that")
+    const glassSection = document.getElementById('why-choose-section');
+    const dispCanvas = document.getElementById('hero-dispersion-canvas');
+    if (dispCanvas) {
+        if (glassSection) {
+            const gRect = glassSection.getBoundingClientRect();
+            if (gRect.top < innerHeight) {
+                // Glass is entering viewport: softly fade out particles before reaching the glass top
+                const fadeDist = 120;
+                const maskEnd = Math.max(0, Math.min(innerHeight, gRect.top));
+                const maskStart = Math.max(0, maskEnd - fadeDist);
+                const maskCSS = `linear-gradient(to bottom, black ${maskStart}px, transparent ${maskEnd}px)`;
+                dispCanvas.style.maskImage = maskCSS;
+                dispCanvas.style.webkitMaskImage = maskCSS;
+            } else {
+                dispCanvas.style.maskImage = 'none';
+                dispCanvas.style.webkitMaskImage = 'none';
+            }
+        } else {
+            dispCanvas.style.maskImage = 'none';
+            dispCanvas.style.webkitMaskImage = 'none';
+        }
+    }
 
     /* 6. Dynamic Robotic Studio Camera Tracking & Parallax */
     cameraSpline.getPointAt(p, _camPos);

@@ -61,7 +61,7 @@ export default function RepoHero() {
       <div className="hero-brand" id="hero-brand">
         <div className="hero-stan">STΔN</div>
         <div className="hero-studio">
-          studio<span className="crimson-dot">.</span>
+          <span className="hero-studio-text">studio</span><span className="crimson-dot">.</span>
         </div>
         <button
           type="button"

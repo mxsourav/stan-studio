@@ -38,15 +38,29 @@
             -webkit-text-fill-color: transparent;
         }
 
-        body.dark-mode .hero-studio {
+        body.dark-mode .hero-studio-text {
             color: #cac5bb;
             background: linear-gradient(180deg, #eae7e1 0%, #cac5bb 55%, #b3ada2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            display: inline-block;
         }
 
-        body.dark-mode .crimson-dot {
-            color: #ff1a40; /* High-contrast radiant scarlet red in dark mode */
+        body.dark-mode .hero-studio {
+            color: #cac5bb;
+            background: none;
+            -webkit-background-clip: initial;
+            -webkit-text-fill-color: initial;
+        }
+
+        body.dark-mode .crimson-dot,
+        .crimson-dot {
+            background: linear-gradient(135deg, #ff4d6d 0%, #ff0838 52%, #cc0026 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            color: #ff0838 !important;
+            display: inline-block;
+            font-weight: 800;
         }
 
         body.dark-mode .hero-scroll-cue {
