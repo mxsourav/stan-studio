@@ -23,9 +23,35 @@ declare global {
   }
 }
 
+type ParamKey = keyof SpoolCoords;
+
+interface ParamMeta {
+  key: ParamKey;
+  label: string;
+  shortLabel: string;
+  min: number;
+  max: number;
+  step: number;
+  precision: number;
+  unit: string;
+}
+
+const PARAMS: ParamMeta[] = [
+  { key: 'posX', label: 'Position X (Left / Right)', shortLabel: 'Pos X', min: -8.0, max: 4.0, step: 0.01, precision: 2, unit: '' },
+  { key: 'posY', label: 'Position Y (Up / Down)', shortLabel: 'Pos Y', min: -4.0, max: 4.0, step: 0.01, precision: 2, unit: '' },
+  { key: 'posZ', label: 'Position Z (Depth)', shortLabel: 'Pos Z', min: -4.0, max: 4.0, step: 0.01, precision: 2, unit: '' },
+  { key: 'rotXDeg', label: 'Pitch X Angle (Tilt)', shortLabel: 'Tilt X', min: -180.0, max: 180.0, step: 0.1, precision: 1, unit: '°' },
+  { key: 'rotYDeg', label: 'Yaw Y Angle (Spin)', shortLabel: 'Spin Y', min: -180.0, max: 180.0, step: 0.1, precision: 1, unit: '°' },
+  { key: 'rotZDeg', label: 'Roll Z Angle (Turn)', shortLabel: 'Turn Z', min: -180.0, max: 180.0, step: 0.1, precision: 1, unit: '°' },
+  { key: 'scale', label: 'Spool Scale', shortLabel: 'Scale', min: 0.3, max: 2.5, step: 0.01, precision: 2, unit: '' },
+];
+
 export default function SpoolCalibrator() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false); // Compact Bottom Strip by default!
+  const [isGhost, setIsGhost] = useState(false); // Peek / Ghost mode for 100% visibility
   const [device, setDevice] = useState<'phone' | 'desktop'>('phone');
+  const [activeParam, setActiveParam] = useState<ParamKey>('posX');
   const [coords, setCoords] = useState<SpoolCoords>({
     posX: -1.55,
     posY: -0.05,
@@ -52,9 +78,9 @@ export default function SpoolCalibrator() {
     }
   }, []);
 
-  // Update bridge and state when a coordinate changes
+  // Update coordinate in state and bridge
   const updateCoord = useCallback(
-    (field: keyof SpoolCoords, val: number) => {
+    (field: ParamKey, val: number) => {
       setCoords((prev) => {
         const next = { ...prev, [field]: val };
         if (window.__spoolCalib) {
@@ -119,7 +145,6 @@ export default function SpoolCalibrator() {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(jsonStr);
       } else {
-        // Fallback for non-secure context or older mobile browsers
         const textarea = document.createElement('textarea');
         textarea.value = jsonStr;
         textarea.style.position = 'fixed';
@@ -130,17 +155,19 @@ export default function SpoolCalibrator() {
         document.body.removeChild(textarea);
       }
       setCopied(true);
-      setTimeout(() => setCopied(false), 2800);
+      setTimeout(() => setCopied(false), 2500);
     } catch (e) {
       console.error('Clipboard copy failed', e);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2800);
+      setTimeout(() => setCopied(false), 2500);
     }
   }, [device, coords]);
 
+  const activeMeta = PARAMS.find((p) => p.key === activeParam) || PARAMS[0];
+
   return (
     <>
-      {/* Floating Trigger Pill */}
+      {/* Floating Trigger Pill (When completely closed) */}
       {!isOpen && (
         <button
           type="button"
@@ -148,7 +175,7 @@ export default function SpoolCalibrator() {
             setIsOpen(true);
             jumpToStart();
           }}
-          className="fixed bottom-4 right-4 z-[999] flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-zinc-900/95 hover:bg-zinc-800 text-white border border-white/20 shadow-2xl backdrop-blur-xl transition-all duration-200 hover:scale-[1.03] active:scale-[0.98]"
+          className="fixed bottom-4 right-4 z-[999] flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-full bg-zinc-900/90 hover:bg-zinc-800 text-white border border-white/20 shadow-2xl backdrop-blur-xl transition-all duration-200 active:scale-95"
           title="Open 3D Spool Position & Angle Calibrator"
         >
           <span className="relative flex h-2 w-2">
@@ -158,43 +185,64 @@ export default function SpoolCalibrator() {
           <span className="text-[12px] sm:text-[13px] font-semibold tracking-wide">
             🎯 Calibrate Spool
           </span>
-          <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">
+          <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">
             0% Frame
           </span>
         </button>
       )}
 
-      {/* Floating Calibration Drawer / Inspector Card */}
+      {/* Floating Calibration Interface */}
       {isOpen && (
-        <div className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-[999] w-[calc(100vw-24px)] sm:w-[380px] max-h-[88vh] overflow-y-auto flex flex-col rounded-2xl bg-[#0c0d10]/95 backdrop-blur-2xl border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.85)] text-white text-[12px] sm:text-[13px] select-none p-4 animate-in fade-in zoom-in-95 duration-200">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🎯</span>
-              <div>
-                <div className="font-bold text-[13px] tracking-tight text-white flex items-center gap-1.5">
-                  Spool Calibrator
-                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    LIVE
-                  </span>
-                </div>
-                <div className="text-[10px] text-zinc-400">First Frame (0% Scroll)</div>
-              </div>
+        <div
+          className={`fixed z-[999] transition-opacity duration-150 select-none ${
+            isGhost ? 'opacity-10 pointer-events-none' : 'opacity-100'
+          } ${
+            isExpanded
+              ? 'bottom-2 right-2 sm:bottom-4 sm:right-4 w-[calc(100vw-16px)] sm:w-[390px] max-h-[82vh] overflow-y-auto rounded-2xl bg-[#0c0d10]/90 backdrop-blur-2xl border border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.85)] p-4 text-white text-[12px]'
+              : 'bottom-0 inset-x-0 sm:bottom-4 sm:right-4 sm:inset-x-auto sm:w-[410px] rounded-t-2xl sm:rounded-2xl bg-[#0c0d10]/85 backdrop-blur-2xl border-t sm:border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-3 sm:p-4 text-white text-[12px]'
+          }`}
+        >
+          {/* Header Row */}
+          <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2 mb-2.5">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm">🎯</span>
+              <span className="font-bold text-[12px] sm:text-[13px] tracking-tight text-white">
+                Spool Calibrator
+              </span>
+              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                0% FRAME
+              </span>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
+              {/* Peek Button: Hold or click to temporarily hide card to inspect spool */}
               <button
                 type="button"
-                onClick={jumpToStart}
-                className="px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-[10px] font-medium text-zinc-300 transition-colors"
-                title="Scroll to 0% start"
+                onMouseDown={() => setIsGhost(true)}
+                onMouseUp={() => setIsGhost(false)}
+                onTouchStart={() => setIsGhost(true)}
+                onTouchEnd={() => setIsGhost(false)}
+                className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[10px] text-zinc-300 active:bg-blue-600 transition-colors"
+                title="Hold to see spool clearly"
               >
-                🎬 0%
+                👁️ Peek
               </button>
+
+              {/* Expand / Compact View Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-[10px] text-zinc-300 transition-colors"
+                title={isExpanded ? 'Switch to Compact Bottom Strip' : 'Expand All Sliders'}
+              >
+                {isExpanded ? '↕ Compact' : '↕ All Sliders'}
+              </button>
+
+              {/* Close */}
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="p-1 rounded-md hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded hover:bg-white/10 text-zinc-400 hover:text-white transition-colors ml-1 text-sm"
                 title="Minimize Calibrator"
               >
                 ✕
@@ -202,166 +250,204 @@ export default function SpoolCalibrator() {
             </div>
           </div>
 
-          {/* Device Target Switcher */}
-          <div className="grid grid-cols-2 gap-1.5 bg-black/40 p-1 rounded-xl border border-white/10 mb-3.5">
+          {/* Device Switcher (Mobile vs Desktop) */}
+          <div className="grid grid-cols-2 gap-1 bg-black/50 p-1 rounded-xl border border-white/10 mb-2.5">
             <button
               type="button"
               onClick={() => switchDevice('phone')}
-              className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-semibold text-[11px] sm:text-[12px] transition-all ${
+              className={`flex items-center justify-center gap-1 py-1 rounded-lg font-semibold text-[11px] transition-all ${
                 device === 'phone'
-                  ? 'bg-blue-600 text-white shadow-md'
+                  ? 'bg-blue-600 text-white shadow'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <span>📱</span> Mobile / Phone
+              📱 Mobile
             </button>
             <button
               type="button"
               onClick={() => switchDevice('desktop')}
-              className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg font-semibold text-[11px] sm:text-[12px] transition-all ${
+              className={`flex items-center justify-center gap-1 py-1 rounded-lg font-semibold text-[11px] transition-all ${
                 device === 'desktop'
-                  ? 'bg-blue-600 text-white shadow-md'
+                  ? 'bg-blue-600 text-white shadow'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <span>💻</span> Desktop
+              💻 Desktop
             </button>
           </div>
 
-          {/* Sliders & Numeric Steppers */}
-          <div className="space-y-2.5 pr-0.5">
-            {/* Position X */}
-            <CalibRow
-              label="Position X (Left / Right)"
-              value={coords.posX}
-              min={-9.0}
-              max={5.0}
-              step={0.01}
-              precision={2}
-              onChange={(v) => updateCoord('posX', v)}
-            />
+          {/* ─────────────────────────────────────────────────────────────
+              MODE A: COMPACT BOTTOM STRIP (Spool is 100% visible above!)
+             ───────────────────────────────────────────────────────────── */}
+          {!isExpanded && (
+            <div className="space-y-2">
+              {/* Parameter Selection Chips (Horizontally Scrollable) */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+                {PARAMS.map((p) => {
+                  const isActive = activeParam === p.key;
+                  const val = coords[p.key];
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => setActiveParam(p.key)}
+                      className={`flex-shrink-0 px-2 py-1 rounded-lg font-mono text-[10px] sm:text-[11px] transition-all ${
+                        isActive
+                          ? 'bg-blue-600 text-white font-bold ring-2 ring-blue-400/40 shadow-sm'
+                          : 'bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/5'
+                      }`}
+                    >
+                      <span className="text-zinc-400 mr-1">{p.shortLabel}:</span>
+                      <span>
+                        {val.toFixed(p.precision)}
+                        {p.unit}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Position Y */}
-            <CalibRow
-              label="Position Y (Up / Down)"
-              value={coords.posY}
-              min={-4.0}
-              max={4.0}
-              step={0.01}
-              precision={2}
-              onChange={(v) => updateCoord('posY', v)}
-            />
+              {/* Active Parameter Dedicated Big Touch Slider */}
+              <div className="bg-black/50 p-2 sm:p-2.5 rounded-xl border border-white/10">
+                <div className="flex items-center justify-between text-[11px] text-zinc-300 font-medium mb-1.5">
+                  <span className="text-blue-400 font-bold">{activeMeta.label}</span>
+                  <span className="font-mono text-white text-[12px]">
+                    {coords[activeMeta.key].toFixed(activeMeta.precision)}
+                    {activeMeta.unit}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateCoord(
+                        activeMeta.key,
+                        Math.max(activeMeta.min, coords[activeMeta.key] - activeMeta.step * 5)
+                      )
+                    }
+                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-zinc-200 text-sm font-bold active:scale-95 transition-all"
+                    title="Decrease by 5x step"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="range"
+                    min={activeMeta.min}
+                    max={activeMeta.max}
+                    step={activeMeta.step}
+                    value={coords[activeMeta.key]}
+                    onChange={(e) => updateCoord(activeMeta.key, parseFloat(e.target.value))}
+                    className="flex-1 h-3 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateCoord(
+                        activeMeta.key,
+                        Math.min(activeMeta.max, coords[activeMeta.key] + activeMeta.step * 5)
+                      )
+                    }
+                    className="w-7 h-7 flex items-center justify-center rounded-lg bg-white/10 hover:bg-white/20 text-zinc-200 text-sm font-bold active:scale-95 transition-all"
+                    title="Increase by 5x step"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
 
-            {/* Position Z */}
-            <CalibRow
-              label="Position Z (Depth)"
-              value={coords.posZ}
-              min={-4.0}
-              max={4.0}
-              step={0.01}
-              precision={2}
-              onChange={(v) => updateCoord('posZ', v)}
-            />
+              {/* Bottom Quick Action Bar */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[12px] shadow-lg transition-all ${
+                    copied
+                      ? 'bg-emerald-500 text-white shadow-emerald-500/30'
+                      : 'bg-white hover:bg-zinc-100 text-zinc-950 active:scale-[0.98]'
+                  }`}
+                >
+                  {copied ? '✅ Copied to Clipboard!' : '📋 Copy Coordinates'}
+                </button>
 
-            <div className="pt-1 border-t border-white/5"></div>
-
-            {/* Rotation Pitch X */}
-            <CalibRow
-              label="Pitch X Angle (Tilt Deg)"
-              value={coords.rotXDeg}
-              min={-180.0}
-              max={180.0}
-              step={0.1}
-              precision={1}
-              unit="°"
-              onChange={(v) => updateCoord('rotXDeg', v)}
-            />
-
-            {/* Rotation Yaw Y */}
-            <CalibRow
-              label="Yaw Y Angle (Spin Deg)"
-              value={coords.rotYDeg}
-              min={-180.0}
-              max={180.0}
-              step={0.1}
-              precision={1}
-              unit="°"
-              onChange={(v) => updateCoord('rotYDeg', v)}
-            />
-
-            {/* Rotation Roll Z */}
-            <CalibRow
-              label="Roll Z Angle (Turn Deg)"
-              value={coords.rotZDeg}
-              min={-180.0}
-              max={180.0}
-              step={0.1}
-              precision={1}
-              unit="°"
-              onChange={(v) => updateCoord('rotZDeg', v)}
-            />
-
-            <div className="pt-1 border-t border-white/5"></div>
-
-            {/* Scale */}
-            <CalibRow
-              label="Spool Scale"
-              value={coords.scale}
-              min={0.3}
-              max={2.5}
-              step={0.01}
-              precision={2}
-              onChange={(v) => updateCoord('scale', v)}
-            />
-          </div>
-
-          {/* Realtime Code Output Box */}
-          <div className="mt-3.5 bg-black/60 rounded-xl p-2.5 border border-white/10 font-mono text-[10px] text-zinc-300">
-            <div className="flex items-center justify-between text-[9px] text-zinc-500 mb-1">
-              <span>ACTIVE COORD SNIPPET</span>
-              <span className="uppercase text-blue-400 font-bold">{device}</span>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 font-medium text-[11px] transition-colors"
+                  title="Reset to default starting pose"
+                >
+                  ↺ Reset
+                </button>
+              </div>
             </div>
-            <pre className="overflow-x-auto select-all text-emerald-400">
-              {JSON.stringify(
-                {
-                  device,
-                  posX: Number(coords.posX.toFixed(2)),
-                  posY: Number(coords.posY.toFixed(2)),
-                  posZ: Number(coords.posZ.toFixed(2)),
-                  rotXDeg: Number(coords.rotXDeg.toFixed(1)),
-                  rotYDeg: Number(coords.rotYDeg.toFixed(1)),
-                  rotZDeg: Number(coords.rotZDeg.toFixed(1)),
-                  scale: Number(coords.scale.toFixed(2)),
-                },
-                null,
-                2
-              )}
-            </pre>
-          </div>
+          )}
 
-          {/* Action Buttons */}
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={handleCopy}
-              className={`col-span-2 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-[12px] shadow-lg transition-all ${
-                copied
-                  ? 'bg-emerald-500 text-white shadow-emerald-500/25 scale-[1.02]'
-                  : 'bg-white hover:bg-zinc-100 text-zinc-950 shadow-white/10 active:scale-[0.98]'
-              }`}
-            >
-              {copied ? '✅ Copied to Clipboard!' : '📋 Copy Coordinates'}
-            </button>
+          {/* ─────────────────────────────────────────────────────────────
+              MODE B: EXPANDED FULL VIEW (All 7 sliders visible)
+             ───────────────────────────────────────────────────────────── */}
+          {isExpanded && (
+            <div className="space-y-2 pr-0.5">
+              {PARAMS.map((p) => (
+                <CalibRow
+                  key={p.key}
+                  label={p.label}
+                  value={coords[p.key]}
+                  min={p.min}
+                  max={p.max}
+                  step={p.step}
+                  precision={p.precision}
+                  unit={p.unit}
+                  onChange={(v) => updateCoord(p.key, v)}
+                />
+              ))}
 
-            <button
-              type="button"
-              onClick={handleReset}
-              className="col-span-1 py-2.5 px-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 font-medium text-[11px] transition-colors text-center"
-              title="Reset active frame back to calibrated defaults"
-            >
-              ↺ Reset
-            </button>
-          </div>
+              {/* Realtime Code Output Box */}
+              <div className="mt-3 bg-black/60 rounded-xl p-2 border border-white/10 font-mono text-[10px] text-zinc-300">
+                <div className="flex items-center justify-between text-[9px] text-zinc-500 mb-1">
+                  <span>ACTIVE COORD SNIPPET</span>
+                  <span className="uppercase text-blue-400 font-bold">{device}</span>
+                </div>
+                <pre className="overflow-x-auto select-all text-emerald-400">
+                  {JSON.stringify(
+                    {
+                      device,
+                      posX: Number(coords.posX.toFixed(2)),
+                      posY: Number(coords.posY.toFixed(2)),
+                      posZ: Number(coords.posZ.toFixed(2)),
+                      rotXDeg: Number(coords.rotXDeg.toFixed(1)),
+                      rotYDeg: Number(coords.rotYDeg.toFixed(1)),
+                      rotZDeg: Number(coords.rotZDeg.toFixed(1)),
+                      scale: Number(coords.scale.toFixed(2)),
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-2.5 grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className={`col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[12px] shadow-lg transition-all ${
+                    copied
+                      ? 'bg-emerald-500 text-white shadow-emerald-500/25'
+                      : 'bg-white hover:bg-zinc-100 text-zinc-950 active:scale-[0.98]'
+                  }`}
+                >
+                  {copied ? '✅ Copied to Clipboard!' : '📋 Copy Coordinates'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="col-span-1 py-2 px-2 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 font-medium text-[11px] transition-colors text-center"
+                >
+                  ↺ Reset
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
@@ -390,7 +476,7 @@ function CalibRow({
   onChange,
 }: CalibRowProps) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-0.5">
       <div className="flex items-center justify-between text-[10px] text-zinc-400">
         <span>{label}</span>
         <span className="font-mono text-zinc-200">
@@ -398,7 +484,7 @@ function CalibRow({
           {unit}
         </span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <input
           type="range"
           min={min}
@@ -408,7 +494,7 @@ function CalibRow({
           onChange={(e) => onChange(parseFloat(e.target.value))}
           className="flex-1 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
         />
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => onChange(Math.max(min, value - step * 5))}
@@ -427,7 +513,7 @@ function CalibRow({
               const parsed = parseFloat(e.target.value);
               if (!isNaN(parsed)) onChange(parsed);
             }}
-            className="w-14 px-1 py-0.5 bg-black/60 border border-white/10 rounded font-mono text-right text-[11px] text-zinc-200 focus:outline-none focus:border-blue-500"
+            className="w-13 px-1 py-0.5 bg-black/60 border border-white/10 rounded font-mono text-right text-[11px] text-zinc-200 focus:outline-none focus:border-blue-500"
           />
           <button
             type="button"
