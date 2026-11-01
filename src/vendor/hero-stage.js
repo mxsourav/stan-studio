@@ -1163,7 +1163,17 @@ function render() {
     spoolPose.getWorldPosition(_spoolCenter);
 
     keyLightTarget.position.copy(_spoolCenter);
-    keyLight.position.set(_spoolCenter.x + 1.2, _spoolCenter.y + 10.5, _spoolCenter.z + 2.2);
+    if (isPhone) {
+        // Dynamic Key Light for mobile: key light coming from the left side and falling over the spool at last frame
+        const keyX = THREE.MathUtils.lerp(_spoolCenter.x - 2.5, _spoolCenter.x - 5.8, p);
+        const keyY = THREE.MathUtils.lerp(_spoolCenter.y + 5.5, _spoolCenter.y + 2.8, p);
+        const keyZ = THREE.MathUtils.lerp(_spoolCenter.z + 3.5, _spoolCenter.z + 4.5, p);
+        keyLight.position.set(keyX, keyY, keyZ);
+        keyLight.intensity = THREE.MathUtils.lerp(3.9, 4.8, p);
+    } else {
+        keyLight.position.set(_spoolCenter.x + 1.2, _spoolCenter.y + 10.5, _spoolCenter.z + 2.2);
+        keyLight.intensity = 3.9;
+    }
 
     // Dynamic ground shadow orientation & scale tracking
     const _cylAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(spoolPose.getWorldQuaternion(new THREE.Quaternion()));
