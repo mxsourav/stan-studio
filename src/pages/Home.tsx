@@ -101,22 +101,9 @@ export default function Home() {
       {/* Why Choose STΔN studio? — Apple VisionOS / macOS Frosted Glass Stage with rich blur */}
       <section
         id="why-choose-section"
-        className="frosted-glass-stage relative z-30 border-t border-white/[0.08] bg-[#070708]/50 sm:bg-[#070708]/55 backdrop-blur-[24px] sm:backdrop-blur-[32px] backdrop-saturate-[140%] shadow-[0_-20px_50px_rgba(0,0,0,0.5)]"
+        className="frosted-glass-stage relative z-30 bg-[#070708]/50 sm:bg-[#070708]/55 backdrop-blur-[24px] sm:backdrop-blur-[32px] backdrop-saturate-[140%]"
       >
-        {/* Soft progressive ambient blur veil extending seamlessly above the section header */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 -top-28 sm:-top-36 h-28 sm:h-36"
-          style={{
-            maskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.7) 70%, black 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.7) 70%, black 100%)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            background: 'linear-gradient(to bottom, transparent, rgba(7, 7, 8, 0.45))',
-          }}
-        />
-        
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-12 sm:pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-12 sm:pb-16">
           <WhyChooseStudio />
         </div>
       </section>

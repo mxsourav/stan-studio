@@ -247,7 +247,19 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
   );
 
   return (
-    <section className="relative z-40 bg-[#070708] px-3 sm:px-6 pb-10 pt-12 sm:pt-14">
+    <section
+      className="relative z-40 px-3 sm:px-6 pb-10 pt-12 sm:pt-14"
+      style={{
+        background: `linear-gradient(
+          to bottom,
+          #070708 0%,
+          #070708 calc(100% - 110px),
+          rgba(7, 7, 8, 0.88) calc(100% - 65px),
+          rgba(7, 7, 8, 0.65) calc(100% - 30px),
+          rgba(7, 7, 8, 0.50) 100%
+        )`,
+      }}
+    >
       {/* Apple-grade seamless multi-stop progressive scrim veil from 3D hero into studio showcase */}
       <div
         aria-hidden
@@ -289,6 +301,18 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-36 h-80 w-[560px] -translate-x-1/2 rounded-full bg-[#ff2d55]/[0.035] blur-[140px]" />
       </div>
+
+      {/* Seamless bottom progressive blur blending into the Why Choose frosted glass stage */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 inset-x-0 h-32"
+        style={{
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 100%)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        }}
+      />
 
       <div className="relative mx-auto max-w-6xl">
         <div className="mb-3 sm:mb-4 flex items-end justify-between">
