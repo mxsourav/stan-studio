@@ -6,11 +6,13 @@ import Wordmark from '../components/Wordmark';
 import Footer from '../components/Footer';
 import WhyChooseStudio from '../components/WhyChooseStudio';
 import SpoolCalibrator from '../components/SpoolCalibrator';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 export default function Home() {
   const navigate = useNavigate();
   const [warp, setWarp] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const warpingRef = useRef(false);
+  const { canInstall, installApp } = usePWAInstall();
 
   // Restore scroll position when returning from Studio
   useEffect(() => {
@@ -72,6 +74,22 @@ export default function Home() {
           <Wordmark size={16} />
         </span>
         <nav className="flex items-center gap-2 text-[12px] sm:text-[13px] font-medium">
+          {canInstall && (
+            <button
+              type="button"
+              onClick={() => installApp()}
+              className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 sm:px-3 py-1 text-xs text-white hover:bg-white/20 transition-all"
+              title="Download STΔN studio as an app"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span className="hidden sm:inline">Download App</span>
+              <span className="sm:hidden">App</span>
+            </button>
+          )}
           <Link
             to="/about"
             viewTransition
@@ -98,10 +116,10 @@ export default function Home() {
         <StudioShowcase onLaunchStudio={warpToStudio} />
       </div>
 
-      {/* Why Choose STΔN studio? — Apple VisionOS / macOS Frosted Glass Stage with rich blur */}
+      {/* Why Choose STΔN studio? — Refined subtle glass stage with reduced background blur */}
       <section
         id="why-choose-section"
-        className="frosted-glass-stage relative z-30 bg-[#070708]/50 sm:bg-[#070708]/55 backdrop-blur-[24px] sm:backdrop-blur-[32px] backdrop-saturate-[140%]"
+        className="frosted-glass-stage relative z-30 bg-[#070708]/65 sm:bg-[#070708]/70 backdrop-blur-[8px] sm:backdrop-blur-[10px] backdrop-saturate-[120%]"
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 sm:pt-36 pb-12 sm:pb-16">
           <WhyChooseStudio />

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Wordmark from './Wordmark';
 import LegalModal, { type LegalTabKey } from './LegalModal';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface FooterProps {
   onOpenStudio?: () => void;
@@ -11,6 +12,8 @@ interface FooterProps {
 export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
   const [legalModalOpen, setLegalModalOpen] = useState(false);
   const [activeLegalTab, setActiveLegalTab] = useState<LegalTabKey>('terms');
+  const [installInfoOpen, setInstallInfoOpen] = useState(false);
+  const { canInstall, isStandalone, installApp } = usePWAInstall();
 
   const openLegal = (tab: LegalTabKey) => {
     setActiveLegalTab(tab);
@@ -27,6 +30,14 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
       const el = document.getElementById(toolId);
       if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleDownloadApp = async () => {
+    if (canInstall) {
+      const outcome = await installApp();
+      if (outcome === 'accepted') return;
+    }
+    setInstallInfoOpen(true);
   };
 
   return (
@@ -124,6 +135,24 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
                     className="hover:text-white transition-colors text-left"
                   >
                     Custom STL Hub
+                  </button>
+                </li>
+                <li className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleDownloadApp}
+                    className="group inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-zinc-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white transition-all text-left font-medium"
+                    title="Install STΔN studio as a progressive web app"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400 group-hover:text-white transition-colors">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    <span>Download as App</span>
+                    <span className="rounded bg-emerald-400/10 px-1 py-0.2 text-[9px] font-mono uppercase text-emerald-400 border border-emerald-400/20">
+                      PWA
+                    </span>
                   </button>
                 </li>
               </ul>
@@ -277,6 +306,77 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
         onTabChange={setActiveLegalTab}
         onClose={() => setLegalModalOpen(false)}
       />
+
+      {/* PWA App Installation Guidance Modal */}
+      {installInfoOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          onClick={() => setInstallInfoOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-2xl border border-white/15 bg-[#0e0e12] p-5 shadow-2xl text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <img src="/icon-192.png" alt="STΔN studio" className="h-11 w-11 rounded-xl border border-white/10" />
+                <div>
+                  <h4 className="font-semibold text-white text-[15px]">ST&Delta;N studio. App</h4>
+                  <p className="text-[11.5px] text-zinc-400">Standalone Progressive Web App</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInstallInfoOpen(false)}
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 text-[12.5px] text-zinc-300">
+              {isStandalone ? (
+                <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-emerald-300 text-xs">
+                  ✓ ST&Delta;N studio is already running in standalone app mode!
+                </div>
+              ) : (
+                <>
+                  <p className="leading-relaxed">
+                    Install ST&Delta;N studio directly to your home screen or desktop for fast offline launching and full-screen experience:
+                  </p>
+                  <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs">
+                    <p className="font-semibold text-white">How to install:</p>
+                    <ol className="list-decimal pl-4 space-y-1 text-zinc-400">
+                      <li>
+                        <strong className="text-zinc-200">Chrome / Android:</strong> Tap the three dots <span className="font-mono text-white">⋮</span> in top-right &rarr; select <strong className="text-white">&ldquo;Install app&rdquo;</strong> or <strong className="text-white">&ldquo;Download app&rdquo;</strong>.
+                      </li>
+                      <li>
+                        <strong className="text-zinc-200">Safari / iPhone:</strong> Tap the Share button <span className="font-mono text-white">⎋</span> &rarr; select <strong className="text-white">&ldquo;Add to Home Screen&rdquo;</strong>.
+                      </li>
+                      <li>
+                        <strong className="text-zinc-200">Desktop Edge / Chrome:</strong> Click the install icon in the URL bar &rarr; <strong className="text-white">&ldquo;Install&rdquo;</strong>.
+                      </li>
+                    </ol>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setInstallInfoOpen(false)}
+                className="rounded-xl border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition-colors"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

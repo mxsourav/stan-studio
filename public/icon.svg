@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#141419" />
+      <stop offset="100%" stop-color="#070708" />
+    </radialGradient>
+    <radialGradient id="redGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff4d6d" />
+      <stop offset="55%" stop-color="#ff0838" />
+      <stop offset="100%" stop-color="#cc0026" />
+    </radialGradient>
+    <linearGradient id="titanium" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#d8d8dc" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Full bleed App Background for maskable icon compliance -->
+  <rect width="512" height="512" fill="url(#bgGlow)" />
+  
+  <!-- Subtle inner squircle border for standalone display -->
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3" />
+
+  <!-- STΔN Studio Logo Lockup (Centered in 80% safe zone) -->
+  <g text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Plus Jakarta Sans', sans-serif">
+    <!-- STΔN -->
+    <text x="256" y="250" fill="url(#titanium)" font-size="116" font-weight="900" letter-spacing="4">
+      ST&#916;N
+    </text>
+    <!-- studio -->
+    <text x="240" y="328" fill="#a1a1aa" font-size="52" font-weight="700" letter-spacing="1">
+      studio
+    </text>
+    <!-- Red Dot -->
+    <circle cx="330" cy="321" r="8" fill="url(#redGlow)" />
+  </g>
+</svg>
