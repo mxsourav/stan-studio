@@ -447,6 +447,48 @@ const SPOOL_CALIB_END_DEFAULT = Object.freeze({
 const SPOOL_CALIB_START = { ...SPOOL_CALIB_START_DEFAULT };
 const SPOOL_CALIB_END = { ...SPOOL_CALIB_END_DEFAULT };
 
+const SPOOL_CALIB_PHONE_START_DEFAULT = Object.freeze({
+    posX: -1.55,
+    posY: -0.05,
+    posZ: 0.25,
+    rotXDeg: 2.4,
+    rotYDeg: 89.8,
+    rotZDeg: 8.0,
+    scale: 1.36
+});
+
+const SPOOL_CALIB_PHONE_START = { ...SPOOL_CALIB_PHONE_START_DEFAULT };
+
+// Restore user-tuned calibration from localStorage if available
+try {
+    const savedDesktop = localStorage.getItem('stan_calib_desktop_start');
+    if (savedDesktop) Object.assign(SPOOL_CALIB_START, JSON.parse(savedDesktop));
+    const savedPhone = localStorage.getItem('stan_calib_phone_start');
+    if (savedPhone) Object.assign(SPOOL_CALIB_PHONE_START, JSON.parse(savedPhone));
+} catch (e) {}
+
+// Public Bridge for SpoolCalibrator React Tool
+window.__spoolCalib = {
+    getDesktopStart: () => ({ ...SPOOL_CALIB_START }),
+    getPhoneStart: () => ({ ...SPOOL_CALIB_PHONE_START }),
+    setDesktopStart: (cfg) => {
+        Object.assign(SPOOL_CALIB_START, cfg);
+        try { localStorage.setItem('stan_calib_desktop_start', JSON.stringify(SPOOL_CALIB_START)); } catch (e) {}
+    },
+    setPhoneStart: (cfg) => {
+        Object.assign(SPOOL_CALIB_PHONE_START, cfg);
+        try { localStorage.setItem('stan_calib_phone_start', JSON.stringify(SPOOL_CALIB_PHONE_START)); } catch (e) {}
+    },
+    resetDesktopStart: () => {
+        Object.assign(SPOOL_CALIB_START, SPOOL_CALIB_START_DEFAULT);
+        try { localStorage.removeItem('stan_calib_desktop_start'); } catch (e) {}
+    },
+    resetPhoneStart: () => {
+        Object.assign(SPOOL_CALIB_PHONE_START, SPOOL_CALIB_PHONE_START_DEFAULT);
+        try { localStorage.removeItem('stan_calib_phone_start'); } catch (e) {}
+    }
+};
+
 const GLASS_HOVER_CONFIG = {
     hoverIntensity: 0.7,
     blur: 11,           // px
@@ -1033,13 +1075,13 @@ function render() {
     // Responsive calibration:
     // On mobile, the spool starts in the exact iconic angled wheel pose matching user screenshot:
     // left rim grazes the left edge, cylinder frames right behind STAN studio., wire peels to the right.
-    const startX = isPhone ? -1.55 : SPOOL_CALIB_START.posX;
+    const startX = isPhone ? SPOOL_CALIB_PHONE_START.posX : SPOOL_CALIB_START.posX;
     const endX = isPhone ? -3.53 : SPOOL_CALIB_END.posX;
-    const startY = isPhone ? -0.05 : SPOOL_CALIB_START.posY;
+    const startY = isPhone ? SPOOL_CALIB_PHONE_START.posY : SPOOL_CALIB_START.posY;
     const endY = isPhone ? 0.44 : SPOOL_CALIB_END.posY;
-    const startZ = isPhone ? 0.25 : SPOOL_CALIB_START.posZ;
+    const startZ = isPhone ? SPOOL_CALIB_PHONE_START.posZ : SPOOL_CALIB_START.posZ;
     const endZ = isPhone ? 1.45 : SPOOL_CALIB_END.posZ;
-    const startScale = isPhone ? 1.36 : SPOOL_CALIB_START.scale;
+    const startScale = isPhone ? SPOOL_CALIB_PHONE_START.scale : SPOOL_CALIB_START.scale;
     const endScale = isPhone ? 0.96 : SPOOL_CALIB_END.scale;
 
     const curPosX = THREE.MathUtils.lerp(startX, endX, p);
@@ -1051,11 +1093,11 @@ function render() {
     stage.position.set(curPosX, curPosY, curPosZ);
     stage.scale.set(curScale, curScale, curScale);
 
-    const rotStartX = isPhone ? 2.4 : SPOOL_CALIB_START.rotXDeg;
+    const rotStartX = isPhone ? SPOOL_CALIB_PHONE_START.rotXDeg : SPOOL_CALIB_START.rotXDeg;
     const rotEndX = isPhone ? -13.0 : SPOOL_CALIB_END.rotXDeg;
-    const rotStartY = isPhone ? 89.8 : SPOOL_CALIB_START.rotYDeg;
+    const rotStartY = isPhone ? SPOOL_CALIB_PHONE_START.rotYDeg : SPOOL_CALIB_START.rotYDeg;
     const rotEndY = isPhone ? 66.0 : SPOOL_CALIB_END.rotYDeg;
-    const rotStartZ = isPhone ? 8.0 : SPOOL_CALIB_START.rotZDeg;
+    const rotStartZ = isPhone ? SPOOL_CALIB_PHONE_START.rotZDeg : SPOOL_CALIB_START.rotZDeg;
     const rotEndZ = isPhone ? 78.5 : SPOOL_CALIB_END.rotZDeg;
 
     const curRotXDeg = THREE.MathUtils.lerp(rotStartX, rotEndX, p);

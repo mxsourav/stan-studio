@@ -5,6 +5,7 @@ import StudioShowcase from '../components/StudioShowcase';
 import Wordmark from '../components/Wordmark';
 import Footer from '../components/Footer';
 import WhyChooseStudio from '../components/WhyChooseStudio';
+import SpoolCalibrator from '../components/SpoolCalibrator';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -124,6 +125,8 @@ export default function Home() {
           }}
         />
       )}
+      {/* Interactive 3D Spool Position & Angle Calibrator Tool */}
+      <SpoolCalibrator />
     </div>
   );
 }
