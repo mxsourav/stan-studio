@@ -297,7 +297,7 @@ function ShelfTab({
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
         }}
-        className={`min-h-[44px] cursor-pointer rounded-2xl border border-dashed px-4 py-3.5 text-center transition ${
+        className={`min-h-[44px] cursor-pointer rounded-2xl border border-dashed px-4 py-5 text-center transition ${
           dragging
             ? 'border-white/50 bg-white/[0.08]'
             : 'border-white/[0.18] bg-white/[0.03] hover:border-white/35 hover:bg-white/[0.06]'
@@ -316,9 +316,9 @@ function ShelfTab({
 
       {/* Shelf grid */}
       {items.length === 0 ? (
-        <p className="py-6 text-center font-mono text-[11px] text-white/35">Shelf is empty.</p>
+        <p className="py-12 text-center font-mono text-[11px] text-white/35">Shelf is empty.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((item) => (
             <ShelfCard
               key={item.id}
@@ -514,66 +514,69 @@ function ItemEditor({
 }) {
   const est = estimatePrint({ volumeMm3: item.geom?.volumeMm3 ?? 0, ...item.params });
   return (
-    <div className="mt-3 flex flex-col gap-3 rounded-xl border border-white/[0.08] bg-black/30 p-3">
-      <div>
-        <SectionLabel>Material</SectionLabel>
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {MATERIALS.map((m) => (
-            <Chip key={m.id} active={item.params.material === m.id} onClick={() => onSetParams({ material: m.id })}>
-              {m.id}
-            </Chip>
-          ))}
-        </div>
-      </div>
-      <div>
-        <SectionLabel>Infill</SectionLabel>
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {INFILL_PRESETS.map((p) => (
-            <Chip key={p} active={item.params.infill === p} onClick={() => onSetParams({ infill: p })}>
-              {p}%
-            </Chip>
-          ))}
-        </div>
-      </div>
-      <div>
-        <SectionLabel>Color mode</SectionLabel>
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {COLOR_MODES.map((c) => (
-            <Chip key={c.id} active={item.params.colorMode === c.id} onClick={() => onSetParams({ colorMode: c.id })}>
-              {c.label}
-              {c.mult !== 1 ? <span className="ml-1 text-white/35">×{c.mult}</span> : null}
-            </Chip>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center justify-between gap-3">
+    <div className="mt-3 flex flex-col gap-4 rounded-xl border border-white/[0.08] bg-black/30 p-4 sm:p-5">
+      {/* 2-column desktop layout — every setting visible at a glance */}
+      <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
         <div>
-          <SectionLabel>Quantity</SectionLabel>
-          <div className="mt-1.5 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onSetParams({ qty: Math.max(1, item.params.qty - 1) })}
-              className="h-7 w-7 rounded-lg border border-white/[0.1] bg-white/[0.05] font-mono text-[13px] text-white/80 transition hover:bg-white/[0.1] active:scale-[0.99]"
-              aria-label="Decrease quantity"
-            >
-              −
-            </button>
-            <span className="w-8 text-center font-mono text-[13px] tabular-nums text-white">{item.params.qty}</span>
-            <button
-              type="button"
-              onClick={() => onSetParams({ qty: Math.min(99, item.params.qty + 1) })}
-              className="h-7 w-7 rounded-lg border border-white/[0.1] bg-white/[0.05] font-mono text-[13px] text-white/80 transition hover:bg-white/[0.1] active:scale-[0.99]"
-              aria-label="Increase quantity"
-            >
-              +
-            </button>
+          <SectionLabel>Material</SectionLabel>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {MATERIALS.map((m) => (
+              <Chip key={m.id} active={item.params.material === m.id} onClick={() => onSetParams({ material: m.id })}>
+                {m.id}
+              </Chip>
+            ))}
           </div>
         </div>
-        <div className="text-right">
-          <SectionLabel>Per unit</SectionLabel>
-          <p className="mt-1 font-mono text-[11px] tabular-nums text-white/70">
-            {rupees(est.perUnitLow)}–{rupees(est.perUnitHigh)}
-          </p>
+        <div>
+          <SectionLabel>Infill</SectionLabel>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {INFILL_PRESETS.map((p) => (
+              <Chip key={p} active={item.params.infill === p} onClick={() => onSetParams({ infill: p })}>
+                {p}%
+              </Chip>
+            ))}
+          </div>
+        </div>
+        <div>
+          <SectionLabel>Color mode</SectionLabel>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {COLOR_MODES.map((c) => (
+              <Chip key={c.id} active={item.params.colorMode === c.id} onClick={() => onSetParams({ colorMode: c.id })}>
+                {c.label}
+                {c.mult !== 1 ? <span className="ml-1 text-white/35">×{c.mult}</span> : null}
+              </Chip>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <SectionLabel>Quantity</SectionLabel>
+            <div className="mt-1.5 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSetParams({ qty: Math.max(1, item.params.qty - 1) })}
+                className="h-7 w-7 rounded-lg border border-white/[0.1] bg-white/[0.05] font-mono text-[13px] text-white/80 transition hover:bg-white/[0.1] active:scale-[0.99]"
+                aria-label="Decrease quantity"
+              >
+                −
+              </button>
+              <span className="w-8 text-center font-mono text-[13px] tabular-nums text-white">{item.params.qty}</span>
+              <button
+                type="button"
+                onClick={() => onSetParams({ qty: Math.min(99, item.params.qty + 1) })}
+                className="h-7 w-7 rounded-lg border border-white/[0.1] bg-white/[0.05] font-mono text-[13px] text-white/80 transition hover:bg-white/[0.1] active:scale-[0.99]"
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div className="text-right">
+            <SectionLabel>Per unit</SectionLabel>
+            <p className="mt-1 font-mono text-[11px] tabular-nums text-white/70">
+              {rupees(est.perUnitLow)}–{rupees(est.perUnitHigh)}
+            </p>
+          </div>
         </div>
       </div>
       {est.floorApplied > 0 && (
@@ -654,7 +657,7 @@ function LibraryTab({ onAdded, onCommission }: { onAdded: (name: string) => void
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {list.map((lib) => {
           const grams = libraryGrams(lib);
           const est = estimatePrint({ volumeMm3: lib.volumeCm3 * 1000, material: lib.recMaterial, infill: lib.recInfill, colorMode: 'single', qty: 1 });
@@ -881,64 +884,70 @@ export default function CustomStlHub() {
   const commission = useCommission(reload);
 
   return (
-    <div className="flex flex-col gap-3">
-      {storageDegraded() && (
-        <p className="rounded-xl bg-amber-400/10 px-3 py-2 font-mono text-[10.5px] text-amber-200/80">
-          On-device storage unavailable — shelf lasts this session only.
-        </p>
-      )}
-      <div role="tablist" className="flex gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
-        {(
-          [
-            ['shelf', 'Private Shelf', items.length],
-            ['library', 'Studio Library', null],
-            ['sourcing', 'Model Sourcing', null],
-          ] as Array<[HubTab, string, number | null]>
-        ).map(([key, label, count]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => {
-              setTab(key);
-              setExpandedId(null);
-              try {
-                localStorage.setItem('stan-hub-tab', key);
-              } catch {
-                /* private mode */
-              }
-            }}
-            className={`flex-1 whitespace-nowrap rounded-lg px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider transition sm:text-[10.5px] ${
-              tab === key ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]' : 'text-white/45 hover:text-white/80'
-            }`}
-          >
-            {label}
-            {count !== null && count > 0 ? <span className="ml-1 text-white/35">{count}</span> : null}
-          </button>
-        ))}
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Pinned workspace tab bar — switches instantly, never scrolls away */}
+      <div className="shrink-0 border-b border-white/[0.06] px-5 pb-3 pt-4 sm:px-8">
+        <div role="tablist" className="flex gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+          {(
+            [
+              ['shelf', 'Private Shelf', items.length],
+              ['library', 'Studio Library', null],
+              ['sourcing', 'Model Sourcing', null],
+            ] as Array<[HubTab, string, number | null]>
+          ).map(([key, label, count]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => {
+                setTab(key);
+                setExpandedId(null);
+                try {
+                  localStorage.setItem('stan-hub-tab', key);
+                } catch {
+                  /* private mode */
+                }
+              }}
+              className={`flex-1 whitespace-nowrap rounded-lg px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider transition sm:text-[10.5px] ${
+                tab === key ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]' : 'text-white/45 hover:text-white/80'
+              }`}
+            >
+              {label}
+              {count !== null && count > 0 ? <span className="ml-1 text-white/35">{count}</span> : null}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="animate-in fade-in duration-300">
-        {tab === 'shelf' && (
-          <ShelfTab items={items} reload={reload} onCommission={commission} expandedId={expandedId} onExpand={setExpandedId} />
-        )}
-        {tab === 'library' && (
-          <LibraryTab
-            onAdded={() => {
-              reload();
-              setTab('shelf');
-            }}
-            onCommission={commission}
-          />
-        )}
-        {tab === 'sourcing' && <SourcingTab onChanged={reload} />}
-      </div>
+      {/* Immersive scrollable workspace body */}
+      <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-5 py-5 sm:px-8 sm:py-6">
+        <div className="mx-auto flex max-w-5xl animate-in fade-in flex-col gap-4 duration-300" key={tab}>
+          {storageDegraded() && (
+            <p className="rounded-xl bg-amber-400/10 px-3 py-2 font-mono text-[10.5px] text-amber-200/80">
+              On-device storage unavailable — shelf lasts this session only.
+            </p>
+          )}
+          {tab === 'shelf' && (
+            <ShelfTab items={items} reload={reload} onCommission={commission} expandedId={expandedId} onExpand={setExpandedId} />
+          )}
+          {tab === 'library' && (
+            <LibraryTab
+              onAdded={() => {
+                reload();
+                setTab('shelf');
+              }}
+              onCommission={commission}
+            />
+          )}
+          {tab === 'sourcing' && <SourcingTab onChanged={reload} />}
 
-      <p className="flex items-center justify-center gap-1.5 border-t border-white/[0.06] pt-3 font-mono text-[9px] uppercase tracking-wider text-white/25">
-        <IconXmark size={9} />
-        No accounts · shelf lives in this browser only
-      </p>
+          <p className="flex items-center justify-center gap-1.5 pt-2 font-mono text-[9px] uppercase tracking-wider text-white/25">
+            <IconXmark size={9} />
+            No accounts · shelf lives in this browser only
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
