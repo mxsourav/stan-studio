@@ -36,8 +36,8 @@ import { submitHubRequest, uploadStlFile } from '../../lib/hubPipeline';
 
 /**
  * Custom STL Hub — zero-login commissioning workspace, rendered inside the
- * /tools/stl-hub fullscreen shell (left shelf rail, central preview viewport,
- * right parameter rail, bottom telemetry bar). Modes: Private Shelf, Studio
+ * /tools/stl-hub fullscreen shell. Single centered column (max-w-5xl): content
+ * flows top-to-bottom like a modern web app. Modes: Private Shelf, Studio
  * Library, Model Sourcing. Every ticket opens WhatsApp immediately; the DB
  * sync completes in background.
  */
@@ -53,10 +53,10 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg px-2.5 py-1 font-mono text-[10.5px] transition active:scale-[0.99] ${
+      className={`rounded-xl border px-3 py-1.5 text-[11.5px] font-medium transition active:scale-[0.99] ${
         active
-          ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
-          : 'text-white/45 hover:bg-white/[0.06] hover:text-white/85'
+          ? 'border-white/25 bg-white/[0.12] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+          : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:bg-white/[0.06] hover:text-zinc-100'
       }`}
     >
       {children}
@@ -65,7 +65,38 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="font-mono text-[9.5px] uppercase tracking-wider text-white/35">{children}</p>;
+  return <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">{children}</p>;
+}
+
+function PrimaryAction({ onClick, children, wide }: { onClick: () => void; children: React.ReactNode; wide?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wider text-black transition hover:bg-white/90 active:scale-[0.99] ${
+        wide ? 'w-full' : ''
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function GhostAction({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wider text-zinc-200 transition hover:bg-white/[0.1] active:scale-[0.99]"
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Rounded group card — one visual block per form/param section. */
+function Group({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5 ${className}`}>{children}</div>;
 }
 
 function FreeDeliveryChip({ est }: { est: Estimate }) {
@@ -236,22 +267,22 @@ function MeshView({ item, size = 72 }: { item: ShelfItem; size?: number }) {
   );
 }
 
-// ─── Shelf rail row ──────────────────────────────────────────────────────────
+// ─── Shelf card (grid item) ──────────────────────────────────────────────────
 
-function ShelfRow({ item, selected, onSelect }: { item: ShelfItem; selected: boolean; onSelect: () => void }) {
+function ShelfCard({ item, selected, onSelect }: { item: ShelfItem; selected: boolean; onSelect: () => void }) {
   const est = estimatePrint({ volumeMm3: item.geom?.volumeMm3 ?? 0, ...item.params });
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`flex w-full items-center gap-2.5 rounded-xl border p-2 text-left transition ${
-        selected ? 'border-white/25 bg-white/[0.08]' : 'border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06]'
+      className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.995] ${
+        selected ? 'border-white/30 bg-white/[0.08]' : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
       }`}
     >
-      <MeshView item={item} size={40} />
+      <MeshView item={item} size={44} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[12px] font-medium text-white">{item.name}</span>
-        <span className="mt-0.5 block font-mono text-[9.5px] tabular-nums text-white/40">
+        <span className="block truncate text-[12.5px] font-semibold text-zinc-100">{item.name}</span>
+        <span className="mt-0.5 block font-mono text-[10px] tabular-nums text-zinc-400">
           {rupees(est.low)}–{rupees(est.high)} · {est.gramsTotal.toFixed(1)} g
         </span>
       </span>
@@ -266,10 +297,10 @@ function ItemEditor({ item, onSetParams }: { item: ShelfItem; onSetParams: (next
   const est = estimatePrint({ volumeMm3: item.geom?.volumeMm3 ?? 0, ...item.params });
   const mode = colorMode(item.params.colorMode);
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div>
         <SectionLabel>Material</SectionLabel>
-        <div className="mt-1.5 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {MATERIALS.map((m) => (
             <Chip key={m.id} active={item.params.material === m.id} onClick={() => onSetParams({ material: m.id })}>
               {m.id}
@@ -279,7 +310,7 @@ function ItemEditor({ item, onSetParams }: { item: ShelfItem; onSetParams: (next
       </div>
       <div>
         <SectionLabel>Infill</SectionLabel>
-        <div className="mt-1.5 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {INFILL_PRESETS.map((p) => (
             <Chip key={p} active={item.params.infill === p} onClick={() => onSetParams({ infill: p })}>
               {p}%
@@ -289,32 +320,32 @@ function ItemEditor({ item, onSetParams }: { item: ShelfItem; onSetParams: (next
       </div>
       <div>
         <SectionLabel>Color mode</SectionLabel>
-        <div className="mt-1.5 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {COLOR_MODES.map((c) => (
             <Chip key={c.id} active={item.params.colorMode === c.id} onClick={() => onSetParams({ colorMode: c.id })}>
               {c.label}
-              {c.mult !== 1 ? <span className="ml-1 text-white/35">×{c.mult}</span> : null}
+              {c.mult !== 1 ? <span className="ml-1 text-zinc-500">×{c.mult}</span> : null}
             </Chip>
           ))}
         </div>
       </div>
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-end justify-between gap-4">
         <div>
           <SectionLabel>Quantity</SectionLabel>
-          <div className="mt-1.5 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2.5">
             <button
               type="button"
               onClick={() => onSetParams({ qty: Math.max(1, item.params.qty - 1) })}
-              className="h-7 w-7 rounded-lg border border-white/[0.1] bg-white/[0.05] font-mono text-[13px] text-white/80 transition hover:bg-white/[0.1] active:scale-[0.99]"
+              className="h-9 w-9 rounded-xl border border-white/10 bg-white/[0.05] font-mono text-[14px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.99]"
               aria-label="Decrease quantity"
             >
               −
             </button>
-            <span className="w-8 text-center font-mono text-[13px] tabular-nums text-white">{item.params.qty}</span>
+            <span className="w-9 text-center font-mono text-[14px] tabular-nums text-zinc-100">{item.params.qty}</span>
             <button
               type="button"
               onClick={() => onSetParams({ qty: Math.min(99, item.params.qty + 1) })}
-              className="h-7 w-7 rounded-lg border border-white/[0.1] bg-white/[0.05] font-mono text-[13px] text-white/80 transition hover:bg-white/[0.1] active:scale-[0.99]"
+              className="h-9 w-9 rounded-xl border border-white/10 bg-white/[0.05] font-mono text-[14px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.99]"
               aria-label="Increase quantity"
             >
               +
@@ -323,20 +354,22 @@ function ItemEditor({ item, onSetParams }: { item: ShelfItem; onSetParams: (next
         </div>
         <div className="text-right">
           <SectionLabel>Per unit</SectionLabel>
-          <p className="mt-1 font-mono text-[11px] tabular-nums text-white/70">
+          <p className="mt-2 font-mono text-[12px] tabular-nums text-zinc-300">
             {rupees(est.perUnitLow)}–{rupees(est.perUnitHigh)}
           </p>
         </div>
       </div>
-      {est.floorApplied > 0 && (
-        <p className="font-mono text-[9.5px] uppercase tracking-wider text-white/35">
-          Includes {rupees(est.floorApplied)} setup floor · {mode.label} ×{mode.mult}
+      <div className="flex flex-col gap-1 border-t border-white/[0.08] pt-3">
+        {est.floorApplied > 0 && (
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+            Includes {rupees(est.floorApplied)} setup floor · {mode.label} ×{mode.mult}
+          </p>
+        )}
+        <p className="font-mono text-[10px] tabular-nums text-zinc-500">
+          {est.gramsPerUnit.toFixed(2)} g/unit at {item.params.material} · remixes saved: {item.history.length}
         </p>
-      )}
-      <p className="font-mono text-[9.5px] text-white/30">
-        {est.gramsPerUnit.toFixed(2)} g/unit at {item.params.material} · remixes saved: {item.history.length}
-      </p>
-      <p className="font-mono text-[9px] uppercase tracking-wider text-white/25">Changes auto-save on-device</p>
+        <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-600">Changes auto-save on-device</p>
+      </div>
     </div>
   );
 }
@@ -362,7 +395,7 @@ function ShelfWorkspace({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const selected = items.find((i) => i.id === selectedId) ?? null;
-  const previewSize = typeof window !== 'undefined' && window.innerWidth < 640 ? 260 : 420;
+  const previewSize = typeof window !== 'undefined' && window.innerWidth < 640 ? 240 : 300;
 
   const handleFile = useCallback(
     async (file: File | undefined | null) => {
@@ -441,9 +474,9 @@ function ShelfWorkspace({
   const est = selected ? estimatePrint({ volumeMm3: selected.geom?.volumeMm3 ?? 0, ...selected.params }) : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      {/* Left rail — vault list */}
-      <aside className="liquid-glass no-scrollbar flex w-full shrink-0 flex-col gap-2 overflow-y-auto rounded-none border-b border-white/[0.06] p-3 lg:w-[280px] lg:border-b-0 lg:border-r">
+    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-5 sm:px-6 sm:py-6">
+        {/* Upload — full-width dropzone */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -461,94 +494,78 @@ function ShelfWorkspace({
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
           }}
-          className={`min-h-[44px] cursor-pointer rounded-xl border border-dashed px-3 py-3 text-center transition ${
+          className={`cursor-pointer rounded-2xl border border-dashed px-4 py-6 text-center transition ${
             dragging
               ? 'border-white/50 bg-white/[0.08]'
-              : 'border-white/[0.18] bg-white/[0.03] hover:border-white/35 hover:bg-white/[0.06]'
+              : 'border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.05]'
           }`}
         >
           <input ref={inputRef} type="file" accept=".stl" className="hidden" onChange={(e) => void handleFile(e.target.files?.[0])} />
-          <p className="flex items-center justify-center gap-2 font-mono text-[11px] text-white/80">
-            <IconUpload size={13} className="text-white/50" />
-            {busy ? 'Parsing mesh…' : 'Drop .stl or tap'}
+          <p className="flex items-center justify-center gap-2 text-[13px] font-medium text-zinc-100">
+            <IconUpload size={15} className="text-zinc-400" />
+            {busy ? 'Parsing mesh…' : 'Drop your .stl here — or tap to browse'}
+          </p>
+          <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+            Parsed on-device · up to {MAX_FILE_MB} MB · nothing uploads until you commission
           </p>
         </div>
-        {items.length === 0 ? (
-          <p className="py-6 text-center font-mono text-[10.5px] text-white/35">Shelf is empty.</p>
-        ) : (
-          items.map((item) => (
-            <ShelfRow key={item.id} item={item} selected={item.id === selectedId} onSelect={() => onSelect(item.id)} />
-          ))
-        )}
-        <p className="mt-auto pt-2 text-center font-mono text-[9px] uppercase tracking-wider text-white/25">
-          {items.length} item{items.length === 1 ? '' : 's'} · on-device vault
-        </p>
-      </aside>
 
-      {/* Central preview viewport */}
-      <section
-        className="frosted-viewport no-scrollbar relative flex min-h-[300px] flex-1 flex-col items-center justify-center gap-3 overflow-y-auto rounded-none p-4 sm:p-8"
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragging(false);
-          void handleFile(e.dataTransfer.files?.[0]);
-        }}
-      >
-        {selected ? (
-          <>
-            <MeshView item={selected} size={previewSize} />
-            <div className="text-center">
-              <p className="text-[13px] font-semibold text-white">{selected.name}</p>
-              {selected.geom && (
-                <p className="mt-1 font-mono text-[10px] tabular-nums text-white/45">
-                  {selected.geom.bbox.x} × {selected.geom.bbox.y} × {selected.geom.bbox.z} mm
-                  {selected.geom.triangles > 0
-                    ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris`
-                    : ' · library'}
-                  {` · ${(selected.geom.volumeMm3 / 1000).toFixed(1)} cm³`}
-                </p>
-              )}
-              {sessionMeshCache.has(selected.id) && (
-                <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-white/25">Drag to rotate</p>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="text-center">
-            <IconCube size={40} className="mx-auto text-white/20" />
-            <p className="mt-3 max-w-xs font-mono text-[11px] leading-relaxed text-white/40">
-              Drop an .stl here or use the shelf rail — parsed and vaulted on-device.
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-14 text-center">
+            <IconCube size={36} className="text-zinc-600" />
+            <p className="mt-4 text-[13px] font-semibold text-zinc-100">Your private shelf is empty</p>
+            <p className="mt-1.5 max-w-sm text-[12px] leading-relaxed text-zinc-400">
+              Add a model above — it stays on this device, priced instantly, until you send it to the studio.
             </p>
           </div>
+        ) : (
+          <section>
+            <div className="flex items-center justify-between">
+              <SectionLabel>Your shelf</SectionLabel>
+              <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-600">
+                {items.length} item{items.length === 1 ? '' : 's'} · on-device vault
+              </p>
+            </div>
+            <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+              {items.map((item) => (
+                <ShelfCard key={item.id} item={item} selected={item.id === selectedId} onSelect={() => onSelect(item.id)} />
+              ))}
+            </div>
+          </section>
         )}
-        {error && <p className="rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[11px] text-red-300">{error}</p>}
-      </section>
 
-      {/* Right rail — remix parameters */}
-      <aside className="liquid-glass no-scrollbar w-full shrink-0 overflow-y-auto rounded-none border-t border-white/[0.06] p-4 lg:w-[320px] lg:border-l lg:border-t-0">
-        {selected ? (
-          <>
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <SectionLabel>Remix parameters</SectionLabel>
+        {error && <p className="rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[11px] text-red-300">{error}</p>}
+
+        {/* Selected item — preview + remix parameters in one flowing card */}
+        {selected && (
+          <Group>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-[15px] font-semibold text-zinc-100">{selected.name}</p>
+                {selected.geom && (
+                  <p className="mt-1 font-mono text-[10px] tabular-nums text-zinc-400">
+                    {selected.geom.bbox.x} × {selected.geom.bbox.y} × {selected.geom.bbox.z} mm
+                    {selected.geom.triangles > 0
+                      ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris`
+                      : ' · library'}
+                    {` · ${(selected.geom.volumeMm3 / 1000).toFixed(1)} cm³`}
+                  </p>
+                )}
+              </div>
               {confirmDelete ? (
-                <span className="flex items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-wider text-white/60">
+                <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-zinc-300">
                   Delete?
                   <button
                     type="button"
                     onClick={() => void remove(selected)}
-                    className="rounded-lg bg-red-500/15 px-2 py-1 text-red-300 transition hover:bg-red-500/25"
+                    className="rounded-lg bg-red-500/15 px-2.5 py-1.5 text-red-300 transition hover:bg-red-500/25"
                   >
                     Yes
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(false)}
-                    className="rounded-lg bg-white/[0.06] px-2 py-1 transition hover:bg-white/[0.12]"
+                    className="rounded-lg bg-white/[0.06] px-2.5 py-1.5 transition hover:bg-white/[0.12]"
                   >
                     No
                   </button>
@@ -558,58 +575,61 @@ function ShelfWorkspace({
                   type="button"
                   onClick={() => setConfirmDelete(true)}
                   aria-label="Delete"
-                  className="rounded-lg p-1.5 text-white/35 transition hover:bg-white/[0.08] hover:text-red-300"
+                  className="shrink-0 rounded-lg p-2 text-zinc-500 transition hover:bg-white/[0.08] hover:text-red-300"
                 >
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                     <path d="M4.5 6.5h15M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5M6.5 6.5l1 12a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-12" />
                   </svg>
                 </button>
               )}
             </div>
-            <ItemEditor item={selected} onSetParams={setParams} />
-          </>
-        ) : (
-          <p className="font-mono text-[10.5px] leading-relaxed text-white/35">
-            Select a shelf item to tune material, infill, color mode and quantity.
-          </p>
+            <div className="mt-4 grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
+              <div className="flex flex-col items-center gap-2">
+                <MeshView item={selected} size={previewSize} />
+                {sessionMeshCache.has(selected.id) && (
+                  <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-600">Drag to rotate</p>
+                )}
+              </div>
+              <div className="min-w-0">
+                <SectionLabel>Remix parameters</SectionLabel>
+                <div className="mt-3">
+                  <ItemEditor item={selected} onSetParams={setParams} />
+                </div>
+              </div>
+            </div>
+          </Group>
         )}
-      </aside>
+      </div>
 
-      {/* Bottom telemetry bar */}
-      <footer className="liquid-glass sticky bottom-0 z-20 flex shrink-0 items-center justify-between gap-3 overflow-x-auto rounded-none border-x-0 border-b-0 px-4 py-2 sm:px-6">
-        {selected && est ? (
-          <>
-            <span className="flex items-center gap-2.5 whitespace-nowrap">
-              <span className="font-mono text-[13px] font-semibold tabular-nums text-white">
-                {rupees(est.low)}–{rupees(est.high)}
+      {/* Sticky bottom action bar — estimate + primary actions, always in view */}
+      <footer className="sticky bottom-0 z-20 border-t border-white/[0.08] bg-[#0a0a0c]/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
+          {selected && est ? (
+            <>
+              <span className="flex flex-wrap items-center gap-2.5">
+                <span className="font-mono text-[14px] font-semibold tabular-nums text-zinc-100">
+                  {rupees(est.low)}–{rupees(est.high)}
+                </span>
+                <span className="font-mono text-[10px] text-zinc-400">
+                  {est.gramsTotal.toFixed(1)} g · ×{selected.params.qty} {selected.params.material} {selected.params.infill}%
+                </span>
+                <FreeDeliveryChip est={est} />
+                {selected.syncState && <SyncPill state={selected.syncState} />}
               </span>
-              <span className="font-mono text-[10px] text-white/40">
-                {est.gramsTotal.toFixed(1)} g · ×{selected.params.qty} {selected.params.material} {selected.params.infill}%
+              <span className="flex items-center gap-2">
+                <GhostAction onClick={() => void duplicate(selected)}>Remix</GhostAction>
+                <PrimaryAction onClick={() => onCommission(selected, est)}>
+                  <IconWhatsApp size={13} />
+                  Commission
+                </PrimaryAction>
               </span>
-              <FreeDeliveryChip est={est} />
-              {selected.syncState && <SyncPill state={selected.syncState} />}
+            </>
+          ) : (
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+              Select an item to commission
             </span>
-            <span className="flex shrink-0 items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => void duplicate(selected)}
-                className="rounded-lg border border-white/[0.1] bg-white/[0.05] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-white/70 transition hover:bg-white/[0.1] active:scale-[0.99]"
-              >
-                Remix
-              </button>
-              <button
-                type="button"
-                onClick={() => onCommission(selected, est)}
-                className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-black transition hover:bg-white/90 active:scale-[0.99]"
-              >
-                <IconWhatsApp size={12} />
-                Commission
-              </button>
-            </span>
-          </>
-        ) : (
-          <span className="font-mono text-[10px] uppercase tracking-wider text-white/35">Select an item to commission</span>
-        )}
+          )}
+        </div>
       </footer>
     </div>
   );
@@ -660,12 +680,11 @@ function LibraryWorkspace({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      {/* Central library grid */}
-      <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto rounded-none p-4 sm:p-6">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+      <div className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-6">
+        <div className="flex flex-wrap items-center gap-2.5">
           <SectionLabel>Filter</SectionLabel>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {categories.map((c) => (
               <Chip key={c} active={cat === c} onClick={() => setCat(c)}>
                 {c}
@@ -673,7 +692,7 @@ function LibraryWorkspace({
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((lib) => {
             const grams = libraryGrams(lib);
             return (
@@ -681,80 +700,61 @@ function LibraryWorkspace({
                 key={lib.id}
                 type="button"
                 onClick={() => setLibId(lib.id)}
-                className={`flex flex-col rounded-2xl border p-3 text-left transition ${
-                  libId === lib.id ? 'border-white/25 bg-white/[0.08]' : 'border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.06]'
+                className={`flex flex-col rounded-2xl border p-4 text-left transition active:scale-[0.995] ${
+                  libId === lib.id
+                    ? 'border-white/30 bg-white/[0.08]'
+                    : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
                 }`}
               >
-                <div className="flex items-start gap-2.5">
+                <div className="flex items-start gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-black/40">
-                    <IconCube size={20} className="text-white/35" />
+                    <IconCube size={20} className="text-zinc-400" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[12px] font-semibold leading-snug text-white">{lib.name}</p>
-                    <p className="mt-0.5 font-mono text-[9.5px] tabular-nums text-white/40">
+                    <p className="text-[13px] font-semibold leading-snug text-zinc-100">{lib.name}</p>
+                    <p className="mt-1 font-mono text-[10px] tabular-nums text-zinc-400">
                       {lib.dims.x} × {lib.dims.y} × {lib.dims.z} mm · ≈{grams.toFixed(1)} g · {lib.recMaterial} {lib.recInfill}%
                     </p>
                   </div>
                 </div>
-                <p className="mt-1.5 text-[10.5px] leading-snug text-white/45">{lib.blurb}</p>
+                <p className="mt-2.5 text-[11.5px] leading-relaxed text-zinc-400">{lib.blurb}</p>
               </button>
             );
           })}
         </div>
-      </section>
 
-      {/* Right rail — selected item detail */}
-      <aside className="liquid-glass no-scrollbar w-full shrink-0 overflow-y-auto rounded-none border-t border-white/[0.06] p-4 lg:w-[320px] lg:border-l lg:border-t-0">
-        {selected ? (
-          <div className="flex flex-col gap-3">
-            <SectionLabel>Item detail</SectionLabel>
-            <p className="text-[13px] font-semibold text-white">{selected.name}</p>
-            <p className="font-mono text-[10px] tabular-nums text-white/45">
+        {/* Selected item — detail + actions in flow, directly under the grid */}
+        {selected && est ? (
+          <Group className="mt-5">
+            <p className="text-[15px] font-semibold text-zinc-100">{selected.name}</p>
+            <p className="mt-1 font-mono text-[10px] tabular-nums text-zinc-400">
               {selected.dims.x} × {selected.dims.y} × {selected.dims.z} mm · {selected.volumeCm3.toFixed(1)} cm³ solid
             </p>
-            <p className="text-[11px] leading-snug text-white/45">{selected.blurb}</p>
-            <p className="font-mono text-[9.5px] uppercase tracking-wider text-white/35">
+            <p className="mt-2.5 text-[12px] leading-relaxed text-zinc-400">{selected.blurb}</p>
+            <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-500">
               Recommended: {selected.recMaterial} · {selected.recInfill}% infill
             </p>
-          </div>
-        ) : (
-          <p className="font-mono text-[10.5px] leading-relaxed text-white/35">Select a library item for details and ordering.</p>
-        )}
-      </aside>
-
-      {/* Bottom telemetry bar */}
-      <footer className="liquid-glass sticky bottom-0 z-20 flex shrink-0 items-center justify-between gap-3 overflow-x-auto rounded-none border-x-0 border-b-0 px-4 py-2 sm:px-6">
-        {selected && est ? (
-          <>
-            <span className="flex items-center gap-2.5 whitespace-nowrap">
-              <span className="font-mono text-[13px] font-semibold tabular-nums text-white">
-                {rupees(est.low)}–{rupees(est.high)}
+            <div className="mt-4 flex flex-wrap items-center gap-2.5 border-t border-white/[0.08] pt-4">
+              <span className="font-mono text-[14px] font-semibold tabular-nums text-zinc-100">
+                EST {rupees(est.low)}–{rupees(est.high)}
               </span>
-              <span className="font-mono text-[10px] text-white/40">EST · {libraryGrams(selected).toFixed(1)} g</span>
+              <span className="font-mono text-[10px] text-zinc-400">≈{libraryGrams(selected).toFixed(1)} g</span>
               <FreeDeliveryChip est={est} />
-            </span>
-            <span className="flex shrink-0 items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => addToShelf(selected)}
-                className="rounded-lg border border-white/[0.1] bg-white/[0.05] px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-white/70 transition hover:bg-white/[0.1] active:scale-[0.99]"
-              >
-                Add to shelf
-              </button>
-              <button
-                type="button"
-                onClick={() => oneTapOrder(selected)}
-                className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-black transition hover:bg-white/90 active:scale-[0.99]"
-              >
-                <IconWhatsApp size={12} />
+            </div>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <GhostAction onClick={() => addToShelf(selected)}>Add to shelf</GhostAction>
+              <PrimaryAction onClick={() => oneTapOrder(selected)}>
+                <IconWhatsApp size={13} />
                 1-Tap order
-              </button>
-            </span>
-          </>
+              </PrimaryAction>
+            </div>
+          </Group>
         ) : (
-          <span className="font-mono text-[10px] uppercase tracking-wider text-white/35">Select an item to order</span>
+          <p className="mt-5 text-center text-[12px] leading-relaxed text-zinc-500">
+            Select a library item for details and ordering.
+          </p>
         )}
-      </footer>
+      </div>
     </div>
   );
 }
@@ -823,101 +823,98 @@ function SourcingWorkspace({ onChanged }: { onChanged: () => void }) {
   };
 
   const inputCls =
-    'w-full rounded-xl border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 text-[12.5px] text-white placeholder:text-white/30 outline-none transition focus:border-white/30';
+    'w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-3 text-[13px] text-zinc-100 placeholder:text-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.06]';
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      {/* Central request builder */}
-      <section className="no-scrollbar min-h-0 flex-1 overflow-y-auto rounded-none p-4 sm:p-6 lg:p-8">
-        <div className="mx-auto flex max-w-2xl flex-col gap-3">
-          <div>
-            <SectionLabel>What are you building / looking for?</SectionLabel>
-            <textarea
-              value={what}
-              onChange={(e) => setWhat(e.target.value)}
-              rows={3}
-              placeholder="e.g. A snap enclosure for a soil-moisture sensor node — two boards, USB-C cutout"
-              className={`${inputCls} mt-1.5 resize-none`}
-            />
-          </div>
-          <div>
-            <SectionLabel>Category</SectionLabel>
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {SOURCING_CATEGORIES.map((c) => (
-                <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
-                  {c}
-                </Chip>
-              ))}
+    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+      <div className="mx-auto w-full max-w-2xl px-4 py-5 sm:px-6 sm:py-6">
+        {/* Request builder — one grouped card, submit at the bottom */}
+        <Group>
+          <div className="flex flex-col gap-5">
+            <div>
+              <SectionLabel>What are you building / looking for?</SectionLabel>
+              <textarea
+                value={what}
+                onChange={(e) => setWhat(e.target.value)}
+                rows={4}
+                placeholder="e.g. A snap enclosure for a soil-moisture sensor node — two boards, USB-C cutout"
+                className={`${inputCls} mt-2 resize-none leading-relaxed`}
+              />
             </div>
-          </div>
-          <div>
-            <SectionLabel>Size / reference link / notes (optional)</SectionLabel>
-            <input
-              value={sizeNotes}
-              onChange={(e) => setSizeNotes(e.target.value)}
-              placeholder="e.g. ~60 × 30 mm, or a product link"
-              className={`${inputCls} mt-1.5`}
-            />
-          </div>
-          <div>
-            <SectionLabel>Assembly preference</SectionLabel>
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {ASSEMBLY_MODES.map((a) => (
-                <Chip key={a} active={assembly === a} onClick={() => setAssembly(a)}>
-                  {a}
-                </Chip>
-              ))}
-            </div>
-          </div>
-          <div>
-            <SectionLabel>Delivery / pickup</SectionLabel>
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {DELIVERY_MODES.map((d) => (
-                <Chip key={d} active={delivery === d} onClick={() => setDelivery(d)}>
-                  {d}
-                </Chip>
-              ))}
-            </div>
-          </div>
-          {error && <p className="rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[11px] text-red-300">{error}</p>}
-        </div>
-      </section>
-
-      {/* Right rail — recent sourcing tickets */}
-      <aside className="liquid-glass no-scrollbar w-full shrink-0 overflow-y-auto rounded-none border-t border-white/[0.06] p-4 lg:w-[320px] lg:border-l lg:border-t-0">
-        {recent.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            <SectionLabel>Recent sourcing tickets</SectionLabel>
-            {recent.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-2">
-                <span className="truncate font-mono text-[10.5px] text-white/60">
-                  #{r.ticketId} · {String(r.summary.what ?? '').slice(0, 44)}
-                </span>
-                <SyncPill state={r.sync} />
+            <div>
+              <SectionLabel>Category</SectionLabel>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {SOURCING_CATEGORIES.map((c) => (
+                  <Chip key={c} active={category === c} onClick={() => setCategory(c)}>
+                    {c}
+                  </Chip>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="font-mono text-[10.5px] leading-relaxed text-white/35">
-            Describe the part — the studio hunts down a valid printable model and shares the preview on WhatsApp.
-          </p>
-        )}
-      </aside>
+            </div>
+            <div>
+              <SectionLabel>Size / reference link / notes (optional)</SectionLabel>
+              <input
+                value={sizeNotes}
+                onChange={(e) => setSizeNotes(e.target.value)}
+                placeholder="e.g. ~60 × 30 mm, or a product link"
+                className={`${inputCls} mt-2`}
+              />
+            </div>
+            <div>
+              <SectionLabel>Assembly preference</SectionLabel>
+              <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                {ASSEMBLY_MODES.map((a) => (
+                  <Chip key={a} active={assembly === a} onClick={() => setAssembly(a)}>
+                    {a}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+            <div>
+              <SectionLabel>Delivery / pickup</SectionLabel>
+              <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                {DELIVERY_MODES.map((d) => (
+                  <Chip key={d} active={delivery === d} onClick={() => setDelivery(d)}>
+                    {d}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+            {error && <p className="rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[11px] text-red-300">{error}</p>}
 
-      {/* Bottom telemetry bar */}
-      <footer className="liquid-glass sticky bottom-0 z-20 flex shrink-0 items-center justify-between gap-3 rounded-none border-x-0 border-b-0 px-4 py-2 sm:px-6">
-        <span className="truncate font-mono text-[10px] uppercase tracking-wider text-white/35">
-          Zero-login ticket · STAN-SRC-XXXX
-        </span>
-        <button
-          type="button"
-          onClick={submit}
-          className="flex shrink-0 items-center gap-2 rounded-lg bg-white px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-black transition hover:bg-white/90 active:scale-[0.99]"
-        >
-          <IconWhatsApp size={12} />
-          Request file discovery
-        </button>
-      </footer>
+            {/* Primary action — bottom of the form, full-width on mobile */}
+            <div className="border-t border-white/[0.08] pt-4">
+              <PrimaryAction onClick={submit} wide>
+                <IconWhatsApp size={14} />
+                Request file discovery
+              </PrimaryAction>
+              <p className="mt-2.5 text-center font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-500">
+                Zero-login ticket · STAN-SRC-XXXX · we reply with a model preview on WhatsApp
+              </p>
+            </div>
+          </div>
+        </Group>
+
+        {/* Recent tickets — quiet history below the form */}
+        {recent.length > 0 && (
+          <section className="mt-4">
+            <SectionLabel>Recent sourcing tickets</SectionLabel>
+            <div className="mt-2 flex flex-col gap-1.5">
+              {recent.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2"
+                >
+                  <span className="truncate font-mono text-[10.5px] text-zinc-400">
+                    #{r.ticketId} · {String(r.summary.what ?? '').slice(0, 44)}
+                  </span>
+                  <SyncPill state={r.sync} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }
@@ -975,8 +972,8 @@ export default function CustomStlHub() {
                   /* private mode */
                 }
               }}
-              className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider transition sm:text-[10.5px] ${
-                mode === key ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]' : 'text-white/45 hover:text-white/80'
+              className={`whitespace-nowrap rounded-lg px-2 py-1.5 font-mono text-[10px] tracking-wider transition sm:px-3 sm:text-[10.5px] ${
+                mode === key ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]' : 'text-zinc-400 hover:text-zinc-100'
               }`}
             >
               {label}
