@@ -1,20 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback } from 'react';
 import { IconArrowRight, IconBoxSealedFill, IconGridFill, IconRulerFill, IconSparkle } from './icons';
-import FilamentCalculator from './tools/FilamentCalculator';
-import PrintEstimator from './tools/PrintEstimator';
-import CustomStlHub from './tools/CustomStlHub';
 
 /**
  * "Inside the studio" — compact asymmetric bento.
  * Spotlight cursor glow follows the mouse on every card (no tilt, no
- * wobble); the live hero warps straight into /studio, working tools open
- * their calculators in a glass modal.
+ * wobble); the live hero warps straight into /studio, every working tool
+ * opens its dedicated fullscreen workspace route (/tools/:toolId).
  */
 
-type ToolMode = 'studio' | 'calc' | 'estimator' | 'hub';
+export type ToolMode = 'studio' | 'calc' | 'estimator' | 'hub';
 
-interface Tool {
+export interface Tool {
   id: string;
   title: string;
   tagline: string;
@@ -24,7 +20,8 @@ interface Tool {
   specs: string[];
 }
 
-const TOOLS: Tool[] = [
+/** Shared tool registry — consumed by ToolWorkspace for titles/badges. */
+export const TOOLS: Tool[] = [
   {
     id: 'shadow-lamp',
     title: 'Shadow Lamp Studio',
@@ -95,90 +92,15 @@ function StatusBadge({ mode }: { mode: ToolMode }) {
 
 export default function StudioShowcase({
   onLaunchStudio,
-  externalToolId,
-  onExternalHandled,
+  onOpenTool,
 }: {
   onLaunchStudio: (el: HTMLElement | null) => void;
-  externalToolId?: string | null;
-  onExternalHandled?: () => void;
+  onOpenTool: (toolId: string, el: HTMLElement | null) => void;
 }) {
-  const [modalTool, setModalTool] = useState<Tool | null>(null);
-  const [originRect, setOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
-  const [isClosing, setIsClosing] = useState(false);
-  const panelRef = useRef<HTMLDivElement | null>(null);
-
   const heroRef = useSpotlight<HTMLElement>();
   const calcRef = useSpotlight<HTMLElement>();
   const estRef = useSpotlight<HTMLElement>();
   const hubRef = useSpotlight<HTMLElement>();
-
-  // Footer deep-link: open a tool modal from outside the showcase.
-  useEffect(() => {
-    if (!externalToolId) return;
-    const tool = TOOLS.find((t) => t.id === externalToolId);
-    if (tool) {
-      const rect = document.getElementById(tool.id)?.getBoundingClientRect();
-      if (rect) setOriginRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
-      setModalTool(tool);
-      setIsClosing(false);
-    }
-    onExternalHandled?.();
-  }, [externalToolId, onExternalHandled]);
-
-  const handleClose = useCallback(() => {
-    if (isClosing) return;
-    setIsClosing(true);
-    if (panelRef.current && originRect) {
-      const targetRect = panelRef.current.getBoundingClientRect();
-      const deltaX = originRect.left + originRect.width / 2 - (targetRect.left + targetRect.width / 2);
-      const deltaY = originRect.top + originRect.height / 2 - (targetRect.top + targetRect.height / 2);
-      const scaleX = Math.max(0.1, originRect.width / targetRect.width);
-      const scaleY = Math.max(0.1, originRect.height / targetRect.height);
-      panelRef.current.animate(
-        [
-          { transform: 'translate(0px, 0px) scale(1, 1)', borderRadius: '28px', opacity: 1 },
-          { transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`, borderRadius: '18px', opacity: 0 },
-        ],
-        { duration: 280, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'forwards' },
-      );
-    }
-    setTimeout(() => {
-      setModalTool(null);
-      setIsClosing(false);
-      setOriginRect(null);
-    }, 280);
-  }, [isClosing, originRect]);
-
-  useEffect(() => {
-    if (!modalTool) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [modalTool, handleClose]);
-
-  const runExpand = (el: HTMLDivElement | null) => {
-    panelRef.current = el;
-    if (!el || !originRect || isClosing) return;
-    const targetRect = el.getBoundingClientRect();
-    const deltaX = originRect.left + originRect.width / 2 - (targetRect.left + targetRect.width / 2);
-    const deltaY = originRect.top + originRect.height / 2 - (targetRect.top + targetRect.height / 2);
-    const scaleX = Math.max(0.1, originRect.width / targetRect.width);
-    const scaleY = Math.max(0.1, originRect.height / targetRect.height);
-
-    el.animate(
-      [
-        {
-          transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`,
-          borderRadius: '18px',
-          opacity: 0.85,
-        },
-        { transform: 'translate(0px, 0px) scale(1, 1)', borderRadius: '28px', opacity: 1 },
-      ],
-      { duration: 380, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', fill: 'forwards' },
-    );
-  };
 
   const card = (
     tool: Tool,
@@ -187,19 +109,11 @@ export default function StudioShowcase({
   ) => (
     <article
       ref={ref}
-      onClick={(e) => {
+      onClick={() => {
         if (tool.mode === 'studio') {
           onLaunchStudio(document.getElementById(tool.id));
         } else {
-          const rect = e.currentTarget.getBoundingClientRect();
-          setOriginRect({
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-          });
-          setModalTool(tool);
-          setIsClosing(false);
+          onOpenTool(tool.id, document.getElementById(tool.id));
         }
       }}
       id={tool.id}
@@ -339,67 +253,6 @@ export default function StudioShowcase({
           {card(TOOLS[3], hubRef, 'md:col-span-7')}
         </div>
       </div>
-
-      {/* Apple-grade expanding tool modal — portal to body: escapes the section's
-          z-40 stacking context so it always stacks above the fixed navbar (z-50);
-          hub mode = full-screen slicer workstation offset below the navbar */}
-      {modalTool &&
-        createPortal(
-          <div
-            className={`fixed inset-0 z-[200] flex justify-center px-4 pt-20 pb-6 transition-opacity duration-300 sm:px-6 sm:pt-24 ${
-              modalTool.mode === 'hub' ? '' : 'items-center'
-            } ${isClosing ? 'opacity-0' : 'opacity-100'}`}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) handleClose();
-            }}
-          >
-            <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" />
-            <div
-              ref={runExpand}
-              className={
-                modalTool.mode === 'hub'
-                  ? 'relative flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#0b0b0d]/95 shadow-2xl backdrop-blur-2xl will-change-transform'
-                  : 'relative max-h-full w-full max-w-lg overflow-y-auto no-scrollbar rounded-[22px] sm:rounded-[28px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/95 p-4 sm:p-6 shadow-[0_40px_90px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.25)] will-change-transform'
-              }
-            >
-              <button
-                type="button"
-                onClick={handleClose}
-                className="absolute right-4 top-4 z-10 rounded-lg p-1.5 text-white/40 transition hover:bg-white/[0.08] hover:text-white sm:right-5 sm:top-5"
-                aria-label="Close"
-              >
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-              <div
-                className={
-                  modalTool.mode === 'hub'
-                    ? 'relative shrink-0 border-b border-white/[0.08] bg-zinc-950/60 px-5 pb-4 pt-5 sm:px-8'
-                    : 'mb-1'
-                }
-              >
-                <div className="mb-1 flex items-center gap-3 pr-8">
-                  <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.06]">
-                    {modalTool.icon}
-                  </div>
-                  <StatusBadge mode={modalTool.mode} />
-                </div>
-                <h3 className="mt-2 text-[16px] sm:text-[18px] font-semibold tracking-[-0.015em] text-white">{modalTool.title}</h3>
-                <p className="text-[11px] sm:text-[12px] font-medium text-white/55">{modalTool.tagline}</p>
-              </div>
-
-              {modalTool.mode === 'hub' && <CustomStlHub />}
-              {modalTool.mode !== 'hub' && (
-                <div className="mt-4 animate-in fade-in duration-300">
-                  {modalTool.mode === 'calc' && <FilamentCalculator />}
-                  {modalTool.mode === 'estimator' && <PrintEstimator />}
-                </div>
-              )}
-            </div>
-          </div>,
-          document.body,
-        )}
     </section>
   );
 }

@@ -901,7 +901,12 @@
             }
 
             // Mouse Hover Tracking for Magnetic Attraction
-            window.addEventListener('mousemove', function (e) {
+            // Wrapper patch (lifecycle hygiene — physics untouched): handlers are
+            // stored on state and re-bound remove-before-add so destroy() can
+            // fully unbind them (was: anonymous handlers leaked on every re-init
+            // after route remounts, pinning the old scene in memory).
+            if (state.handleMouseMove) window.removeEventListener('mousemove', state.handleMouseMove);
+            state.handleMouseMove = function (e) {
                 state.isMouseHovering = true;
                 state.mouseClientX = e.clientX;
                 state.mouseClientY = e.clientY;
@@ -909,12 +914,15 @@
                 const halfWinH = window.innerHeight / 2;
                 state.targetMouseWorldX = e.clientX - halfWinW;
                 state.targetMouseWorldY = -(e.clientY - halfWinH);
-            }, { passive: true });
+            };
+            window.addEventListener('mousemove', state.handleMouseMove, { passive: true });
 
-            window.addEventListener('mouseleave', function () {
+            if (state.handleMouseLeave) window.removeEventListener('mouseleave', state.handleMouseLeave);
+            state.handleMouseLeave = function () {
                 state.isMouseHovering = false;
                 state.isHoveringNearHero = false;
-            });
+            };
+            window.addEventListener('mouseleave', state.handleMouseLeave);
 
             // Start RAF loop
             state.clock.start();
@@ -992,14 +1000,50 @@
 
         /**
          * Destroys the instance and cleans up resources.
+         * Wrapper patch (lifecycle hygiene — physics untouched): fully unbinds
+         * every window listener (incl. the previously-leaked mouse handlers),
+         * nulls the RAF id and resets scroll-physics state so a re-init after
+         * route remounts starts pristine — the blast re-arms with no refresh.
          */
         destroy: function () {
-            if (state.rafId) cancelAnimationFrame(state.rafId);
+            if (state.rafId) {
+                cancelAnimationFrame(state.rafId);
+                state.rafId = null;
+            }
             window.removeEventListener('resize', handleResize);
-            if (state.resizeObserver) state.resizeObserver.disconnect();
-            if (state.geometry) state.geometry.dispose();
-            if (state.material) state.material.dispose();
-            if (state.renderer) state.renderer.dispose();
+            if (state.handleMouseMove) {
+                window.removeEventListener('mousemove', state.handleMouseMove);
+                state.handleMouseMove = null; // null after unbind — init's remove-before-add must not double-count
+            }
+            if (state.handleMouseLeave) {
+                window.removeEventListener('mouseleave', state.handleMouseLeave);
+                state.handleMouseLeave = null;
+            }
+            if (state.resizeObserver) {
+                state.resizeObserver.disconnect();
+                state.resizeObserver = null;
+            }
+            if (state.geometry) {
+                state.geometry.dispose();
+                state.geometry = null;
+            }
+            if (state.material) {
+                state.material.dispose();
+                state.material = null;
+            }
+            if (state.renderer) {
+                state.renderer.dispose();
+                state.renderer = null;
+            }
+            state.particlesMesh = null;
+            // Reset scroll-physics matrices for a pristine next init.
+            state.targetProgress = 0;
+            state.currentProgress = 0;
+            state.lastTargetProgress = 0;
+            state.scrollVelocity = 0;
+            state.dampedVelocity = 0;
+            state.currentHoverStrength = 0;
+            state.isMouseHovering = false;
             state.isInitialized = false;
         }
     };

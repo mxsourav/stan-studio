@@ -241,6 +241,29 @@ input[type="range"].stan-slider::-moz-range-thumb {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   LIQUID GLASS — tool-workspace surfaces (Fusion-style side rails, header,
+   telemetry bar). Specular top edge + deep float + saturated backdrop.
+   ═══════════════════════════════════════════════════════════════════════ */
+.liquid-glass {
+  background: rgba(18, 18, 22, 0.75);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Clear frosted surface for 3D viewports and drop zones — depth-of-field
+   separation between operational controls and preview models. */
+.frosted-viewport {
+  background: rgba(9, 9, 11, 0.4);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    PAGE TRANSITIONS — native View Transitions API (React Router v7 wires
    document.startViewTransition on navigate). Progressive enhancement:
    browsers without support simply swap instantly.

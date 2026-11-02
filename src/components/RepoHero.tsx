@@ -28,6 +28,20 @@ export default function RepoHero() {
     let disposed = false;
     let cleanupStage: (() => void) | undefined;
 
+    const bootDispersion = () => {
+      window.HeroDispersion?.init?.({ canvasId: 'hero-dispersion-canvas', heroId: 'hero-brand' });
+      window.HeroDispersion?.setTheme?.(true);
+    };
+
+    // Wrapper hook: a tool workspace dispatches this on back-navigation so the
+    // dust canvas re-initializes pristine — the blast re-arms without a refresh.
+    // (Primary mechanism is the route remount itself; this is the guarantee.)
+    const onResetDust = () => {
+      window.HeroDispersion?.destroy?.();
+      bootDispersion();
+    };
+    window.addEventListener('stan:reset-dust-canvas', onResetDust);
+
     (async () => {
       window.THREE = THREE;
       // UMD module: registers window.HeroDispersion against window.THREE.
@@ -44,11 +58,12 @@ export default function RepoHero() {
       }
       // Force the permanent obsidian dark theme over the repo's persistence.
       window.applyTheme?.(true, false);
-      window.HeroDispersion?.setTheme?.(true);
+      bootDispersion();
     })();
 
     return () => {
       disposed = true;
+      window.removeEventListener('stan:reset-dust-canvas', onResetDust);
       cleanupStage?.();
       window.HeroDispersion?.destroy?.();
     };

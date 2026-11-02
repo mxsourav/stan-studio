@@ -12,10 +12,17 @@ import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
 export function initRepoHeroStage() {
 
-if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
+/* Wrapper patch (lifecycle hygiene — physics untouched): the scroll reset is a
+   FIRST-BOOT behavior only. On re-init after route remounts (back-navigation)
+   forcing scrollTo(0,0) fought React's scroll restoration and disarmed the
+   hero dust blast; subsequent inits leave scroll state alone. */
+if (!initRepoHeroStage.__didFirstInit) {
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+    initRepoHeroStage.__didFirstInit = true;
 }
-window.scrollTo(0, 0);
 
 /* ─── CAD Dimensions for 1kg Spool ────────────────────────────── */
 const S = {
@@ -941,10 +948,13 @@ function handleScroll() {
 
 window.addEventListener('scroll', handleScroll, { passive: true });
 window.addEventListener('resize', handleScroll);
-window.addEventListener('pageshow', () => {
+// Wrapper patch: named handler refs so cleanup can fully unbind this init's
+// listeners (was: leaked per re-init, pinning the dead scene in memory).
+const handlePageShow = function () {
     window.scrollTo(0, 0);
     handleScroll();
-});
+};
+window.addEventListener('pageshow', handlePageShow);
 handleScroll();
 
 window.__DEBUG__ = {
@@ -963,10 +973,11 @@ window.__DEBUG__ = {
 // Interactive Mouse Parallax
 let mouseX = 0, mouseY = 0;
 let targetMouseX = 0, targetMouseY = 0;
-window.addEventListener('mousemove', (e) => {
+const handleMouseParallax = (e) => {
     targetMouseX = (e.clientX / innerWidth - 0.5) * 2;
     targetMouseY = (e.clientY / innerHeight - 0.5) * 2;
-}, { passive: true });
+};
+window.addEventListener('mousemove', handleMouseParallax, { passive: true });
 
 /* ═══════════════════════════════════════════════════════════════════
    MAIN RENDER LOOP (60FPS DETERMINISTIC, REAL FORWARD ROTATION)
@@ -1270,13 +1281,14 @@ render();
 /* ═══════════════════════════════════════════════════════════════════
    WINDOW RESIZE
    ═══════════════════════════════════════════════════════════════════ */
-window.addEventListener('resize', () => {
+const handleViewportResize = () => {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     handleScroll();
-});
+};
+window.addEventListener('resize', handleViewportResize);
 
 /* ═══════════════════════════════════════════════════════════════════
    STUDIO CONTROLS INTERACTIVE ENGINE (COLOR & MATERIAL TWEAKER)
@@ -1366,11 +1378,12 @@ window.showStudioCtrl = () => window.toggleStudioCtrl(true);
 window.hideStudioCtrl = () => window.toggleStudioCtrl(false);
 
 // Developer Quick Toggle: Press Shift + C anytime to reveal/hide the tweak bar
-window.addEventListener('keydown', (e) => {
+const handleDevToggle = (e) => {
     if (e.key === 'C' && e.shiftKey && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
         window.toggleStudioCtrl();
     }
-});
+};
+window.addEventListener('keydown', handleDevToggle);
 
 // Wire UI Event Listeners
 document.querySelectorAll('.swatch-btn').forEach(btn => {
@@ -2376,5 +2389,14 @@ initBambuPrinter();
     };
     return function cleanupRepoHeroStage() {
         __stopped = true;
+        /* Wrapper patch: fully unbind this init's window listeners — leaked
+           handler sets previously pinned the dead renderer/scene in memory
+           and fought the next mount's init after every back-navigation. */
+        window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('resize', handleScroll);
+        window.removeEventListener('pageshow', handlePageShow);
+        window.removeEventListener('mousemove', handleMouseParallax);
+        window.removeEventListener('resize', handleViewportResize);
+        window.removeEventListener('keydown', handleDevToggle);
     };
 }

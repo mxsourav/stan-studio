@@ -11,11 +11,10 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 export default function Home() {
   const navigate = useNavigate();
   const [warp, setWarp] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
-  const [openToolId, setOpenToolId] = useState<string | null>(null);
   const warpingRef = useRef(false);
   const { canInstall, installApp } = usePWAInstall();
 
-  // Restore scroll position when returning from Studio
+  // Restore scroll position when returning from Studio or a tool workspace
   useEffect(() => {
     const returnScroll = sessionStorage.getItem('stan-return-scroll');
     if (returnScroll !== null) {
@@ -35,20 +34,24 @@ export default function Home() {
     }
   }, []);
 
-  const warpToStudio = useCallback((cardEl: HTMLElement | null) => {
-    if (warpingRef.current) return;
-    warpingRef.current = true;
-    // Remember current scroll position so returning brings user right back here
-    sessionStorage.setItem('stan-return-scroll', String(window.scrollY));
-    const rect = cardEl?.getBoundingClientRect();
-    setWarp(
-      rect
-        ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
-        : { x: window.innerWidth / 2 - 40, y: window.innerHeight / 2 - 40, w: 80, h: 80 },
-    );
-    sessionStorage.setItem('stan-warp', '1');
-    setTimeout(() => navigate('/studio', { viewTransition: true }), 520);
-  }, [navigate]);
+  const warpTo = useCallback(
+    (dest: string, cardEl: HTMLElement | null) => {
+      if (warpingRef.current) return;
+      warpingRef.current = true;
+      // Remember current scroll position so returning brings user right back here
+      sessionStorage.setItem('stan-return-scroll', String(window.scrollY));
+      const rect = cardEl?.getBoundingClientRect();
+      setWarp(
+        rect
+          ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
+          : { x: window.innerWidth / 2 - 40, y: window.innerHeight / 2 - 40, w: 80, h: 80 },
+      );
+      setTimeout(() => navigate(dest, { viewTransition: true }), 520);
+    },
+    [navigate],
+  );
+
+  const warpToStudio = useCallback((cardEl: HTMLElement | null) => warpTo('/studio', cardEl), [warpTo]);
 
   const runWarp = (overlay: HTMLDivElement | null) => {
     if (!overlay || !warp) return;
@@ -112,13 +115,9 @@ export default function Home() {
       {/* Verbatim repo landing hero — spool stage, dust evaporation, roll physics */}
       <RepoHero />
 
-      {/* Showcase — bento portfolio, spotlight, live tools in glass modals */}
+      {/* Showcase — bento portfolio, spotlight; tools warp into their workspace routes */}
       <div id="inside-the-studio">
-        <StudioShowcase
-          onLaunchStudio={warpToStudio}
-          externalToolId={openToolId}
-          onExternalHandled={() => setOpenToolId(null)}
-        />
+        <StudioShowcase onLaunchStudio={warpToStudio} onOpenTool={(id, el) => warpTo(`/tools/${id}`, el)} />
       </div>
 
       {/* Why Choose STΔN studio? — Refined subtle glass stage with reduced background blur */}
@@ -132,7 +131,7 @@ export default function Home() {
       </section>
 
       {/* Industrial studio-grade footer with interactive VisionOS legal reader */}
-      <Footer onOpenStudio={() => warpToStudio(null)} onOpenToolModal={setOpenToolId} />
+      <Footer onOpenStudio={() => warpToStudio(null)} onOpenToolModal={(id) => warpTo('/tools/' + id, null)} />
 
       {/* Cinematic warp overlay into the studio */}
       {warp && (
