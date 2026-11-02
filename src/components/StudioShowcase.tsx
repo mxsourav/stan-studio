@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconArrowRight, IconBoxSealedFill, IconGridFill, IconRulerFill, IconSparkle } from './icons';
 import FilamentCalculator from './tools/FilamentCalculator';
 import PrintEstimator from './tools/PrintEstimator';
@@ -339,62 +340,66 @@ export default function StudioShowcase({
         </div>
       </div>
 
-      {/* Apple-grade expanding tool modal — hub mode = full-screen slicer workstation */}
-      {modalTool && (
-        <div
-          className={`fixed inset-0 z-[100] flex items-center justify-center transition-opacity duration-300 ${
-            modalTool.mode === 'hub' ? '' : 'p-2.5 sm:p-4'
-          } ${isClosing ? 'opacity-0' : 'opacity-100'}`}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleClose();
-          }}
-        >
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" />
+      {/* Apple-grade expanding tool modal — portal to body: escapes the section's
+          z-40 stacking context so it always stacks above the fixed navbar (z-50);
+          hub mode = full-screen slicer workstation offset below the navbar */}
+      {modalTool &&
+        createPortal(
           <div
-            ref={runExpand}
-            className={
-              modalTool.mode === 'hub'
-                ? 'relative flex h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-7xl max-h-[92vh] flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#0b0b0d]/95 shadow-2xl backdrop-blur-2xl will-change-transform sm:h-[calc(100vh-4rem)] sm:w-[calc(100vw-4rem)] lg:h-[calc(100vh-5rem)] lg:w-[calc(100vw-5rem)]'
-                : 'relative max-h-[92dvh] w-full max-w-lg overflow-y-auto no-scrollbar rounded-[22px] sm:rounded-[28px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/95 p-4 sm:p-6 shadow-[0_40px_90px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.25)] will-change-transform'
-            }
+            className={`fixed inset-0 z-[200] flex justify-center px-4 pt-20 pb-6 transition-opacity duration-300 sm:px-6 sm:pt-24 ${
+              modalTool.mode === 'hub' ? '' : 'items-center'
+            } ${isClosing ? 'opacity-0' : 'opacity-100'}`}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleClose();
+            }}
           >
-            <button
-              type="button"
-              onClick={handleClose}
-              className="absolute right-4 top-4 sm:right-5 sm:top-5 z-10 rounded-lg p-1.5 text-white/40 transition hover:bg-white/[0.08] hover:text-white"
-              aria-label="Close"
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            </button>
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" />
             <div
+              ref={runExpand}
               className={
                 modalTool.mode === 'hub'
-                  ? 'relative shrink-0 border-b border-white/[0.08] bg-zinc-950/60 px-5 pb-4 pt-5 sm:px-8'
-                  : 'mb-1'
+                  ? 'relative flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-[#0b0b0d]/95 shadow-2xl backdrop-blur-2xl will-change-transform'
+                  : 'relative max-h-full w-full max-w-lg overflow-y-auto no-scrollbar rounded-[22px] sm:rounded-[28px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/95 p-4 sm:p-6 shadow-[0_40px_90px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.25)] will-change-transform'
               }
             >
-              <div className="mb-1 flex items-center gap-3 pr-8">
-                <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.06]">
-                  {modalTool.icon}
+              <button
+                type="button"
+                onClick={handleClose}
+                className="absolute right-4 top-4 z-10 rounded-lg p-1.5 text-white/40 transition hover:bg-white/[0.08] hover:text-white sm:right-5 sm:top-5"
+                aria-label="Close"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+              <div
+                className={
+                  modalTool.mode === 'hub'
+                    ? 'relative shrink-0 border-b border-white/[0.08] bg-zinc-950/60 px-5 pb-4 pt-5 sm:px-8'
+                    : 'mb-1'
+                }
+              >
+                <div className="mb-1 flex items-center gap-3 pr-8">
+                  <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.06]">
+                    {modalTool.icon}
+                  </div>
+                  <StatusBadge mode={modalTool.mode} />
                 </div>
-                <StatusBadge mode={modalTool.mode} />
+                <h3 className="mt-2 text-[16px] sm:text-[18px] font-semibold tracking-[-0.015em] text-white">{modalTool.title}</h3>
+                <p className="text-[11px] sm:text-[12px] font-medium text-white/55">{modalTool.tagline}</p>
               </div>
-              <h3 className="mt-2 text-[16px] sm:text-[18px] font-semibold tracking-[-0.015em] text-white">{modalTool.title}</h3>
-              <p className="text-[11px] sm:text-[12px] font-medium text-white/55">{modalTool.tagline}</p>
-            </div>
 
-            {modalTool.mode === 'hub' && <CustomStlHub />}
-            {modalTool.mode !== 'hub' && (
-              <div className="mt-4 animate-in fade-in duration-300">
-                {modalTool.mode === 'calc' && <FilamentCalculator />}
-                {modalTool.mode === 'estimator' && <PrintEstimator />}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+              {modalTool.mode === 'hub' && <CustomStlHub />}
+              {modalTool.mode !== 'hub' && (
+                <div className="mt-4 animate-in fade-in duration-300">
+                  {modalTool.mode === 'calc' && <FilamentCalculator />}
+                  {modalTool.mode === 'estimator' && <PrintEstimator />}
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }
