@@ -19,9 +19,21 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <!-- Non-render-blocking font load: never delay the first paint / boot splash -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
     <title>STΔN studio. — Shadow Lamp Studio</title>
-    <!-- Critical shell paint: carbon void before any CSS/JS arrives — no white/black flash on reload -->
+    <!-- Critical shell paint: carbon void + instant boot splash before any CSS/JS arrives — no empty black screen on first load -->
     <style>
       html {
         background: #070708;
@@ -33,10 +45,78 @@
         background: #070708;
         background-color: #070708;
       }
+      /* Instant boot splash — createRoot() clears #root on mount, so React replaces this */
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        background: #070708;
+      }
+      .boot-mark {
+        font-family: 'Plus Jakarta Sans', -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif;
+        font-size: 21px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #fff;
+        display: flex;
+        align-items: baseline;
+        gap: 0.42em;
+      }
+      .boot-mark .boot-sub {
+        font-size: 0.74em;
+        font-weight: 700;
+      }
+      .boot-mark .boot-period {
+        color: #ff2d55;
+      }
+      .boot-tag {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: rgba(255, 255, 255, 0.35);
+      }
+      .boot-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 999px;
+        background: #ff2d55;
+        box-shadow: 0 0 8px rgba(255, 45, 85, 0.9);
+        animation: boot-pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes boot-pulse {
+        0%,
+        100% {
+          opacity: 0.35;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-dot {
+          animation: none;
+        }
+      }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-splash" aria-label="STΔN studio">
+        <div class="boot-mark">
+          <span>STΔN</span>
+          <span class="boot-sub">studio<span class="boot-period">.</span></span>
+        </div>
+        <div class="boot-tag"><span class="boot-dot"></span>Toolchain booting</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
