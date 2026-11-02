@@ -7,6 +7,11 @@ import {
   adminUpdateStatus,
   type AdminOrder,
 } from '../lib/orderPipeline';
+import {
+  adminFetchHubRequests,
+  adminStlFileUrl,
+  type HubRequestRow,
+} from '../lib/hubPipeline';
 import { IS_ADMIN_HOST } from '../lib/host';
 import {
   adminFetchEmailBody,
@@ -811,18 +816,21 @@ const slimJson = (row: Record<string, unknown>): string => {
 function DataPane() {
   const [orders, setOrders] = useState<AdminOrder[] | null>(null);
   const [emails, setEmails] = useState<MailListItem[] | null>(null);
-  const [view, setView] = useState<'orders' | 'emails'>('orders');
+  const [hub, setHub] = useState<HubRequestRow[] | null>(null);
+  const [view, setView] = useState<'orders' | 'emails' | 'hub'>('orders');
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     setOpenId(null);
-    const [o, e] = await Promise.allSettled([adminFetchOrders(), adminFetchEmails()]);
+    const [o, e, h] = await Promise.allSettled([adminFetchOrders(), adminFetchEmails(), adminFetchHubRequests()]);
     if (o.status === 'fulfilled') setOrders(o.value);
     else if (view === 'orders') setError(o.reason instanceof Error ? o.reason.message : 'Orders load failed');
     if (e.status === 'fulfilled') setEmails(e.value);
     else if (view === 'emails') setError(e.reason instanceof Error ? e.reason.message : 'Emails load failed');
+    if (h.status === 'fulfilled') setHub(h.value);
+    else if (view === 'hub') setError(h.reason instanceof Error ? h.reason.message : 'Hub requests load failed');
   }, [view]);
 
   useEffect(() => {
@@ -831,6 +839,7 @@ function DataPane() {
 
   const orderRows = orders ?? [];
   const emailRows = emails ?? [];
+  const hubRows = hub ?? [];
   const isOpen = (id: string) => openId === id;
   const toggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
 
@@ -841,7 +850,8 @@ function DataPane() {
           {([
             ['orders', 'orders', orderRows.length],
             ['emails', 'emails', emailRows.length],
-          ] as Array<['orders' | 'emails', string, number]>).map(([key, label, count]) => (
+            ['hub', 'hub', hubRows.length],
+          ] as Array<['orders' | 'emails' | 'hub', string, number]>).map(([key, label, count]) => (
             <button
               key={key}
               type="button"
@@ -956,6 +966,68 @@ function DataPane() {
                     <td colSpan={5} className="p-0">
                       <pre className="max-h-72 overflow-auto bg-black/50 p-4 font-mono text-[11px] leading-relaxed text-zinc-300">
                         {slimJson(m as unknown as Record<string, unknown>)}
+                      </pre>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {view === 'hub' && (
+        <table className="w-full text-left text-[12.5px]">
+          <thead>
+            <tr className="border-b border-white/[0.06] text-[10.5px] uppercase tracking-wider text-white/35">
+              <th className="px-5 py-2.5 font-medium">ticket_id</th>
+              <th className="px-3 py-2.5 font-medium">kind</th>
+              <th className="px-3 py-2.5 font-medium">item</th>
+              <th className="px-3 py-2.5 font-medium">file</th>
+              <th className="px-3 py-2.5 font-medium">created_at</th>
+            </tr>
+          </thead>
+          <tbody>
+            {hubRows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-5 py-5 text-white/40">
+                  Table is empty — run supabase/schema.sql for hub_requests.
+                </td>
+              </tr>
+            )}
+            {hubRows.map((r) => (
+              <Fragment key={r.id}>
+                <tr
+                  onClick={() => toggle(r.ticket_id)}
+                  className="cursor-pointer border-b border-white/[0.04] transition hover:bg-white/[0.04]"
+                >
+                  <td className="px-5 py-2.5 font-mono text-white/85">#{r.ticket_id}</td>
+                  <td className="px-3 py-2.5 capitalize text-white/70">{r.kind}</td>
+                  <td className="max-w-[240px] truncate px-3 py-2.5 text-white/70">{r.item_name}</td>
+                  <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    {r.storage_path ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void adminStlFileUrl(r.ticket_id).then((url) => window.open(url, '_blank', 'noopener'));
+                        }}
+                        className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-2 py-1 font-mono text-[10.5px] text-white/80 transition hover:bg-white/[0.12]"
+                      >
+                        Download STL
+                      </button>
+                    ) : (
+                      <span className="font-mono text-[10.5px] text-white/30">{r.file_name ?? '—'}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 font-mono text-[11px] text-white/40">
+                    {new Date(r.created_at).toLocaleString()}
+                  </td>
+                </tr>
+                {isOpen(r.ticket_id) && (
+                  <tr className="border-b border-white/[0.04]">
+                    <td colSpan={5} className="p-0">
+                      <pre className="max-h-72 overflow-auto bg-black/50 p-4 font-mono text-[11px] leading-relaxed text-zinc-300">
+                        {slimJson(r as unknown as Record<string, unknown>)}
                       </pre>
                     </td>
                   </tr>

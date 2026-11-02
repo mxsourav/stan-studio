@@ -124,6 +124,71 @@ app.patch('/api/admin/orders/:orderId', async (req, res) => {
   res.json({ ok: true, order: data });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Custom STL Hub — zero-login tickets (STAN-STL-XXXX / STAN-SRC-XXXX)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const HUB_KINDS = ['commission', 'sourcing'];
+
+app.post('/api/hub-requests', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const errors = [];
+    if (!b.ticket_id || !/^STAN-(STL|SRC)-\d{4}$/.test(String(b.ticket_id))) errors.push('ticket_id is required (STAN-STL-XXXX / STAN-SRC-XXXX)');
+    if (!HUB_KINDS.includes(b.kind)) errors.push('kind must be commission or sourcing');
+    if (!b.item_name || !String(b.item_name).trim()) errors.push('item_name is required');
+    if (errors.length) return res.status(400).json({ ok: false, error: errors.join('; ') });
+
+    const row = {
+      ticket_id: String(b.ticket_id).slice(0, 40),
+      kind: b.kind,
+      item_name: String(b.item_name).trim().slice(0, 200),
+      file_name: b.file_name ? String(b.file_name).slice(0, 200) : null,
+      specs: b.specs && typeof b.specs === 'object' ? b.specs : null,
+      params: b.params && typeof b.params === 'object' ? b.params : null,
+      estimate: b.estimate && typeof b.estimate === 'object' ? b.estimate : null,
+      note: b.note ? String(b.note).slice(0, 2000) : null,
+      storage_path: b.storage_path ? String(b.storage_path).slice(0, 300) : null,
+      status: 'new',
+    };
+
+    const { data, error } = await supabase.from('hub_requests').insert(row).select().single();
+    if (error) {
+      console.error('[hub-requests] insert failed:', error.message);
+      return res.status(500).json({ ok: false, error: 'Failed to save the hub request' });
+    }
+    res.status(201).json({ ok: true, ticket: data.ticket_id });
+  } catch (e) {
+    console.error('[hub-requests] unexpected:', e);
+    res.status(500).json({ ok: false, error: 'Unexpected server error' });
+  }
+});
+
+app.get('/api/admin/hub-requests', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const { data, error } = await supabase
+    .from('hub_requests')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(500);
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+  res.json({ ok: true, requests: data });
+});
+
+app.get('/api/admin/hub-requests/:ticketId/file', async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const { data: row, error } = await supabase
+    .from('hub_requests')
+    .select('storage_path')
+    .eq('ticket_id', req.params.ticketId)
+    .maybeSingle();
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+  if (!row?.storage_path) return res.status(404).json({ ok: false, error: 'No stored file for this ticket' });
+  const { data, error: urlError } = await supabase.storage.from('stl-files').createSignedUrl(row.storage_path, 600);
+  if (urlError || !data) return res.status(500).json({ ok: false, error: 'Signed URL failed' });
+  res.json({ ok: true, url: data.signedUrl });
+});
+
 // Standalone listen (dev / Render / Railway). On Vercel the app is mounted
 // as a serverless function via api/index.js — never bind a port there.
 if (!process.env.VERCEL) {

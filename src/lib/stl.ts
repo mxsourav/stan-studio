@@ -44,7 +44,7 @@ function meshStats(tris: Float64Array, count: number): Omit<StlGeometry, 'fileNa
   };
 }
 
-function parseBinary(buf: ArrayBuffer, fileName: string): StlGeometry {
+function parseBinary(buf: ArrayBuffer, fileName: string): StlMesh {
   const view = new DataView(buf);
   const count = view.getUint32(80, true);
   if (count === 0 || 84 + count * 50 !== buf.byteLength) throw new Error('Malformed binary STL');
@@ -53,10 +53,10 @@ function parseBinary(buf: ArrayBuffer, fileName: string): StlGeometry {
     const o = 84 + i * 50 + 12; // skip the facet normal
     for (let v = 0; v < 9; v++) tris[i * 9 + v] = view.getFloat32(o + v * 4, true);
   }
-  return { fileName, triangles: count, ...meshStats(tris, count) };
+  return { fileName, triangles: count, tris, count, ...meshStats(tris, count) };
 }
 
-function parseAscii(text: string, fileName: string): StlGeometry {
+function parseAscii(text: string, fileName: string): StlMesh {
   const nums: number[] = [];
   const re = /vertex\s+(-?[\d.eE+-]+)\s+(-?[\d.eE+-]+)\s+(-?[\d.eE+-]+)/g;
   let m: RegExpExecArray | null;
@@ -66,10 +66,18 @@ function parseAscii(text: string, fileName: string): StlGeometry {
   }
   if (nums.length < 9 || nums.length % 9 !== 0) throw new Error('No triangles found in STL');
   const count = nums.length / 9;
-  return { fileName, triangles: count, ...meshStats(Float64Array.from(nums), count) };
+  const tris = Float64Array.from(nums);
+  return { fileName, triangles: count, tris, count, ...meshStats(tris, count) };
 }
 
-export async function readStl(file: File): Promise<StlGeometry> {
+/** Full parse: geometry stats plus the raw triangle soup (for rendering). */
+export interface StlMesh extends StlGeometry {
+  tris: Float64Array; // count × 9 vertex floats
+  count: number; // triangle count
+}
+
+/** Like readStl, but also returns the triangle buffer for thumbnail rendering. */
+export async function readStlMesh(file: File): Promise<StlMesh> {
   const buf = await file.arrayBuffer();
   if (buf.byteLength < 84) throw new Error('File is too small to be an STL');
   const view = new DataView(buf);
@@ -78,4 +86,9 @@ export async function readStl(file: File): Promise<StlGeometry> {
   const text = new TextDecoder().decode(buf);
   if (/^\s*solid/i.test(text)) return parseAscii(text, file.name);
   throw new Error('Not a valid STL file (binary or ASCII)');
+}
+
+export async function readStl(file: File): Promise<StlGeometry> {
+  const { tris: _tris, count: _count, ...geom } = await readStlMesh(file);
+  return geom;
 }

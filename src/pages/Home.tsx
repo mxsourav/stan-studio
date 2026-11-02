@@ -11,6 +11,7 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 export default function Home() {
   const navigate = useNavigate();
   const [warp, setWarp] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [openToolId, setOpenToolId] = useState<string | null>(null);
   const warpingRef = useRef(false);
   const { canInstall, installApp } = usePWAInstall();
 
@@ -111,9 +112,13 @@ export default function Home() {
       {/* Verbatim repo landing hero — spool stage, dust evaporation, roll physics */}
       <RepoHero />
 
-      {/* Showcase — bento portfolio, spotlight + tilt, live tools in glass modals */}
+      {/* Showcase — bento portfolio, spotlight, live tools in glass modals */}
       <div id="inside-the-studio">
-        <StudioShowcase onLaunchStudio={warpToStudio} />
+        <StudioShowcase
+          onLaunchStudio={warpToStudio}
+          externalToolId={openToolId}
+          onExternalHandled={() => setOpenToolId(null)}
+        />
       </div>
 
       {/* Why Choose STΔN studio? — Refined subtle glass stage with reduced background blur */}
@@ -127,7 +132,7 @@ export default function Home() {
       </section>
 
       {/* Industrial studio-grade footer with interactive VisionOS legal reader */}
-      <Footer onOpenStudio={() => warpToStudio(null)} />
+      <Footer onOpenStudio={() => warpToStudio(null)} onOpenToolModal={setOpenToolId} />
 
       {/* Cinematic warp overlay into the studio */}
       {warp && (

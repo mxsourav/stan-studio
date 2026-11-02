@@ -2,15 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { IconArrowRight, IconBoxSealedFill, IconGridFill, IconRulerFill, IconSparkle } from './icons';
 import FilamentCalculator from './tools/FilamentCalculator';
 import PrintEstimator from './tools/PrintEstimator';
+import CustomStlHub from './tools/CustomStlHub';
 
 /**
  * "Inside the studio" — compact asymmetric bento.
  * Spotlight cursor glow follows the mouse on every card (no tilt, no
  * wobble); the live hero warps straight into /studio, working tools open
- * their calculators in a glass modal, queued tools show their status.
+ * their calculators in a glass modal.
  */
 
-type ToolMode = 'studio' | 'calc' | 'estimator' | 'queue';
+type ToolMode = 'studio' | 'calc' | 'estimator' | 'hub';
 
 interface Tool {
   id: string;
@@ -56,7 +57,7 @@ const TOOLS: Tool[] = [
     tagline: 'Your prints, organized',
     body: 'A private shelf for validated models, remix history and one-tap reorders from the print floor.',
     icon: <IconGridFill size={17} className="text-white" />,
-    mode: 'queue',
+    mode: 'hub',
     specs: ['private shelf', 'remix history', 'reorders'],
   },
 ];
@@ -83,14 +84,6 @@ function StatusBadge({ mode }: { mode: ToolMode }) {
       </span>
     );
   }
-  if (mode === 'queue') {
-    return (
-      <span className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-1.5 sm:px-2 py-0.5 font-mono text-[8px] sm:text-[9.5px] uppercase tracking-wider text-white/40">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300/80 [animation-duration:2.4s]" />
-        Queued
-      </span>
-    );
-  }
   return (
     <span className="flex items-center gap-1 sm:gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/[0.08] px-1.5 sm:px-2 py-0.5 font-mono text-[8px] sm:text-[9.5px] uppercase tracking-wider text-emerald-200/90">
       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" />
@@ -99,7 +92,15 @@ function StatusBadge({ mode }: { mode: ToolMode }) {
   );
 }
 
-export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el: HTMLElement | null) => void }) {
+export default function StudioShowcase({
+  onLaunchStudio,
+  externalToolId,
+  onExternalHandled,
+}: {
+  onLaunchStudio: (el: HTMLElement | null) => void;
+  externalToolId?: string | null;
+  onExternalHandled?: () => void;
+}) {
   const [modalTool, setModalTool] = useState<Tool | null>(null);
   const [originRect, setOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [isClosing, setIsClosing] = useState(false);
@@ -109,6 +110,19 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
   const calcRef = useSpotlight<HTMLElement>();
   const estRef = useSpotlight<HTMLElement>();
   const hubRef = useSpotlight<HTMLElement>();
+
+  // Footer deep-link: open a tool modal from outside the showcase.
+  useEffect(() => {
+    if (!externalToolId) return;
+    const tool = TOOLS.find((t) => t.id === externalToolId);
+    if (tool) {
+      const rect = document.getElementById(tool.id)?.getBoundingClientRect();
+      if (rect) setOriginRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+      setModalTool(tool);
+      setIsClosing(false);
+    }
+    onExternalHandled?.();
+  }, [externalToolId, onExternalHandled]);
 
   const handleClose = useCallback(() => {
     if (isClosing) return;
@@ -228,17 +242,12 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
         </p>
 
         <div className="mt-auto flex items-center justify-between gap-1 sm:gap-2 pt-2 sm:pt-3">
-          <span className="flex flex-wrap gap-1">
-            {tool.specs.slice(0, 2).map((s) => (
-              <span key={s} className="rounded border border-white/[0.08] bg-white/[0.04] px-1 sm:px-1.5 py-0.5 font-mono text-[8px] sm:text-[9px] text-white/45 max-w-[68px] sm:max-w-none truncate">
+          <span className="flex min-w-0 flex-wrap gap-1">
+            {tool.specs.map((s) => (
+              <span key={s} className="rounded border border-white/[0.08] bg-white/[0.04] px-1 sm:px-1.5 py-0.5 font-mono text-[8px] sm:text-[9px] text-white/45">
                 {s}
               </span>
             ))}
-            {tool.specs.length > 2 && (
-              <span className="hidden sm:inline rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-mono text-[9px] text-white/45">
-                {tool.specs[2]}
-              </span>
-            )}
           </span>
           <IconArrowRight size={12} className="shrink-0 text-white/40 transition-transform duration-300 group-hover:translate-x-1.5 group-hover:text-white sm:h-3.5 sm:w-3.5" />
         </div>
@@ -343,7 +352,9 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
           <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" />
           <div
             ref={runExpand}
-            className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto no-scrollbar rounded-[22px] sm:rounded-[28px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/95 p-4 sm:p-6 shadow-[0_40px_90px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.25)] will-change-transform"
+            className={`relative w-full max-h-[92dvh] overflow-y-auto no-scrollbar rounded-[22px] sm:rounded-[28px] border border-white/[0.16] border-t-white/[0.35] bg-[#0d0d10]/95 p-4 sm:p-6 shadow-[0_40px_90px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.25)] will-change-transform ${
+              modalTool.mode === 'hub' ? 'sm:max-w-2xl lg:max-w-4xl' : 'max-w-lg'
+            }`}
           >
             <button
               type="button"
@@ -367,12 +378,7 @@ export default function StudioShowcase({ onLaunchStudio }: { onLaunchStudio: (el
             <div className="mt-4 animate-in fade-in duration-300">
               {modalTool.mode === 'calc' && <FilamentCalculator />}
               {modalTool.mode === 'estimator' && <PrintEstimator />}
-              {modalTool.mode === 'queue' && (
-                <div className="rounded-2xl border border-white/[0.1] bg-white/[0.04] p-4">
-                  <p className="text-[12.5px] sm:text-[13px] leading-relaxed text-white/60">{modalTool.body}</p>
-                  <p className="mt-3 font-mono text-[10px] sm:text-[10.5px] uppercase tracking-wider text-amber-200/70">In the queue — next release</p>
-                </div>
-              )}
+              {modalTool.mode === 'hub' && <CustomStlHub />}
             </div>
           </div>
         </div>

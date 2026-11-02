@@ -109,3 +109,53 @@ create index if not exists idx_emails_is_read on public.emails (is_read);
 alter table public.emails enable row level security;
 
 -- Deliberately NO policies: the mailbox is admin-API only (service role).
+
+-- ==============================================================================
+-- Custom STL Hub — zero-login commissioning tickets (STAN-STL-XXXX / STAN-SRC-
+-- SRC-XXXX). Anon/authenticated may INSERT only (mirrors the orders policy);
+-- reads/updates flow exclusively through the Admin API (service role).
+-- ==============================================================================
+
+create table if not exists public.hub_requests (
+    id           uuid primary key default gen_random_uuid(),
+    ticket_id    text unique not null,                -- STAN-STL-XXXX / STAN-SRC-XXXX
+    kind         text not null check (kind in ('commission','sourcing')),
+    item_name    text not null,
+    file_name    text,
+    specs        jsonb,                               -- bbox / volume / triangles
+    params       jsonb,                               -- material / infill / color / qty or sourcing fields
+    estimate     jsonb,                               -- low / high / grams
+    note         text,
+    storage_path text,                                -- private stl-files bucket path
+    status       text not null default 'new',
+    created_at   timestamptz not null default now()
+);
+
+create index if not exists idx_hub_requests_created_at on public.hub_requests (created_at desc);
+create index if not exists idx_hub_requests_kind on public.hub_requests (kind);
+
+alter table public.hub_requests enable row level security;
+
+drop policy if exists "Allow public hub request submission" on public.hub_requests;
+create policy "Allow public hub request submission"
+on public.hub_requests
+for insert
+to anon, authenticated
+with check (true);
+
+-- No SELECT / UPDATE / DELETE policies for anon or authenticated:
+-- reads and updates flow exclusively through the Admin API (service role).
+
+-- Private storage bucket for uploaded STL payloads (tickets reference
+-- storage_path; admin downloads via time-limited signed URLs). Anon may
+-- upload only — never read, update or delete.
+insert into storage.buckets (id, name, public)
+values ('stl-files', 'stl-files', false)
+on conflict (id) do nothing;
+
+drop policy if exists "Allow public STL upload" on storage.objects;
+create policy "Allow public STL upload"
+on storage.objects
+for insert
+to anon, authenticated
+with check (bucket_id = 'stl-files');

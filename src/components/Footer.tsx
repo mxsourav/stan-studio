@@ -71,7 +71,7 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
                   +91 8509986008
                 </a>
                 <span className="text-[11px] font-normal text-zinc-400 block sm:inline sm:ml-1.5">
-                  &bull; Mon &ndash; Sat, 10 AM &ndash; 8 PM
+                  &bull; Mon&ndash;Sat: 3:00 PM &ndash; 8:00 PM &middot; Sun: 10:00 AM &ndash; 1:00 PM &amp; 2:00 PM &ndash; 8:00 PM
                 </span>
               </div>
             </div>
@@ -292,7 +292,7 @@ export default function Footer({ onOpenStudio, onOpenToolModal }: FooterProps) {
               </span>
               <span className="hidden sm:inline text-zinc-600">&bull;</span>
               <span className="text-[9.5px] text-zinc-500 uppercase tracking-wider">
-                Digital Fabrication Studio &bull; College Street &amp; Maniktala, Kolkata
+                Digital Fabrication Studio &bull; MANIKTALA, KOLKATA &mdash; 700006
               </span>
             </div>
           </div>
