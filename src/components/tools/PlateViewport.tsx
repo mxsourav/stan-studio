@@ -446,8 +446,18 @@ export default function PlateViewport({
       // ── On-model gizmo (Bambu-style): translate arrows / rotation ring /
       //    scale handles on the selected instance ──
       const tc = new TransformControls(camera, el);
-      tc.size = 0.85;
+      tc.size = 1.15;
       const gizmoHelper = tc.getHelper();
+      // Kill the invisible translate PICK PLANES (XY/YZ/XZ/XYZE): they cover a
+      // huge screen area around the model, swallow body-drag + orbit, and —
+      // worst — drag the model UP off the plate in Y (layout is 2D). Stubbing
+      // their raycast makes them un-pickable; visible=false hides the quads.
+      gizmoHelper.traverse((o) => {
+        if (o.name === 'XY' || o.name === 'YZ' || o.name === 'XZ' || o.name === 'XYZE') {
+          o.visible = false;
+          (o as THREE.Mesh).raycast = () => {};
+        }
+      });
       scene.add(gizmoHelper);
       tc.addEventListener('dragging-changed', (e) => {
         const active = Boolean((e as unknown as { value: boolean }).value);
@@ -477,6 +487,7 @@ export default function PlateViewport({
           const or = cur.item.orient ?? (cur.item.geom ? layFlatFlip(cur.item.geom.bbox) : 'none');
           const clamped = clampToPlate({ ...inst, x: mesh.position.x, z: mesh.position.z }, bb, or);
           mesh.position.x = clamped.x;
+          mesh.position.y = 0; // plate plane only — never let a drag lift the part
           mesh.position.z = clamped.z;
           cbRef.current.onMoveInstance(id, clamped.x, clamped.z);
         } else if (tc.mode === 'rotate' && inst) {
