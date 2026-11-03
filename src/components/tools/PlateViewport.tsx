@@ -164,6 +164,7 @@ export default function PlateViewport({
   const propsRef = useRef({ instances, activePlate, item, interaction, scaleOverride });
   const tcRef = useRef<TransformControls | null>(null);
   const gizmoBusyRef = useRef(false);
+  const dragStatsRef = useRef({ down: 0, pick: 0, plane: 0, moveCalls: 0 });
   const kickRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -355,6 +356,7 @@ export default function PlateViewport({
       // ── Pointer interaction: pick instances, drag-move, orbit empty space ──
       const raycaster = new THREE.Raycaster();
       const ndc = new THREE.Vector2();
+      const _probeNdc = new THREE.Vector2();
       const planeY0 = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       const hit = new THREE.Vector3();
 
@@ -370,6 +372,8 @@ export default function PlateViewport({
 
       let lastX = 0, lastY = 0;
       const onDown = (e: PointerEvent) => {
+        const stats = dragStatsRef.current;
+        stats.down += 1;
         // The on-model gizmo owns the pointer when a handle is hovered/dragged
         if (tcRef.current && (tcRef.current.dragging || tcRef.current.axis !== null)) return;
         el.setPointerCapture(e.pointerId);
@@ -377,16 +381,49 @@ export default function PlateViewport({
         setNdc(e);
         raycaster.setFromCamera(ndc, camera);
         const hits = raycaster.intersectObjects(instGroup.children, false);
+        let pickedId: string | null = null;
+        let pickPoint: THREE.Vector3 | null = null;
         if (hits.length > 0) {
-          const mesh = hits[0].object as THREE.Mesh;
-          const id = mesh.userData.instanceId as string;
-          cbRef.current.onSelectInstance(id);
+          stats.pick += 1;
+          pickedId = (hits[0].object as THREE.Mesh).userData.instanceId as string;
+          pickPoint = planePoint();
+        } else {
+          // Proximity fallback — spiky/decimated meshes have ray holes, so a
+          // click visually ON the part can miss every triangle. Drop to the
+          // plate plane and grab the NEAREST instance within a generous reach
+          // (half its rotated footprint + 25mm grace) — Bambu-style picking.
           const p = planePoint();
-          const inst = propsRef.current.instances.find((i) => i.id === id);
-          if (p && inst) {
+          if (p) {
+            const cur = propsRef.current;
+            const bb = cur.item.geom ? effectiveGeom({ geom: cur.item.geom, scale: cur.scaleOverride ?? normalizeScale(cur.item) }).bbox : { x: 10, y: 10, z: 10 };
+            const or = cur.item.orient ?? (cur.item.geom ? layFlatFlip(cur.item.geom.bbox) : 'none');
+            const fp = flipFootprint(bb, or);
+            let best: { inst: PlateInstance; d: number } | null = null;
+            for (const inst of cur.instances) {
+              if (inst.plate !== cur.activePlate) continue;
+              const r = rotatedFootprint(fp.w, fp.d, inst.rotY);
+              const reachX = r.w / 2 + 25;
+              const reachZ = r.d / 2 + 25;
+              const dx = Math.abs(p.x - inst.x);
+              const dz = Math.abs(p.z - inst.z);
+              if (dx < reachX && dz < reachZ) {
+                const d = Math.hypot(dx, dz);
+                if (best === null || d < best.d) best = { inst, d };
+              }
+            }
+            if (best) {
+              pickedId = best.inst.id;
+              pickPoint = p;
+            }
+          }
+        }
+        const inst = pickedId ? propsRef.current.instances.find((i) => i.id === pickedId) : null;
+        if (pickedId && inst) {
+          cbRef.current.onSelectInstance(pickedId);
+          if (pickPoint) {
             dragModeRef.current = 'move';
-            dragIdRef.current = id;
-            grabOffsetRef.current = { x: inst.x - p.x, z: inst.z - p.z };
+            dragIdRef.current = pickedId;
+            grabOffsetRef.current = { x: inst.x - pickPoint.x, z: inst.z - pickPoint.z };
             el.style.cursor = 'grabbing';
             return;
           }
@@ -410,6 +447,7 @@ export default function PlateViewport({
           const p = planePoint();
           const inst = propsRef.current.instances.find((i) => i.id === dragIdRef.current);
           if (p && inst) {
+            dragStatsRef.current.moveCalls += 1;
             const next = clampToPlate(
               { ...inst, x: p.x + grabOffsetRef.current.x, z: p.z + grabOffsetRef.current.z },
               propsRef.current.item.geom?.bbox ?? { x: 10, y: 10, z: 10 },
@@ -456,6 +494,15 @@ export default function PlateViewport({
         if (o.name === 'XY' || o.name === 'YZ' || o.name === 'XZ' || o.name === 'XYZE') {
           o.visible = false;
           (o as THREE.Mesh).raycast = () => {};
+        }
+      });
+      // The stock pick targets are hair-thin (bone octahedrons, small tips) —
+      // with the planes gone, real mice miss them constantly. Fatten every
+      // remaining picker mesh ×2.5 (Bambu-style generous grab volumes).
+      gizmoHelper.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh && m.visible && (m.parent as THREE.Object3D | null)?.name !== 'plane' && m.name !== 'XYZE' && m.name !== 'XY' && m.name !== 'XZ' && m.name !== 'YZ') {
+          m.scale.multiplyScalar(2.5);
         }
       });
       scene.add(gizmoHelper);
@@ -566,6 +613,22 @@ export default function PlateViewport({
           tcRef.current
             ? { mode: tcRef.current.mode, attached: Boolean(tcRef.current.object), axis: tcRef.current.axis, busy: gizmoBusyRef.current }
             : null,
+        // Raw controls access for E2E/diagnosis
+        tc: () => tcRef.current,
+        dragStats: () => dragStatsRef.current,
+        worldPos: () => {
+          const tc = tcRef.current as unknown as { _root: THREE.Object3D; worldPosition: THREE.Vector3 } | null;
+          if (!tc) return null;
+          tc._root.updateMatrixWorld(true);
+          const wp = tc.worldPosition;
+          return { x: +wp.x.toFixed(1), y: +wp.y.toFixed(1), z: +wp.z.toFixed(1) };
+        },
+        rayWorld: (nx: number, ny: number) => {
+          const hits = raycaster.setFromCamera(_probeNdc.set(nx, ny), camera);
+          void hits;
+          const list = raycaster.intersectObjects(instGroup.children, false);
+          return list.length;
+        },
         // Drives the same commit path a scale-handle drag uses (E2E)
         applyGizmoScale: (r: { x: number; y: number; z: number }) => {
           cbRef.current.onGizmoScale?.(r);
