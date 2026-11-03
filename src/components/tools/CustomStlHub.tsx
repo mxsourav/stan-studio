@@ -34,6 +34,8 @@ import {
   type SourcingRequest,
 } from '../../lib/stlHub';
 import { submitHubRequest, uploadStlFile } from '../../lib/hubPipeline';
+import WorkspaceChrome from './WorkspaceChrome';
+import { type PlateViewApi } from './PlateViewport';
 
 /**
  * Custom STL Hub — zero-login commissioning workspace, rendered inside the
@@ -472,76 +474,66 @@ function ShelfWorkspace({
 
   const est = selected ? estimatePrint({ volumeMm3: selected.geom?.volumeMm3 ?? 0, ...selected.params }) : null;
 
+  const viewportApi = useRef<PlateViewApi | null>(null);
+
   return (
-    <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden">
-      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-3 px-4 py-4 sm:px-6">
-        {/* Compact dropzone */}
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            void handleFile(e.dataTransfer.files?.[0]);
-          }}
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
-          }}
-          className={`shrink-0 cursor-pointer rounded-2xl border border-dashed px-4 py-3 text-center transition ${
-            dragging
-              ? 'border-white/50 bg-white/[0.08]'
-              : 'border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.05]'
-          }`}
-        >
-          <input ref={inputRef} type="file" accept=".stl" className="hidden" onChange={(e) => void handleFile(e.target.files?.[0])} />
-          <p className="flex items-center justify-center gap-2 text-[12.5px] font-medium text-zinc-100">
+    <div className="grid min-h-0 flex-1 grid-rows-[auto_300px] overflow-visible lg:grid-cols-[360px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
+      {/* ── LEFT SLICER SIDEBAR ── */}
+      <aside className="flex min-h-0 flex-col bg-[#0c0c0f] lg:col-start-1 lg:h-full lg:row-start-1 lg:border-r lg:border-white/10">
+        {/* Top: compact upload + object strip */}
+        <div className="shrink-0 border-b border-white/[0.08] p-3">
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              void handleFile(e.dataTransfer.files?.[0]);
+            }}
+            onClick={() => inputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
+            }}
+            className={`flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed text-[12px] font-medium text-zinc-100 transition ${
+              dragging
+                ? 'border-white/50 bg-white/[0.08]'
+                : 'border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.05]'
+            }`}
+          >
+            <input ref={inputRef} type="file" accept=".stl" className="hidden" onChange={(e) => void handleFile(e.target.files?.[0])} />
             <IconUpload size={14} className="text-zinc-400" />
-            {busy ? 'Parsing mesh…' : 'Drop your .stl here — or tap to browse'}
-          </p>
-          <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-500">
-            Parsed on-device · up to {MAX_FILE_MB} MB · nothing uploads until you commission
-          </p>
+            {busy ? 'Parsing mesh…' : 'Upload / Drop .stl'}
+            <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-500">≤{MAX_FILE_MB}MB · on-device</span>
+          </div>
+          {items.length > 0 ? (
+            <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto pb-0.5">
+              {items.map((item) => (
+                <ShelfStripCard key={item.id} item={item} selected={item.id === selectedId} onSelect={() => onSelect(item.id)} />
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-center font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-600">
+              Shelf is empty — parts stay on this device
+            </p>
+          )}
+          {error && <p className="mt-2 rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[10.5px] text-red-300">{error}</p>}
         </div>
 
-        {/* Object strip — horizontal, slicer-style */}
-        {items.length === 0 ? (
-          <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-10 text-center">
-            <IconCube size={32} className="text-zinc-600" />
-            <p className="mt-3 text-[13px] font-semibold text-zinc-100">Your private shelf is empty</p>
-            <p className="mt-1.5 max-w-sm text-[12px] leading-relaxed text-zinc-400">
-              Add a model above — it stays on this device, priced instantly, until you send it to the studio.
-            </p>
-          </div>
-        ) : (
-          <div className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto pb-0.5">
-            {items.map((item) => (
-              <ShelfStripCard key={item.id} item={item} selected={item.id === selectedId} onSelect={() => onSelect(item.id)} />
-            ))}
-          </div>
-        )}
-
-        {error && <p className="shrink-0 rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[11px] text-red-300">{error}</p>}
-
-        {/* Main row — Bambu A1 build-plate viewport + remix rail, one screen */}
-        {selected ? (
-          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,330px)]">
-            {/* Build plate viewport — Bambu-style WebGL scene */}
-            <div className="relative flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
-              <div className="flex w-full shrink-0 items-start justify-between gap-3">
+        {/* Middle: process parameters — top-aligned, scrollable, never clipped */}
+        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+          {selected ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="truncate text-[14px] font-semibold text-zinc-100">{selected.name}</p>
+                  <p className="break-words text-[14px] font-semibold leading-snug text-zinc-100">{selected.name}</p>
                   {selected.geom && (
                     <p className="mt-0.5 font-mono text-[10px] tabular-nums text-zinc-400">
                       {selected.geom.bbox.x} × {selected.geom.bbox.y} × {selected.geom.bbox.z} mm
-                      {selected.geom.triangles > 0
-                        ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris`
-                        : ' · library'}
                       {` · ${(selected.geom.volumeMm3 / 1000).toFixed(1)} cm³`}
                     </p>
                   )}
@@ -577,33 +569,20 @@ function ShelfWorkspace({
                   </button>
                 )}
               </div>
-              <PlateViewport item={selected} className="mt-2 h-[260px] lg:h-auto lg:flex-1" />
-              <p className="shrink-0 pt-2 font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-600">
-                Drag to orbit · scroll to zoom · true mm scale on the A1 plate
-              </p>
+              <ItemEditor item={selected} onSetParams={setParams} />
             </div>
+          ) : (
+            <p className="text-[12px] leading-relaxed text-zinc-500">
+              Add or select a model to tune material, infill, color mode and quantity.
+            </p>
+          )}
+        </div>
 
-            {/* Remix rail */}
-            <div className="no-scrollbar min-h-0 overflow-y-auto lg:pr-0.5">
-              <SectionLabel>Remix parameters</SectionLabel>
-              <div className="mt-2.5">
-                <ItemEditor item={selected} onSetParams={setParams} />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <p className="shrink-0 text-center text-[12px] leading-relaxed text-zinc-500">
-            Select a shelf item to tune material, infill, color mode and quantity.
-          </p>
-        )}
-      </div>
-
-      {/* Sticky bottom action bar — estimate + primary actions, always in view */}
-      <footer className="sticky bottom-0 z-20 border-t border-white/[0.08] bg-[#0a0a0c]/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
+        {/* Bottom: pinned action footer */}
+        <div className="shrink-0 border-t border-white/[0.08] bg-zinc-950/90 p-3">
           {selected && est ? (
             <>
-              <span className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[14px] font-semibold tabular-nums text-zinc-100">
                   {rupees(est.low)}–{rupees(est.high)}
                 </span>
@@ -612,22 +591,70 @@ function ShelfWorkspace({
                 </span>
                 <FreeDeliveryChip est={est} />
                 {selected.syncState && <SyncPill state={selected.syncState} />}
-              </span>
-              <span className="flex items-center gap-2">
+              </div>
+              <div className="mt-2.5 flex gap-2 [&>button]:flex-1">
                 <GhostAction onClick={() => void duplicate(selected)}>Remix</GhostAction>
                 <PrimaryAction onClick={() => onCommission(selected, est)}>
                   <IconWhatsApp size={13} />
                   Commission
                 </PrimaryAction>
-              </span>
+              </div>
             </>
           ) : (
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+            <p className="py-1 text-center font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-500">
               Select an item to commission
-            </span>
+            </p>
           )}
         </div>
-      </footer>
+      </aside>
+
+      {/* ── RIGHT 3D BUILD-PLATE VIEWPORT ── */}
+      <section className="relative min-h-0 bg-[#141418] lg:col-start-2 lg:row-start-1 lg:h-full">
+        {selected ? (
+          <>
+            <PlateViewport item={selected} onReady={(api) => (viewportApi.current = api)} className="absolute inset-0" />
+            {/* HUD — part telemetry (top-left) */}
+            {selected.geom && (
+              <div className="pointer-events-none absolute left-3 top-3 max-w-[70%] rounded-lg border border-white/10 bg-black/55 px-2.5 py-1.5 font-mono text-[10px] tabular-nums text-zinc-300 backdrop-blur">
+                {selected.geom.bbox.x} × {selected.geom.bbox.y} × {selected.geom.bbox.z} mm
+                {selected.geom.triangles > 0
+                  ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris`
+                  : ' · library'}
+                {` · ${(selected.geom.volumeMm3 / 1000).toFixed(1)} cm³`}
+              </div>
+            )}
+            {/* HUD — view controls (top-right) */}
+            <div className="absolute right-3 top-3 flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => viewportApi.current?.fit()}
+                className="rounded-lg border border-white/10 bg-black/55 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-200 backdrop-blur transition hover:bg-black/75 active:scale-[0.99]"
+              >
+                Fit view
+              </button>
+              <button
+                type="button"
+                onClick={() => viewportApi.current?.reset()}
+                className="rounded-lg border border-white/10 bg-black/55 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-200 backdrop-blur transition hover:bg-black/75 active:scale-[0.99]"
+              >
+                Reset orbit
+              </button>
+            </div>
+            {/* HUD — interaction hint (bottom-left) */}
+            <p className="pointer-events-none absolute bottom-3 left-3 font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-500">
+              Drag to orbit · scroll to zoom · 256×256 mm A1 plate
+            </p>
+          </>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+            <IconCube size={36} className="text-zinc-600" />
+            <p className="mt-3 text-[13px] font-semibold text-zinc-300">The A1 build plate is empty</p>
+            <p className="mt-1.5 max-w-xs text-[12px] leading-relaxed text-zinc-500">
+              Drop an .stl or pick a saved part — it lands on the 256 × 256 mm plate at true scale.
+            </p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -918,7 +945,7 @@ function SourcingWorkspace({ onChanged }: { onChanged: () => void }) {
 
 // ─── Shell ───────────────────────────────────────────────────────────────────
 
-export default function CustomStlHub() {
+export default function CustomStlHub({ title }: { title: string }) {
   const [mode, setMode] = useState<HubTab>(() => {
     try {
       const t = localStorage.getItem('stan-hub-tab');
@@ -944,44 +971,43 @@ export default function CustomStlHub() {
 
   const commission = useCommission(reload);
 
+  // Mode tabs live INSIDE the workspace chrome bar (Bambu Prepare/Preview style)
+  const tabSwitcher = (
+    <div role="tablist" className="no-scrollbar flex max-w-full gap-1 overflow-x-auto rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
+      {(
+        [
+          ['shelf', 'Private Shelf', items.length],
+          ['library', 'Studio Library', null],
+          ['sourcing', 'Model Sourcing', null],
+        ] as Array<[HubTab, string, number | null]>
+      ).map(([key, label, count]) => (
+        <button
+          key={key}
+          type="button"
+          role="tab"
+          aria-selected={mode === key}
+          onClick={() => {
+            setMode(key);
+            try {
+              localStorage.setItem('stan-hub-tab', key);
+            } catch {
+              /* private mode */
+            }
+          }}
+          className={`shrink-0 whitespace-nowrap rounded-lg px-2 py-1.5 font-mono text-[9.5px] tracking-wider transition sm:px-3 sm:text-[10.5px] ${
+            mode === key ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]' : 'text-zinc-400 hover:text-zinc-100'
+          }`}
+        >
+          {label}
+          {count !== null && count > 0 ? <span className="ml-1 text-white/35">{count}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Workspace mode switcher — pinned under the shell header */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-2.5 sm:px-6">
-        <div role="tablist" className="flex gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
-          {(
-            [
-              ['shelf', 'Private Shelf', items.length],
-              ['library', 'Studio Library', null],
-              ['sourcing', 'Model Sourcing', null],
-            ] as Array<[HubTab, string, number | null]>
-          ).map(([key, label, count]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={mode === key}
-              onClick={() => {
-                setMode(key);
-                try {
-                  localStorage.setItem('stan-hub-tab', key);
-                } catch {
-                  /* private mode */
-                }
-              }}
-              className={`whitespace-nowrap rounded-lg px-2 py-1.5 font-mono text-[10px] tracking-wider transition sm:px-3 sm:text-[10.5px] ${
-                mode === key ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]' : 'text-zinc-400 hover:text-zinc-100'
-              }`}
-            >
-              {label}
-              {count !== null && count > 0 ? <span className="ml-1 text-white/35">{count}</span> : null}
-            </button>
-          ))}
-        </div>
-        <span className="hidden font-mono text-[9px] uppercase tracking-wider text-white/30 lg:block">
-          Zero-login · on-device vault · WhatsApp commission
-        </span>
-      </div>
+      <WorkspaceChrome title={title} center={tabSwitcher} />
 
       {storageDegraded() && (
         <p className="mx-4 mt-2 rounded-xl bg-amber-400/10 px-3 py-2 font-mono text-[10.5px] text-amber-200/80 sm:mx-6">
@@ -989,7 +1015,7 @@ export default function CustomStlHub() {
         </p>
       )}
 
-      <div className="animate-in fade-in flex min-h-0 flex-1 flex-col duration-300">
+      <div key={mode} className="animate-in fade-in flex min-h-0 flex-1 flex-col duration-300">
         {mode === 'shelf' && (
           <ShelfWorkspace items={items} selectedId={selectedId} onSelect={setSelectedId} reload={reload} onCommission={commission} />
         )}

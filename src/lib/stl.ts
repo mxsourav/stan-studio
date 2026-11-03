@@ -77,14 +77,15 @@ export interface StlMesh extends StlGeometry {
 }
 
 /** Like readStl, but also returns the triangle buffer for thumbnail rendering. */
-export async function readStlMesh(file: File): Promise<StlMesh> {
+export async function readStlMesh(file: File | Blob): Promise<StlMesh> {
   const buf = await file.arrayBuffer();
+  const name = 'name' in file && typeof file.name === 'string' ? file.name : 'model.stl';
   if (buf.byteLength < 84) throw new Error('File is too small to be an STL');
   const view = new DataView(buf);
   const count = view.getUint32(80, true);
-  if (count > 0 && 84 + count * 50 === buf.byteLength) return parseBinary(buf, file.name);
+  if (count > 0 && 84 + count * 50 === buf.byteLength) return parseBinary(buf, name);
   const text = new TextDecoder().decode(buf);
-  if (/^\s*solid/i.test(text)) return parseAscii(text, file.name);
+  if (/^\s*solid/i.test(text)) return parseAscii(text, name);
   throw new Error('Not a valid STL file (binary or ASCII)');
 }
 
