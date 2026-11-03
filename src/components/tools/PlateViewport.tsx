@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { sessionMeshCache } from '../../lib/stlThumb';
 import { readStlMesh } from '../../lib/stl';
 import {
@@ -12,6 +13,7 @@ import {
   normalizeScale,
   PLATE_SIZE,
   rotatedFootprint,
+  saveShelfItem,
   type Orient,
   type PlateInstance,
   type Scale3,
@@ -123,6 +125,7 @@ export default function PlateViewport({
   onSelectInstance,
   onMoveInstance,
   onRotateInstance,
+  onGizmoScale,
   onReady,
   className = '',
 }: {
@@ -132,11 +135,12 @@ export default function PlateViewport({
   selectedInstanceId: string | null;
   collision: boolean;
   colors: PlateColors;
-  interaction?: 'move' | 'rotate'; // drag on an instance moves or spins it
+  interaction?: 'move' | 'rotate' | 'scale'; // drives the on-model gizmo mode
   scaleOverride?: Scale3; // live typing preview — wins over item.scale
   onSelectInstance: (id: string | null) => void;
   onMoveInstance: (id: string, x: number, z: number) => void;
   onRotateInstance?: (id: string, rotY: number) => void;
+  onGizmoScale?: (ratios: Scale3) => void; // gizmo scale-drag deltas → item factors
   onReady?: (api: PlateViewApi) => void;
   className?: string;
 }) {
@@ -156,12 +160,14 @@ export default function PlateViewport({
   const dragIdRef = useRef<string | null>(null);
   const grabOffsetRef = useRef({ x: 0, z: 0 });
   const modelRadiusRef = useRef<number | null>(null);
-  const cbRef = useRef({ onSelectInstance, onMoveInstance, onRotateInstance });
+  const cbRef = useRef({ onSelectInstance, onMoveInstance, onRotateInstance, onGizmoScale });
   const propsRef = useRef({ instances, activePlate, item, interaction, scaleOverride });
+  const tcRef = useRef<TransformControls | null>(null);
+  const gizmoBusyRef = useRef(false);
   const kickRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    cbRef.current = { onSelectInstance, onMoveInstance, onRotateInstance };
+    cbRef.current = { onSelectInstance, onMoveInstance, onRotateInstance, onGizmoScale };
     propsRef.current = { instances, activePlate, item, interaction, scaleOverride };
   });
 
@@ -325,6 +331,16 @@ export default function PlateViewport({
             const parsed = await readStlMesh(blob);
             if (disposed) return;
             sessionMeshCache.set(item.id, { tris: parsed.tris, count: parsed.count });
+            // Self-heal: items imported before the volume-precision fix carry a
+            // stored volumeMm3 of 0 (sub-0.05 mm³ round wipeout) — repair the
+            // geom from the freshly parsed mesh so pricing works again
+            if (item.geom && item.geom.volumeMm3 === 0 && parsed.volumeMm3 > 0) {
+              void saveShelfItem({
+                ...item,
+                geom: { ...item.geom, volumeMm3: parsed.volumeMm3, surfaceMm2: parsed.surfaceMm2 },
+                updatedAt: Date.now(),
+              });
+            }
             const base = buildBase(parsed.tris, parsed.count);
             if (base && !disposed) {
               rawGeoRef.current = base;
@@ -354,6 +370,8 @@ export default function PlateViewport({
 
       let lastX = 0, lastY = 0;
       const onDown = (e: PointerEvent) => {
+        // The on-model gizmo owns the pointer when a handle is hovered/dragged
+        if (tcRef.current && (tcRef.current.dragging || tcRef.current.axis !== null)) return;
         el.setPointerCapture(e.pointerId);
         lastX = e.clientX; lastY = e.clientY;
         setNdc(e);
@@ -377,7 +395,7 @@ export default function PlateViewport({
         el.style.cursor = 'grabbing';
       };
       const onMove = (e: PointerEvent) => {
-        if (dragModeRef.current === 'none') return;
+        if (dragModeRef.current === 'none' || gizmoBusyRef.current) return;
         if (dragModeRef.current === 'move') {
           if (propsRef.current.interaction === 'rotate') {
             // Rotate tool — horizontal drag spins the grabbed instance
@@ -424,6 +442,51 @@ export default function PlateViewport({
       el.addEventListener('pointermove', onMove);
       el.addEventListener('pointerup', onUp);
       el.addEventListener('wheel', onWheel, { passive: false });
+
+      // ── On-model gizmo (Bambu-style): translate arrows / rotation ring /
+      //    scale handles on the selected instance ──
+      const tc = new TransformControls(camera, el);
+      tc.size = 0.85;
+      const gizmoHelper = tc.getHelper();
+      scene.add(gizmoHelper);
+      tc.addEventListener('dragging-changed', (e) => {
+        const active = Boolean((e as unknown as { value: boolean }).value);
+        gizmoBusyRef.current = active;
+        el.style.cursor = active ? 'grabbing' : 'grab';
+        if (!active) {
+          const mesh = tc.object as THREE.Mesh | null;
+          // Scale drag ends here — convert the proxy deltas into item factors
+          if (tc.mode === 'scale' && mesh) {
+            const r = { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z };
+            mesh.scale.set(1, 1, 1);
+            if (Math.abs(r.x - 1) > 1e-4 || Math.abs(r.y - 1) > 1e-4 || Math.abs(r.z - 1) > 1e-4) {
+              cbRef.current.onGizmoScale?.(r);
+            }
+            kick();
+          }
+        }
+      });
+      tc.addEventListener('objectChange', () => {
+        const mesh = tc.object as THREE.Mesh | null;
+        if (!mesh) return;
+        const id = mesh.userData.instanceId as string;
+        const cur = propsRef.current;
+        const inst = cur.instances.find((i) => i.id === id);
+        if (tc.mode === 'translate' && inst) {
+          const bb = cur.item.geom ? effectiveGeom({ geom: cur.item.geom, scale: cur.scaleOverride ?? normalizeScale(cur.item) }).bbox : { x: 10, y: 10, z: 10 };
+          const or = cur.item.orient ?? (cur.item.geom ? layFlatFlip(cur.item.geom.bbox) : 'none');
+          const clamped = clampToPlate({ ...inst, x: mesh.position.x, z: mesh.position.z }, bb, or);
+          mesh.position.x = clamped.x;
+          mesh.position.z = clamped.z;
+          cbRef.current.onMoveInstance(id, clamped.x, clamped.z);
+        } else if (tc.mode === 'rotate' && inst) {
+          const deg = Math.round((mesh.rotation.y * 180) / Math.PI);
+          cbRef.current.onRotateInstance?.(id, ((deg % 360) + 360) % 360);
+        }
+        // scale mode: the mesh.scale itself is the live preview — committed on drag end
+        kick();
+      });
+      tcRef.current = tc;
 
       const resize = () => {
         const w = host.clientWidth || 1;
@@ -488,6 +551,14 @@ export default function PlateViewport({
             z: Math.round((bb.max.z - bb.min.z) * 100) / 100,
           };
         },
+        gizmo: () =>
+          tcRef.current
+            ? { mode: tcRef.current.mode, attached: Boolean(tcRef.current.object), axis: tcRef.current.axis, busy: gizmoBusyRef.current }
+            : null,
+        // Drives the same commit path a scale-handle drag uses (E2E)
+        applyGizmoScale: (r: { x: number; y: number; z: number }) => {
+          cbRef.current.onGizmoScale?.(r);
+        },
       };
 
       return () => {
@@ -510,6 +581,17 @@ export default function PlateViewport({
         rawGeoRef.current?.dispose();
         plateTex.dispose();
         renderer.dispose();
+        tcRef.current?.detach();
+        tcRef.current?.dispose();
+        gizmoHelper.traverse((o) => {
+          const m = o as THREE.Mesh;
+          if (m.geometry) m.geometry.dispose();
+          const mat = m.material as THREE.Material | THREE.Material[] | undefined;
+          if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
+          else mat?.dispose();
+        });
+        scene.remove(gizmoHelper);
+        tcRef.current = null;
         el.remove();
         sceneRef.current = null;
         rawGeoRef.current = null;
@@ -567,6 +649,9 @@ export default function PlateViewport({
       // A rebake (orientation / scale change) produces a NEW shared geometry —
       // existing meshes MUST swap onto it or they keep rendering the old size
       if (mesh.geometry !== baseGeo) mesh.geometry = baseGeo;
+      // The baked geometry already carries the item scale — gizmo scale-drag
+      // previews live in mesh.scale and is reset once committed
+      mesh.scale.set(1, 1, 1);
       mesh.position.set(inst.x, 0, inst.z);
       mesh.rotation.y = (inst.rotY * Math.PI) / 180;
     }
@@ -592,6 +677,28 @@ export default function PlateViewport({
 
     kickRef.current?.();
   }, [instances, activePlate, selectedInstanceId, collision, colors, meshEpoch, item, scaleOverride]);
+
+  // ── Gizmo attach + mode: follows the active tool and instance selection ──
+  useEffect(() => {
+    const tc = tcRef.current;
+    const group = sceneRef.current;
+    if (!tc || !group) return;
+    const mesh = selectedInstanceId
+      ? (group.children.find((c) => (c as THREE.Mesh).userData?.instanceId === selectedInstanceId) as THREE.Mesh | undefined)
+      : undefined;
+    if (mesh) {
+      tc.attach(mesh);
+      tc.setMode(interaction === 'move' ? 'translate' : interaction);
+      // Rotate = yaw only (single ring around the plate normal); move = plate
+      // plane only; scale = all three axes
+      tc.showX = interaction !== 'rotate';
+      tc.showY = interaction === 'rotate' || interaction === 'scale';
+      tc.showZ = interaction !== 'rotate';
+    } else {
+      tc.detach();
+    }
+    kickRef.current?.();
+  }, [interaction, selectedInstanceId, instances, activePlate, meshEpoch]);
 
   if (failed) {
     return (

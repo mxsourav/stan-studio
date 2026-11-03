@@ -39,8 +39,10 @@ function meshStats(tris: Float64Array, count: number): Omit<StlGeometry, 'fileNa
       y: Number((maxY - minY).toFixed(2)),
       z: Number((maxZ - minZ).toFixed(2)),
     },
-    volumeMm3: Math.abs(Number(vol.toFixed(1))),
-    surfaceMm2: Math.abs(Number(area.toFixed(1))),
+    // 3 decimals — a 1-decimal round wiped out sub-0.05 mm³ volumes entirely
+    // (tiny-unit imports priced ₹0 forever, unrecoverable after storage)
+    volumeMm3: Math.abs(Number(vol.toFixed(3))),
+    surfaceMm2: Math.abs(Number(area.toFixed(2))),
   };
 }
 

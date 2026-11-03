@@ -65,6 +65,13 @@ import { type PlateViewApi } from './PlateViewport';
 
 const rupees = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
+/** cm³ display that keeps small volumes honest — a 1-decimal round shows
+ *  0.0 for anything under 0.05 cm³ (tiny-unit imports looked dead). */
+function fmtCm3(volumeMm3: number): string {
+  const cm3 = volumeMm3 / 1000;
+  return cm3 > 0 && cm3 < 1 ? cm3.toFixed(2) : cm3.toFixed(1);
+}
+
 type SyncState = NonNullable<ShelfItem['syncState']>;
 
 export type HubTab = 'shelf' | 'library' | 'sourcing';
@@ -423,7 +430,7 @@ function ShelfWorkspace({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [layout, setLayout] = useState<PlateInstance[]>([]);
   const [activePlate, setActivePlate] = useState(0);
-  const [tool, setTool] = useState<'move' | 'rotate'>('move');
+  const [tool, setTool] = useState<'move' | 'rotate' | 'scale'>('move');
   const [clipboard, setClipboard] = useState<Omit<PlateInstance, 'id'> | null>(null);
   const [overflow, setOverflow] = useState<{ numPlates: number; maxPerPlate: number; leftover: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -695,7 +702,7 @@ function ShelfWorkspace({
   const pctNow = Math.round(Math.cbrt(scale.x * scale.y * scale.z) * 100);
   const applyPct = (raw: string, immediate = false) => {
     const p = Number(raw.replace(',', '.'));
-    if (!Number.isFinite(p) || p < 1 || p > 10000) return;
+    if (!Number.isFinite(p) || p < 1 || p > 100000) return;
     const r = p / Math.max(1, pctNow);
     commitScale({ x: scale.x * r, y: scale.y * r, z: scale.z * r }, immediate);
   };
@@ -956,6 +963,7 @@ function ShelfWorkspace({
       deleteInstance();
     } else if (!meta && k === 'm') setTool('move');
     else if (!meta && k === 'r') setTool('rotate');
+    else if (!meta && k === 's') setTool('scale');
     else if (!meta && k === 'f') layFlat();
     else if (!meta && k === 'a') autoAlign();
   };
@@ -1008,8 +1016,9 @@ function ShelfWorkspace({
           {error && <p className="mt-2 rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[10.5px] text-red-300">{error}</p>}
         </div>
 
-        {/* Middle: process parameters — top-aligned (scrollTop=0), scrollable, never clipped */}
-        <div ref={paramsScrollRef} className="no-scrollbar flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-y-auto p-4">
+        {/* Middle: process parameters — top-aligned (scrollTop=0), slim visible
+            scrollbar (wheel + thumb-drag), never clipped */}
+        <div ref={paramsScrollRef} className="slim-scroll flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-y-auto p-4">
           {selected ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-start justify-between gap-2">
@@ -1018,7 +1027,7 @@ function ShelfWorkspace({
                   {bbox && (
                     <p className="mt-0.5 font-mono text-[10px] tabular-nums text-zinc-400">
                       {bbox.x} × {bbox.y} × {bbox.z} mm
-                      {` · ${(effectiveGeom({ geom: selected.geom, scale: liveScale ?? normalizeScale(selected) }).volumeMm3 / 1000).toFixed(1)} cm³`}
+                      {` · ${fmtCm3(effectiveGeom({ geom: selected.geom, scale: liveScale ?? normalizeScale(selected) }).volumeMm3)} cm³`}
                     </p>
                   )}
                 </div>
@@ -1170,7 +1179,8 @@ function ShelfWorkspace({
                     <input
                       type="range"
                       min={25}
-                      max={400}
+                      max={Math.max(400, Math.ceil(pctNow / 100) * 100)}
+                      value={Math.max(25, Math.min(pctNow, Math.max(400, Math.ceil(pctNow / 100) * 100)))}
                       step={5}
                       aria-label="Scale percent slider"
                       onMouseDown={(e) => applyPct((e.target as HTMLInputElement).value)}
@@ -1182,7 +1192,7 @@ function ShelfWorkspace({
 
                   <p className="mt-2 font-mono text-[9.5px] tabular-nums text-zinc-500">
                     {bbox ? `${bbox.x} × ${bbox.y} × ${bbox.z} mm` : '—'}
-                    {` · ${(effectiveGeom({ geom: selected.geom, scale: liveScale ?? normalizeScale(selected) }).volumeMm3 / 1000).toFixed(1)} cm³`}
+                    {` · ${fmtCm3(effectiveGeom({ geom: selected.geom, scale: liveScale ?? normalizeScale(selected) }).volumeMm3)} cm³`}
                     {selected.geom.triangles > 0 ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris` : ''}
                     {scaleLocked ? ' · uniform' : ' · free axes'}
                   </p>
@@ -1356,6 +1366,17 @@ function ShelfWorkspace({
               onSelectInstance={setSelectedInstanceId}
               onMoveInstance={handleMove}
               onRotateInstance={handleRotate}
+              onGizmoScale={(r) => {
+                // Gizmo drag deltas → item-level factors. Chain locked: the
+                // geometric mean of the drag becomes a uniform ratio (shape
+                // preserved); unlocked: per-axis.
+                if (scaleLocked) {
+                  const uni = Math.cbrt(Math.max(1e-9, r.x * r.y * r.z));
+                  commitScale({ x: scale.x * uni, y: scale.y * uni, z: scale.z * uni }, true);
+                } else {
+                  commitScale({ x: scale.x * r.x, y: scale.y * r.y, z: scale.z * r.z }, true);
+                }
+              }}
               onReady={(api) => (viewportApi.current = api)}
               className="absolute inset-0"
             />
@@ -1365,12 +1386,13 @@ function ShelfWorkspace({
                 [
                   ['move', `Select/Move (M)`, tool === 'move'],
                   ['rotate', `Rotate (R)`, tool === 'rotate'],
+                  ['scale', `Scale (S)`, tool === 'scale'],
                 ] as Array<[string, string, boolean]>
               ).map(([t, label, active]) => (
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setTool(t as 'move' | 'rotate')}
+                  onClick={() => setTool(t as 'move' | 'rotate' | 'scale')}
                   className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider transition ${
                     active ? 'bg-white/20 text-white' : 'text-zinc-400 hover:bg-white/10 hover:text-zinc-100'
                   }`}
@@ -1570,7 +1592,7 @@ function LibraryWorkspace({
   };
 
   return (
-    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+    <div className="slim-scroll min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-6">
         <div className="flex flex-wrap items-center gap-2.5">
           <SectionLabel>Filter</SectionLabel>
@@ -1716,7 +1738,7 @@ function SourcingWorkspace({ onChanged }: { onChanged: () => void }) {
     'w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-3 text-[13px] text-zinc-100 placeholder:text-zinc-500 outline-none transition focus:border-white/30 focus:bg-white/[0.06]';
 
   return (
-    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+    <div className="slim-scroll min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-2xl px-4 py-5 sm:px-6 sm:py-6">
         {/* Request builder — one grouped card, submit at the bottom */}
         <Group>

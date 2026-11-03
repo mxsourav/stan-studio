@@ -52,17 +52,26 @@ body {
   background: rgba(255, 255, 255, 0.22);
 }
 
-/* Slim carbon scrollbars for glass docks */
+/* Slim carbon scrollbars — opt-in visible scrolling for panels users must
+   scroll by hand (the global eraser below hides everything else). The class
+   (0,1,0) beats the `*` eraser (0,0,0) per-property; `display: block` here
+   explicitly re-enables the webkit gutter the eraser turns off. */
 .slim-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  -ms-overflow-style: auto;
 }
 .slim-scroll::-webkit-scrollbar {
-  width: 5px;
+  display: block;
+  width: 8px;
+  height: 8px;
 }
 .slim-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 999px;
+}
+.slim-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.38);
 }
 .slim-scroll::-webkit-scrollbar-track {
   background: transparent;
