@@ -299,9 +299,18 @@ export interface ShelfItem {
 /** Per-axis scale factors — 1 = 100% of the imported size. */
 export type Scale3 = { x: number; y: number; z: number };
 
-/** Scale of an item, normalized — every consumer goes through this. */
+/** Scale of an item, normalized AND hardened — a present-but-broken scale
+ *  (0, negative, NaN from a corrupted write) heals to 1 instead of zeroing
+ *  the volume, so already-poisoned IndexedDB items self-repair on load. */
 export function normalizeScale(item: Pick<ShelfItem, 'scale'>): Scale3 {
-  return item.scale ?? { x: 1, y: 1, z: 1 };
+  const s = item.scale;
+  const fix = (v: unknown): number => {
+    const n = typeof v === 'number' ? v : Number(v);
+    // below 0.01 (1%) is unreachable through the UI (its floor IS 0.01) —
+    // anything smaller is a corrupted write and heals to 100%
+    return Number.isFinite(n) && n >= 0.01 && n <= 1000 ? n : 1;
+  };
+  return { x: fix(s?.x), y: fix(s?.y), z: fix(s?.z) };
 }
 
 /**

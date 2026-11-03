@@ -260,10 +260,13 @@ export default function PlateViewport({
       const fit = () => {
         const mine = propsRef.current.instances.filter((i) => i.plate === propsRef.current.activePlate);
         if (mine.length === 1 && modelRadiusRef.current) {
-          // single instance — frame it prominently, plate in context (scale-aware)
+          // single instance — frame it prominently, however small it is (a tiny
+          // import must become visible; clampR's R_MIN is the only floor)
           const s = normalizeScale(propsRef.current.item);
-          const r = modelRadiusRef.current * Math.max(s.x, s.y, s.z);
-          radius = clampR(Math.max((r / halfFov) * 1.5, plateFitDist * 0.34));
+          const so = propsRef.current.scaleOverride;
+          const m = Math.max(s.x, s.y, s.z, ...(so ? [so.x, so.y, so.z] : []));
+          const r = modelRadiusRef.current * m;
+          radius = clampR((r / halfFov) * 1.5);
           target.y = 24;
         } else {
           radius = clampR(plateFitDist);
@@ -469,6 +472,22 @@ export default function PlateViewport({
             z: Math.round((m as THREE.Mesh).position.z * 100) / 100,
             rotY: Math.round(((m as THREE.Mesh).rotation.y * 180) / Math.PI),
           })),
+        // Real RENDERED mesh size in mm (post scale+orient bake) — reads the
+        // geometry the instance meshes actually reference, so it proves the
+        // MODEL resized, not just the numbers
+        meshBBox: () => {
+          const first = instGroup.children[0] as THREE.Mesh | undefined;
+          const geo = first?.geometry ?? bakedRef.current?.geo;
+          if (!geo) return null;
+          geo.computeBoundingBox();
+          const bb = geo.boundingBox;
+          if (!bb) return null;
+          return {
+            x: Math.round((bb.max.x - bb.min.x) * 100) / 100,
+            y: Math.round((bb.max.y - bb.min.y) * 100) / 100,
+            z: Math.round((bb.max.z - bb.min.z) * 100) / 100,
+          };
+        },
       };
 
       return () => {
@@ -545,6 +564,9 @@ export default function PlateViewport({
         mesh.userData.instanceId = inst.id;
         group.add(mesh);
       }
+      // A rebake (orientation / scale change) produces a NEW shared geometry —
+      // existing meshes MUST swap onto it or they keep rendering the old size
+      if (mesh.geometry !== baseGeo) mesh.geometry = baseGeo;
       mesh.position.set(inst.x, 0, inst.z);
       mesh.rotation.y = (inst.rotY * Math.PI) / 180;
     }
@@ -569,7 +591,7 @@ export default function PlateViewport({
     }
 
     kickRef.current?.();
-  }, [instances, activePlate, selectedInstanceId, collision, colors, meshEpoch, item]);
+  }, [instances, activePlate, selectedInstanceId, collision, colors, meshEpoch, item, scaleOverride]);
 
   if (failed) {
     return (

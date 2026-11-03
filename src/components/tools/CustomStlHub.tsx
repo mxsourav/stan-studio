@@ -615,28 +615,19 @@ function ShelfWorkspace({
 
   // ── Scaling — live preview while typing, debounced persist + re-clamp on commit ──
   /** Commit a scale: instant live preview, then (debounced) persist the item
-   *  scale, re-clamp every instance to the new effective footprint and — only
-   *  if the re-clamped layout collides — re-pack. immediate=true skips the
+   *  scale, re-clamp every instance to the new effective footprint and —
+   *  ONLY when plates can consolidate or instances collide — re-pack (a ±1mm
+   *  stepper must never scramble a hand-arranged plate; a big shrink must
+   *  un-stick layouts packed at a larger scale). immediate=true skips the
    *  debounce (steppers, presets, sliders). */
   const commitScale = (next: Scale3, immediate = false) => {
     if (!selected) return;
     const clamped: Scale3 = {
-      x: Math.min(100, Math.max(0.01, next.x || 1)),
-      y: Math.min(100, Math.max(0.01, next.y || 1)),
-      z: Math.min(100, Math.max(0.01, next.z || 1)),
+      x: Math.min(1000, Math.max(0.01, next.x || 1)),
+      y: Math.min(1000, Math.max(0.01, next.y || 1)),
+      z: Math.min(1000, Math.max(0.01, next.z || 1)),
     };
     setLiveScale(clamped);
-    // Re-sync every draft field from the new factors (sibling axes follow on
-    // locked edits; keystroke debounce means the typed field is never clobbered
-    // mid-word — this runs 400ms after the last keystroke, or instantly for
-    // steppers/presets/slider).
-    const rawB = selected.geom?.bbox ?? { x: 10, y: 10, z: 10 };
-    setDimDraft({
-      x: String(Number((rawB.x * clamped.x).toFixed(2))),
-      y: String(Number((rawB.y * clamped.y).toFixed(2))),
-      z: String(Number((rawB.z * clamped.z).toFixed(2))),
-    });
-    setPctDraft(String(Math.round(Math.cbrt(clamped.x * clamped.y * clamped.z) * 100)));
     const item = selected;
     const curOrient = orient;
     const curLayout = layout;
@@ -645,14 +636,32 @@ function ShelfWorkspace({
       const scaledItem: ShelfItem = { ...item, scale: clamped, updatedAt: Date.now() };
       const bb = effectiveGeom(scaledItem).bbox;
       let nextLayout = curLayout.map((i) => ({ ...i, ...clampToPlate(i, bb, curOrient) }));
-      if (nextLayout.some((i) => instanceCollides(i, nextLayout, bb, curOrient))) {
-        nextLayout = repackAll(nextLayout, bb, curOrient);
-        const maxPlate = nextLayout.reduce((m, i) => Math.max(m, i.plate), 0);
-        if (curActivePlate > maxPlate) setActivePlate(maxPlate);
+      const collides = nextLayout.some((i) => instanceCollides(i, nextLayout, bb, curOrient));
+      const fp = flipFootprint(bb, curOrient);
+      const { maxPerPlate } = packInstancesOnPlates(fp.w, fp.d);
+      const minPlates = Math.max(1, Math.ceil(nextLayout.length / Math.max(1, maxPerPlate)));
+      const curPlates = new Set(nextLayout.map((i) => i.plate)).size;
+      if (collides || curPlates > minPlates) {
+        nextLayout = repackAll(nextLayout, bb, curOrient, true);
       }
+      const maxPlate = nextLayout.reduce((m, i) => Math.max(m, i.plate), 0);
+      if (curActivePlate > maxPlate) setActivePlate(maxPlate);
       setLayout(nextLayout);
       void saveShelfItem(scaledItem).then(reload);
       persistLayout(scaledItem, nextLayout);
+      // Resync drafts AFTER the commit — but never the field the user is in
+      // (resyncing a focused field clobbers mid-typing text)
+      const focused = document.activeElement?.getAttribute('aria-label') ?? '';
+      const rawB = item.geom?.bbox ?? { x: 10, y: 10, z: 10 };
+      const dimOf = (ax: 'x' | 'y' | 'z') => String(Number((rawB[ax] * clamped[ax]).toFixed(2)));
+      setDimDraft((d) => ({
+        x: focused === 'X size in mm' ? d.x : dimOf('x'),
+        y: focused === 'Y size in mm' ? d.y : dimOf('y'),
+        z: focused === 'Z size in mm' ? d.z : dimOf('z'),
+      }));
+      if (focused !== 'Scale percent') {
+        setPctDraft(String(Math.round(Math.cbrt(clamped.x * clamped.y * clamped.z) * 100)));
+      }
     };
     window.clearTimeout(scaleTimer.current);
     if (immediate) run();
@@ -668,10 +677,10 @@ function ShelfWorkspace({
     const raw = selected.geom.bbox;
     if (scaleLocked) {
       const cur = raw[axis] * scale[axis];
-      const r = Math.min(100, Math.max(0.001, target / Math.max(0.001, cur)));
+      const r = Math.min(1000, Math.max(0.001, target / Math.max(0.001, cur)));
       commitScale({ x: scale.x * r, y: scale.y * r, z: scale.z * r }, immediate);
     } else {
-      const f = Math.min(100, Math.max(0.01, target / Math.max(0.001, raw[axis])));
+      const f = Math.min(1000, Math.max(0.01, target / Math.max(0.001, raw[axis])));
       commitScale({ ...scale, [axis]: f }, immediate);
     }
   };
@@ -692,23 +701,28 @@ function ShelfWorkspace({
   };
   const stepPct = (delta: number) => applyPct(String(pctNow + delta), true);
 
-  /** Fit to Bed: uniform shrink so the model fits the printable volume
-   *  (244×244 plate area × 256mm Z height). No-op if it already fits. */
+  /** Fit to Bed: uniform scale so the model exactly fills the printable volume
+   *  (244×244 plate area × 256mm height) — grows tiny imports AND shrinks
+   *  oversized ones, then re-frames the camera so the result is visible. */
   const fitToBed = () => {
     if (!selected || !selected.geom) return;
     const raw = selected.geom.bbox;
     const cur = { x: raw.x * scale.x, y: raw.y * scale.y, z: raw.z * scale.z };
     const f = Math.min(
-      1,
       PLATE_USABLE / Math.max(0.001, cur.x),
       PLATE_USABLE / Math.max(0.001, cur.z),
       PLATE_SIZE / Math.max(0.001, cur.y),
     );
-    if (f >= 1) return;
+    if (!Number.isFinite(f) || f <= 0) return;
     commitScale({ x: scale.x * f, y: scale.y * f, z: scale.z * f }, true);
+    // re-frame after React commits the new scale (propsRef syncs post-render)
+    requestAnimationFrame(() => viewportApi.current?.fit());
   };
 
-  const resetScale = () => commitScale({ x: 1, y: 1, z: 1 }, true);
+  const resetScale = () => {
+    commitScale({ x: 1, y: 1, z: 1 }, true);
+    requestAnimationFrame(() => viewportApi.current?.fit());
+  };
 
   /** Live drag-move — instant state, debounced persistence. */
   const handleMove = useCallback(
@@ -833,39 +847,47 @@ function ShelfWorkspace({
     deleteInstance();
   };
 
-  /** Global re-pack helper: EVERY plate reflows into centered, collision-free
-   *  grids at the given effective footprint; overflow spills onto fresh plates;
-   *  per-instance yaw is preserved; empty plates compact away. */
-  const repackAll = (cur: PlateInstance[], bb: { x: number; y: number; z: number }, or: Orient): PlateInstance[] => {
+  /** Global re-pack helper: reflows instances into centered, collision-free
+   *  grids at the given effective footprint; overflow spills onto fresh
+   *  plates; per-instance yaw is preserved. flatten=false keeps the existing
+   *  plate structure (re-grid each plate in place); flatten=true ignores the
+   *  source plates and refills sequentially — the ONLY way to consolidate
+   *  onto fewer plates (e.g. after scaling down). */
+  const repackAll = (cur: PlateInstance[], bb: { x: number; y: number; z: number }, or: Orient, flatten = false): PlateInstance[] => {
     const fp = flipFootprint(bb, or);
     const { cols, rows, maxPerPlate } = packInstancesOnPlates(fp.w, fp.d);
     const cellW = fp.w + INSTANCE_GAP;
     const cellD = fp.d + INSTANCE_GAP;
     const slots = plateSlots(cols, rows, cellW, cellD);
-    const perPlate = new Map<number, PlateInstance[]>();
-    for (const i of cur) {
-      const arr = perPlate.get(i.plate) ?? [];
-      arr.push(i);
-      perPlate.set(i.plate, arr);
-    }
     const next: PlateInstance[] = [];
-    let plate = 0;
-    for (const [, arr] of [...perPlate.entries()].sort((a, b) => a[0] - b[0])) {
+    const fill = (arr: PlateInstance[]) => {
       for (let k = 0; k < arr.length; k += maxPerPlate) {
         const take = Math.min(maxPerPlate, arr.length - k);
         for (let j = 0; j < take; j++) {
-          next.push({ ...arr[k + j], plate, x: slots[j].x, z: slots[j].z });
+          next.push({ ...arr[k + j], plate: plateCounter, x: slots[j].x, z: slots[j].z });
         }
-        plate += 1;
+        plateCounter += 1;
       }
+    };
+    let plateCounter = 0;
+    if (flatten) {
+      fill(cur);
+    } else {
+      const perPlate = new Map<number, PlateInstance[]>();
+      for (const i of cur) {
+        const arr = perPlate.get(i.plate) ?? [];
+        arr.push(i);
+        perPlate.set(i.plate, arr);
+      }
+      for (const [, arr] of [...perPlate.entries()].sort((a, b) => a[0] - b[0])) fill(arr);
     }
     return next;
   };
 
-  /** Auto-Align: global re-pack of the current layout at the current footprint. */
+  /** Auto-Align: flatten + re-pack EVERYTHING into minimal, centered grids. */
   const autoAlign = () => {
     if (!selected || !bbox) return;
-    const next = repackAll(layout, bbox, orient);
+    const next = repackAll(layout, bbox, orient, true);
     setLayout(next);
     persistLayout(selected, next);
     const maxPlate = next.reduce((m, i) => Math.max(m, i.plate), 0);
@@ -876,7 +898,7 @@ function ShelfWorkspace({
    *  with the NEW orientation's footprint. Every instance yaw is preserved. */
   const applyFlipToAll = (nextOrient: Orient) => {
     if (!selected || !bbox) return;
-    const next = repackAll(layout, bbox, nextOrient);
+    const next = repackAll(layout, bbox, nextOrient, true);
     setLayout(next);
     persistLayout(selected, next, { orient: nextOrient });
     switchPlate(0);
