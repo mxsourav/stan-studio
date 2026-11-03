@@ -36,7 +36,7 @@ export const COLOR_MODES: ColorMode[] = [
 
 export const PRICE_PER_G: [number, number] = [4.0, 4.5];
 export const FREE_DELIVERY_MIN = 999;
-export const MAX_FILE_MB = 20;
+export const MAX_FILE_MB = 30;
 export const WA_NUMBER = '918509986008';
 
 // ─── Filament colors (curated maker-studio swatches) ─────────────────────────
@@ -67,8 +67,8 @@ export function filamentColor(id: string | null | undefined, fallbackId = 'polar
 // ─── Build-plate layout engine (multi-plate packing) ─────────────────────────
 
 export const PLATE_SIZE = 256; // A1 build plate edge, mm
-export const PLATE_USABLE = 250; // printable area inside the clips, mm
-export const INSTANCE_GAP = 4; // clearance between instances, mm
+export const PLATE_USABLE = 244; // safe printable area inside the clips, mm
+export const INSTANCE_GAP = 6; // mandatory brim/nozzle clearance, mm
 export const EXTRA_PLATE_FEE = 35; // ₹ per additional build plate
 
 /** One printable instance of a shelf item, placed on a plate. */
@@ -77,19 +77,22 @@ export interface PlateInstance {
   plate: number; // 0-based plate index
   x: number; // center X on the plate (mm, plate-centered coords)
   z: number; // center Z on the plate
-  rotY: number; // yaw in degrees 0–360
-  flip: 'none' | 'x' | 'y'; // Flip X 90° / Flip Y 90° orientation
+  rotY: number; // individual yaw in degrees 0–360
 }
 
-/** Grounded footprint (w × d) and height for a flip of a bbox — mm. */
-export function flipFootprint(bbox: { x: number; y: number; z: number }, flip: PlateInstance['flip']): { w: number; d: number; h: number } {
-  if (flip === 'x') return { w: bbox.x, d: bbox.y, h: bbox.z }; // rotX 90°: depth becomes height
-  if (flip === 'y') return { w: bbox.z, d: bbox.x, h: bbox.y }; // rotY 90°: width/depth swap
+/** Item-level orientation: Flip X 90° / Flip Y 90° applied to ALL instances. */
+export type Orient = 'none' | 'x' | 'y';
+
+/** Grounded footprint (w × d) and height for an orientation of a bbox — mm. */
+export function flipFootprint(bbox: { x: number; y: number; z: number }, orient: Orient | undefined): { w: number; d: number; h: number } {
+  const o = orient ?? 'none';
+  if (o === 'x') return { w: bbox.x, d: bbox.y, h: bbox.z }; // rotX 90°: depth becomes height
+  if (o === 'y') return { w: bbox.z, d: bbox.x, h: bbox.y }; // rotY 90°: width/depth swap
   return { w: bbox.x, d: bbox.z, h: bbox.y };
 }
 
 /** Auto-orient: the flip that puts the largest face on the plate (min height). */
-export function layFlatFlip(bbox: { x: number; y: number; z: number }): PlateInstance['flip'] {
+export function layFlatFlip(bbox: { x: number; y: number; z: number }): Orient {
   return bbox.z < bbox.y ? 'x' : 'none';
 }
 
@@ -105,24 +108,29 @@ export interface PackGrid {
   cols: number;
   rows: number;
   maxPerPlate: number;
+  swapped: boolean; // winning grid uses the 90° orientation of the footprint
 }
 
 /**
- * How many (footW + gap × footD + gap) cells fit on one 250×250 mm usable
- * build area. Oversized parts clamp to 1 per plate.
+ * How many (foot + 6mm gap) cells fit on one 244×244 mm usable build area.
+ * Tests BOTH grid orientations (0° w×d and 90° d×w) and picks the denser one;
+ * ties keep 0°. Oversized parts clamp to 1 per plate.
  */
 export function packInstancesOnPlates(footW: number, footD: number, gap = INSTANCE_GAP): PackGrid {
   const cellW = footW + gap;
   const cellD = footD + gap;
-  const cols = Math.max(1, Math.floor(PLATE_USABLE / cellW));
-  const rows = Math.max(1, Math.floor(PLATE_USABLE / cellD));
-  return { cols, rows, maxPerPlate: cols * rows };
+  const colsA = Math.max(1, Math.floor(PLATE_USABLE / cellW));
+  const rowsA = Math.max(1, Math.floor(PLATE_USABLE / cellD));
+  const nA = colsA * rowsA;
+  const colsB = Math.max(1, Math.floor(PLATE_USABLE / cellD));
+  const rowsB = Math.max(1, Math.floor(PLATE_USABLE / cellW));
+  const nB = colsB * rowsB;
+  if (nB > nA) return { cols: colsB, rows: rowsB, maxPerPlate: nB, swapped: true };
+  return { cols: colsA, rows: rowsA, maxPerPlate: nA, swapped: false };
 }
 
 /** Centered slot grid for one plate (mm coords, plate-centered) at real cell size. */
-export function plateSlots(cols: number, rows: number, footW: number, footD: number, gap = INSTANCE_GAP): Array<{ x: number; z: number }> {
-  const cellW = footW + gap;
-  const cellD = footD + gap;
+export function plateSlots(cols: number, rows: number, cellW: number, cellD: number): Array<{ x: number; z: number }> {
   const slots: Array<{ x: number; z: number }> = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -136,31 +144,37 @@ export function plateSlots(cols: number, rows: number, footW: number, footD: num
 }
 
 /** Full auto layout: qty instances packed plate-by-plate, centered grids. */
-export function buildAutoLayout(qty: number, footW: number, footD: number, flip: PlateInstance['flip'] = 'none'): PlateInstance[] {
+export function buildAutoLayout(qty: number, footW: number, footD: number): PlateInstance[] {
   const { cols, rows, maxPerPlate } = packInstancesOnPlates(footW, footD);
-  const slots = plateSlots(cols, rows, footW, footD);
+  const cellW = footW + INSTANCE_GAP;
+  const cellD = footD + INSTANCE_GAP;
+  const slots = plateSlots(cols, rows, cellW, cellD);
   const out: PlateInstance[] = [];
   for (let i = 0; i < qty; i++) {
-    const plate = Math.floor(i / maxPerPlate);
-    const slot = slots[i % maxPerPlate];
-    out.push({ id: uid(), plate, x: slot.x, z: slot.z, rotY: 0, flip });
+    out.push({
+      id: uid(),
+      plate: Math.floor(i / maxPerPlate),
+      x: slots[i % maxPerPlate].x,
+      z: slots[i % maxPerPlate].z,
+      rotY: 0,
+    });
   }
   return out;
 }
 
-/** Collision test between one instance and the others on its plate (2D AABB + 2 mm clearance). */
+/** Collision test between one instance and the others on its plate (2D AABB + clearance). */
 export function instanceCollides(
   inst: PlateInstance,
   others: PlateInstance[],
   bbox: { x: number; y: number; z: number },
+  orient: Orient | undefined,
   clearance = 2,
 ): boolean {
-  const fp = flipFootprint(bbox, inst.flip);
+  const fp = flipFootprint(bbox, orient);
   const a = rotatedFootprint(fp.w, fp.d, inst.rotY);
   for (const o of others) {
     if (o.plate !== inst.plate || o.id === inst.id) continue;
-    const ofp = flipFootprint(bbox, o.flip);
-    const b = rotatedFootprint(ofp.w, ofp.d, o.rotY);
+    const b = rotatedFootprint(fp.w, fp.d, o.rotY);
     const dx = Math.abs(inst.x - o.x);
     const dz = Math.abs(inst.z - o.z);
     if (dx < (a.w + b.w) / 2 + clearance && dz < (a.d + b.d) / 2 + clearance) return true;
@@ -169,8 +183,12 @@ export function instanceCollides(
 }
 
 /** Clamp an instance position fully inside the plate bounds for its footprint. */
-export function clampToPlate(inst: PlateInstance, bbox: { x: number; y: number; z: number }): { x: number; z: number } {
-  const fp = flipFootprint(bbox, inst.flip);
+export function clampToPlate(
+  inst: PlateInstance,
+  bbox: { x: number; y: number; z: number },
+  orient: Orient | undefined,
+): { x: number; z: number } {
+  const fp = flipFootprint(bbox, orient);
   const a = rotatedFootprint(fp.w, fp.d, inst.rotY);
   const hw = Math.min(a.w / 2, PLATE_SIZE / 2);
   const hd = Math.min(a.d / 2, PLATE_SIZE / 2);
@@ -269,6 +287,7 @@ export interface ShelfItem {
   geom: ShelfGeom | null; // library items carry volumeCm3 via geom.volumeMm3
   thumb: string; // PNG dataURL ('' → house-glyph fallback)
   params: ShelfParams;
+  orient?: Orient; // item-level orientation — applies to ALL instances (default: lay-flat)
   placement?: PlateInstance[]; // per-instance plate layout (persisted)
   history: Array<{ at: number; material: string; infill: number; colorMode: string; qty: number }>;
   lastTicketId?: string;

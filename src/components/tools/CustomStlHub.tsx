@@ -10,6 +10,7 @@ import {
   EXTRA_PLATE_FEE,
   FILAMENT_COLORS,
   INFILL_PRESETS,
+  INSTANCE_GAP,
   LIBRARY,
   MATERIALS,
   MAX_FILE_MB,
@@ -33,7 +34,6 @@ import {
   plateSlots,
   putShelfFile,
   removeShelfItem,
-  rotatedFootprint,
   saveShelfItem,
   sourcingWhatsAppUrl,
   storageDegraded,
@@ -41,6 +41,7 @@ import {
   type Estimate,
   type LibraryItem,
   type LogEntry,
+  type Orient,
   type PlateInstance,
   type ShelfItem,
   type SourcingRequest,
@@ -443,6 +444,7 @@ function ShelfWorkspace({
           fileName: file.name,
           geom: { triangles: mesh.triangles, bbox: mesh.bbox, volumeMm3: mesh.volumeMm3, surfaceMm2: mesh.surfaceMm2 },
           thumb,
+          orient: layFlatFlip(mesh.bbox), // new uploads land lay-flat (largest face down)
           params: { material: 'PLA', infill: 15, colorMode: 'single', qty: 1 },
           history: [],
         };
@@ -499,6 +501,8 @@ function ShelfWorkspace({
   const selectedInstance = layout.find((i) => i.id === selectedInstanceId) ?? null;
 
   // Layout init on selection change — persisted placements win, else auto-pack.
+  // Items saved BEFORE item-level orientation get a one-time re-pack with the
+  // true lay-flat footprint (fixes the buggy 250mm-era packer) and persist it.
   // Params scroll resets to the very top (anti-clipping: MATERIAL/INFILL first).
   useEffect(() => {
     if (!selected) {
@@ -506,22 +510,34 @@ function ShelfWorkspace({
       setActivePlate(0);
       return;
     }
-    const fp = flipFootprint(selected.geom?.bbox ?? { x: 10, y: 10, z: 10 }, 'none');
-    const next = selected.placement?.length ? selected.placement : buildAutoLayout(selected.params.qty, fp.w, fp.d);
+    const bb = selected.geom?.bbox ?? { x: 10, y: 10, z: 10 };
+    const orient: Orient = selected.orient ?? layFlatFlip(bb);
+    const fp = flipFootprint(bb, orient);
+    let next: PlateInstance[];
+    if (selected.orient === undefined) {
+      next = buildAutoLayout(selected.placement?.length || selected.params.qty, fp.w, fp.d);
+      void saveShelfItem({ ...selected, orient, placement: next, updatedAt: Date.now() }).then(reload);
+    } else {
+      next = selected.placement?.length
+        ? selected.placement.map((i) => ({ ...i, ...clampToPlate(i, bb, orient) }))
+        : buildAutoLayout(selected.params.qty, fp.w, fp.d);
+    }
     setLayout(next);
     setActivePlate(0);
+    histRef.current = { stack: [next], idx: 0 };
     setSelectedInstanceId((cur) => (cur && next.some((i) => i.id === cur) ? cur : (next[0]?.id ?? null)));
-    if (paramsScrollRef.current) paramsScrollRef.current.scrollTop = 0;
     if (paramsScrollRef.current) paramsScrollRef.current.scrollTop = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id]);
 
   const bbox = selected?.geom?.bbox ?? null;
+  // Item-level orientation — ALL instances share it (viewport derives the same way)
+  const orient: Orient = selected?.orient ?? (bbox ? layFlatFlip(bbox) : 'none');
   const plateIndices = [...new Set(layout.map((i) => i.plate))].sort((a, b) => a - b);
   const numPlates = plateIndices.length || 1;
   const plateCounts = plateIndices.map((p) => layout.filter((i) => i.plate === p).length);
-  const collision = selectedInstance && bbox ? instanceCollides(selectedInstance, layout, bbox) : false;
-  const selFp = bbox ? flipFootprint(bbox, selectedInstance?.flip ?? 'none') : null;
+  const collision = selectedInstance && bbox ? instanceCollides(selectedInstance, layout, bbox, orient) : false;
+  const selFp = bbox ? flipFootprint(bbox, orient) : null;
   const packGrid = bbox && selFp ? packInstancesOnPlates(selFp.w, selFp.d) : null;
   const est = selected
     ? estimatePrint({
@@ -532,18 +548,51 @@ function ShelfWorkspace({
       })
     : null;
 
-  /** Persist the layout + synced qty WITHOUT a remix-history entry. */
+  // ── Undo/Redo — layout snapshots on every COMMITTED change (cap 50) ──
+  const histRef = useRef<{ stack: PlateInstance[][]; idx: number }>({ stack: [[]], idx: 0 });
+  const pushHistory = (snap: PlateInstance[]) => {
+    const h = histRef.current;
+    const stack = h.stack.slice(0, h.idx + 1);
+    stack.push(snap);
+    if (stack.length > 50) stack.shift();
+    histRef.current = { stack, idx: stack.length - 1 };
+  };
+  const canUndo = histRef.current.idx > 0;
+  const canRedo = histRef.current.idx < histRef.current.stack.length - 1;
+
+  /** Persist the layout + synced qty WITHOUT a remix-history entry.
+   *  silent=true (undo/redo) replays without re-pushing the history stack. */
   const persistLayout = useCallback(
-    (item: ShelfItem, next: PlateInstance[], params?: Partial<ShelfItem['params']>) => {
+    (item: ShelfItem, next: PlateInstance[], opts?: { params?: Partial<ShelfItem['params']>; orient?: Orient; silent?: boolean }) => {
       void saveShelfItem({
         ...item,
         placement: next,
-        params: { ...item.params, ...params, qty: next.length },
+        ...(opts?.orient !== undefined ? { orient: opts.orient } : {}),
+        params: { ...item.params, ...opts?.params, qty: next.length },
         updatedAt: Date.now(),
       }).then(reload);
+      if (!opts?.silent) pushHistory(next);
     },
     [reload],
   );
+
+  const undo = () => {
+    const h = histRef.current;
+    if (h.idx <= 0 || !selected) return;
+    const snap = h.stack[h.idx - 1];
+    histRef.current = { stack: h.stack, idx: h.idx - 1 };
+    setLayout(snap);
+    persistLayout(selected, snap, { silent: true });
+  };
+
+  const redo = () => {
+    const h = histRef.current;
+    if (h.idx >= h.stack.length - 1 || !selected) return;
+    const snap = h.stack[h.idx + 1];
+    histRef.current = { stack: h.stack, idx: h.idx + 1 };
+    setLayout(snap);
+    persistLayout(selected, snap, { silent: true });
+  };
 
   /** Live drag-move — instant state, debounced persistence. */
   const handleMove = useCallback(
@@ -576,17 +625,20 @@ function ShelfWorkspace({
   /** Grow/shrink the layout to a target qty, filling free slots, opening plates. */
   const syncLayoutToQty = useCallback((item: ShelfItem, target: number, cur: PlateInstance[]): PlateInstance[] => {
     const bb = item.geom?.bbox ?? { x: 10, y: 10, z: 10 };
+    const orient: Orient = item.orient ?? layFlatFlip(bb);
+    const fp = flipFootprint(bb, orient);
     if (target <= cur.length) return cur.slice(0, Math.max(1, target));
-    const fp = flipFootprint(bb, 'none');
     const { cols, rows } = packInstancesOnPlates(fp.w, fp.d);
-    const slots = plateSlots(cols, rows, fp.w, fp.d);
+    const cellW = fp.w + INSTANCE_GAP;
+    const cellD = fp.d + INSTANCE_GAP;
+    const slots = plateSlots(cols, rows, cellW, cellD);
     const next = [...cur];
     while (next.length < target) {
       let pushed = false;
       for (let p = 0; p < 60 && !pushed; p++) {
         for (let s = 0; s < slots.length && !pushed; s++) {
-          const cand: PlateInstance = { id: uid(), plate: p, x: slots[s].x, z: slots[s].z, rotY: 0, flip: 'none' };
-          if (!instanceCollides(cand, next, bb)) {
+          const cand: PlateInstance = { id: uid(), plate: p, x: slots[s].x, z: slots[s].z, rotY: 0 };
+          if (!instanceCollides(cand, next, bb, orient)) {
             next.push(cand);
             pushed = true;
           }
@@ -603,7 +655,7 @@ function ShelfWorkspace({
     if (next.qty !== undefined && next.qty !== layout.length) {
       const nextLayout = syncLayoutToQty(selected, next.qty, layout);
       setLayout(nextLayout);
-      persistLayout(selected, nextLayout, params);
+      persistLayout(selected, nextLayout, { params });
       return;
     }
     void patchItem(selected, {}, params).then(() => reload());
@@ -632,8 +684,8 @@ function ShelfWorkspace({
   const pasteInstance = () => {
     if (!selected || !bbox || !clipboard) return;
     const cand: PlateInstance = { id: uid(), ...clipboard };
-    const safe = { ...cand, ...clampToPlate(cand, bbox) };
-    if (!instanceCollides(safe, layout, bbox)) {
+    const safe = { ...cand, ...clampToPlate(cand, bbox, orient) };
+    if (!instanceCollides(safe, layout, bbox, orient)) {
       const next = [...layout, safe];
       setLayout(next);
       persistLayout(selected, next);
@@ -665,9 +717,16 @@ function ShelfWorkspace({
     deleteInstance();
   };
 
-  /** Re-pack every plate's instances into centered, collision-free grids. */
+  /** Global re-pack: EVERY plate reflows into centered, collision-free grids at
+   *  the true item footprint; overflow spills onto fresh plates. Per-instance
+   *  yaw is preserved; empty plates compact away. Clears any collision state. */
   const autoAlign = () => {
     if (!selected || !bbox) return;
+    const fp = flipFootprint(bbox, orient);
+    const { cols, rows, maxPerPlate } = packInstancesOnPlates(fp.w, fp.d);
+    const cellW = fp.w + INSTANCE_GAP;
+    const cellD = fp.d + INSTANCE_GAP;
+    const slots = plateSlots(cols, rows, cellW, cellD);
     const perPlate = new Map<number, PlateInstance[]>();
     for (const i of layout) {
       const arr = perPlate.get(i.plate) ?? [];
@@ -675,49 +734,53 @@ function ShelfWorkspace({
       perPlate.set(i.plate, arr);
     }
     const next: PlateInstance[] = [];
-    for (const [p, arr] of [...perPlate.entries()].sort((a, b) => a[0] - b[0])) {
-      const cells = arr.map((i) => {
-        const fp = flipFootprint(bbox, i.flip);
-        const r = rotatedFootprint(fp.w, fp.d, i.rotY);
-        return { w: r.w, d: r.d };
-      });
-      const cw = Math.max(...cells.map((c) => c.w)) + 2;
-      const cd = Math.max(...cells.map((c) => c.d)) + 2;
-      const cols = Math.max(1, Math.floor(250 / cw));
-      const rows = Math.max(1, Math.ceil(arr.length / cols));
-      for (let k = 0; k < arr.length; k++) {
-        next.push({
-          ...arr[k],
-          plate: p,
-          x: ((k % cols) - (cols - 1) / 2) * cw,
-          z: (Math.floor(k / cols) - (rows - 1) / 2) * cd,
-        });
+    let plate = 0;
+    for (const [, arr] of [...perPlate.entries()].sort((a, b) => a[0] - b[0])) {
+      for (let k = 0; k < arr.length; k += maxPerPlate) {
+        const take = Math.min(maxPerPlate, arr.length - k);
+        for (let j = 0; j < take; j++) {
+          next.push({ ...arr[k + j], plate, x: slots[j].x, z: slots[j].z });
+        }
+        plate += 1;
       }
     }
     setLayout(next);
     persistLayout(selected, next);
+    if (activePlate >= plate) switchPlate(Math.max(0, plate - 1));
   };
 
-  const applyFlipToSelected = (flip: PlateInstance['flip']) => {
-    if (!selected || !bbox || !selectedInstance) return;
-    const updated = { ...selectedInstance, flip };
-    const safe = { ...updated, ...clampToPlate(updated, bbox) };
-    setLayout((cur) => cur.map((i) => (i.id === safe.id ? safe : i)));
-    persistLayout(selected, layout.map((i) => (i.id === safe.id ? safe : i)));
+  /** Orientation is ITEM-level: set the shared orient, then re-pack ALL plates
+   *  with the new uniform footprint. Every instance yaw is preserved. */
+  const applyFlipToAll = (nextOrient: Orient) => {
+    if (!selected || !bbox) return;
+    const fp = flipFootprint(bbox, nextOrient);
+    const { cols, rows, maxPerPlate } = packInstancesOnPlates(fp.w, fp.d);
+    const cellW = fp.w + INSTANCE_GAP;
+    const cellD = fp.d + INSTANCE_GAP;
+    const slots = plateSlots(cols, rows, cellW, cellD);
+    const repacked: PlateInstance[] = layout.map((i, k) => ({
+      ...i,
+      plate: Math.floor(k / maxPerPlate),
+      x: slots[k % maxPerPlate].x,
+      z: slots[k % maxPerPlate].z,
+    }));
+    setLayout(repacked);
+    persistLayout(selected, repacked, { orient: nextOrient });
+    switchPlate(0);
   };
 
   const rotateSelectedBy = (delta: number) => {
     if (!selected || !bbox || !selectedInstance) return;
     const rotY = ((Math.round(selectedInstance.rotY + delta) % 360) + 360) % 360;
     const updated = { ...selectedInstance, rotY };
-    const safe = { ...updated, ...clampToPlate(updated, bbox) };
+    const safe = { ...updated, ...clampToPlate(updated, bbox, orient) };
     setLayout((cur) => cur.map((i) => (i.id === safe.id ? safe : i)));
     persistLayout(selected, layout.map((i) => (i.id === safe.id ? safe : i)));
   };
 
   const layFlat = () => {
     if (!bbox) return;
-    applyFlipToSelected(layFlatFlip(bbox));
+    applyFlipToAll(layFlatFlip(bbox));
   };
 
   // Overflow popup — fires only when an ADDITIONAL build plate becomes necessary
@@ -740,7 +803,14 @@ function ShelfWorkspace({
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
     const meta = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
-    if (meta && k === 'c') copyInstance();
+    if (meta && k === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    } else if (meta && k === 'y') {
+      e.preventDefault();
+      redo();
+    } else if (meta && k === 'c') copyInstance();
     else if (meta && k === 'v') pasteInstance();
     else if (meta && k === 'x') cutInstance();
     else if (meta && k === 'd') {
@@ -898,7 +968,7 @@ function ShelfWorkspace({
                 )}
               </div>
 
-              {/* Orientation — flip / lay flat / yaw */}
+              {/* Orientation — item-level flip / lay flat / per-instance yaw */}
               {selectedInstance && bbox && (
                 <div>
                   <SectionLabel>Orientation</SectionLabel>
@@ -906,10 +976,10 @@ function ShelfWorkspace({
                     <Chip active={false} onClick={layFlat}>
                       Lay Flat
                     </Chip>
-                    <Chip active={selectedInstance.flip === 'x'} onClick={() => applyFlipToSelected('x')}>
+                    <Chip active={orient === 'x'} onClick={() => applyFlipToAll('x')}>
                       Flip X 90°
                     </Chip>
-                    <Chip active={selectedInstance.flip === 'y'} onClick={() => applyFlipToSelected('y')}>
+                    <Chip active={orient === 'y'} onClick={() => applyFlipToAll('y')}>
                       Flip Y 90°
                     </Chip>
                   </div>
@@ -1029,6 +1099,25 @@ function ShelfWorkspace({
               <span aria-hidden className="mx-0.5 w-px shrink-0 bg-white/15" />
               {(
                 [
+                  ['Undo', undo, !canUndo],
+                  ['Redo', redo, !canRedo],
+                ] as Array<[string, () => void, boolean]>
+              ).map(([label, fn, disabled]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={fn}
+                  disabled={disabled}
+                  className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider transition ${
+                    disabled ? 'cursor-not-allowed text-zinc-600' : 'text-zinc-300 hover:bg-white/10 hover:text-white active:scale-[0.99]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              <span aria-hidden className="mx-0.5 w-px shrink-0 bg-white/15" />
+              {(
+                [
                   ['Lay Flat (F)', layFlat],
                   ['Clone (D)', cloneInstance],
                   ['Copy', copyInstance],
@@ -1068,8 +1157,8 @@ function ShelfWorkspace({
                 {` · ${(selected.geom.volumeMm3 / 1000).toFixed(1)} cm³`}
               </div>
             )}
-            {/* HUD — view controls (top-right) */}
-            <div className="absolute right-3 top-3 flex gap-1.5">
+            {/* HUD — view controls (bottom-right, clear of the toolbar) */}
+            <div className="absolute bottom-3 right-3 flex gap-1.5">
               <button
                 type="button"
                 onClick={() => viewportApi.current?.fit()}
@@ -1165,6 +1254,7 @@ function libToShelfItem(lib: LibraryItem): ShelfItem {
     libId: lib.id,
     geom: { triangles: 0, bbox: lib.dims, volumeMm3: lib.volumeCm3 * 1000, surfaceMm2: 0 },
     thumb: '',
+    orient: layFlatFlip(lib.dims), // largest library face on the plate
     params: { material: lib.recMaterial, infill: lib.recInfill, colorMode: 'single', qty: 1 },
     history: [],
   };

@@ -7,8 +7,10 @@ import {
   filamentColor,
   flipFootprint,
   getShelfFile,
+  layFlatFlip,
   PLATE_SIZE,
   rotatedFootprint,
+  type Orient,
   type PlateInstance,
   type ShelfItem,
 } from '../../lib/stlHub';
@@ -92,7 +94,7 @@ function applyFilamentColors(geo: THREE.BufferGeometry, primary: string, seconda
 }
 
 /** Bake a flip orientation into a geometry clone: bottom at y=0, centered XZ. */
-function bakeFlip(base: THREE.BufferGeometry, flip: PlateInstance['flip']): THREE.BufferGeometry {
+function bakeFlip(base: THREE.BufferGeometry, flip: Orient): THREE.BufferGeometry {
   const g = base.clone();
   if (flip === 'x') g.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
   if (flip === 'y') g.applyMatrix4(new THREE.Matrix4().makeRotationY(Math.PI / 2));
@@ -136,7 +138,9 @@ export default function PlateViewport({
 
   // Mutable bridges between the stable scene and the React-driven state
   const sceneRef = useRef<THREE.Group | null>(null); // instance group
-  const geoCacheRef = useRef<Map<string, THREE.BufferGeometry> | null>(null);
+  const rawGeoRef = useRef<THREE.BufferGeometry | null>(null); // normalized, bottom-seated, centered
+  const bakedRef = useRef<{ orient: Orient; geo: THREE.BufferGeometry } | null>(null);
+  const orientRef = useRef<Orient>('none');
   const materialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const selBoxRef = useRef<THREE.LineSegments | null>(null);
   const dragModeRef = useRef<'none' | 'orbit' | 'move'>('none');
@@ -213,8 +217,9 @@ export default function PlateViewport({
 
       const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45, metalness: 0.03, vertexColors: true });
       materialRef.current = material;
-      const geoCache = new Map<string, THREE.BufferGeometry>();
-      geoCacheRef.current = geoCache;
+
+      // Item-level orientation — ALL instances share one baked geometry
+      const orient = item.orient ?? (item.geom ? layFlatFlip(item.geom.bbox) : 'none');
 
       // Selection footprint box (unit rect in XZ, scaled per instance)
       const selBox = new THREE.LineSegments(
@@ -290,13 +295,11 @@ export default function PlateViewport({
       };
 
       const cached = sessionMeshCache.get(item.id);
+      orientRef.current = orient;
       if (cached && cached.count > 0) {
         const base = buildBase(cached.tris, cached.count);
         if (base) {
-          geoCache.set('none', bakeFlip(base, 'none'));
-          geoCache.set('x', bakeFlip(base, 'x'));
-          geoCache.set('y', bakeFlip(base, 'y'));
-          base.dispose();
+          rawGeoRef.current = base; // kept raw — orientation bakes lazily in the sync effect
           setMeshEpoch((e) => e + 1);
         }
       } else if (item.source === 'upload' && item.fileName) {
@@ -310,10 +313,7 @@ export default function PlateViewport({
             sessionMeshCache.set(item.id, { tris: parsed.tris, count: parsed.count });
             const base = buildBase(parsed.tris, parsed.count);
             if (base && !disposed) {
-              geoCache.set('none', bakeFlip(base, 'none'));
-              geoCache.set('x', bakeFlip(base, 'x'));
-              geoCache.set('y', bakeFlip(base, 'y'));
-              base.dispose();
+              rawGeoRef.current = base;
               setMeshEpoch((e) => e + 1);
             }
           } catch {
@@ -381,6 +381,7 @@ export default function PlateViewport({
             const next = clampToPlate(
               { ...inst, x: p.x + grabOffsetRef.current.x, z: p.z + grabOffsetRef.current.z },
               propsRef.current.item.geom?.bbox ?? { x: 10, y: 10, z: 10 },
+              orientRef.current,
             );
             cbRef.current.onMoveInstance(inst.id, next.x, next.z);
           }
@@ -451,6 +452,12 @@ export default function PlateViewport({
           hasModel: Boolean(modelRadiusRef.current),
           instances: instGroup.children.length,
         }),
+        instancesDetailed: () =>
+          instGroup.children.map((m) => ({
+            x: Math.round((m as THREE.Mesh).position.x * 100) / 100,
+            z: Math.round((m as THREE.Mesh).position.z * 100) / 100,
+            rotY: Math.round(((m as THREE.Mesh).rotation.y * 180) / Math.PI),
+          })),
       };
 
       return () => {
@@ -469,11 +476,14 @@ export default function PlateViewport({
           if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
           else mat?.dispose();
         });
+        bakedRef.current?.geo.dispose();
+        rawGeoRef.current?.dispose();
         plateTex.dispose();
         renderer.dispose();
         el.remove();
         sceneRef.current = null;
-        geoCacheRef.current = null;
+        rawGeoRef.current = null;
+        bakedRef.current = null;
         materialRef.current = null;
         selBoxRef.current = null;
         delete (window as unknown as Record<string, unknown>).__stanPlateView;
@@ -486,15 +496,26 @@ export default function PlateViewport({
   // ── React → scene sync: instances, selection box, filament colors ──
   useEffect(() => {
     const group = sceneRef.current;
-    const geoCache = geoCacheRef.current;
     const material = materialRef.current;
     const selBox = selBoxRef.current;
-    if (!group || !geoCache || !material || !selBox) return;
+    if (!group || !material || !selBox) return;
 
-    // Filament colors onto every baked geometry
+    // Lazy (re)bake — orientation is item-level; a change re-bakes the shared geometry
+    const wantOrient: Orient = item.orient ?? (item.geom ? layFlatFlip(item.geom.bbox) : 'none');
+    orientRef.current = wantOrient;
+    let baked = bakedRef.current;
+    if (rawGeoRef.current && (!baked || baked.orient !== wantOrient)) {
+      baked?.geo.dispose();
+      baked = { orient: wantOrient, geo: bakeFlip(rawGeoRef.current, wantOrient) };
+      bakedRef.current = baked;
+    }
+    if (!baked) return;
+    const baseGeo = baked.geo;
+
+    // Filament colors onto the shared baked geometry
     const prim = colors.primary || filamentColor(item.params.primaryColor).hex;
     const sec = colors.secondary;
-    for (const g of geoCache.values()) applyFilamentColors(g, prim, sec);
+    applyFilamentColors(baseGeo, prim, sec);
 
     // Sync instance meshes for the ACTIVE plate
     const keep = new Set<string>();
@@ -502,15 +523,11 @@ export default function PlateViewport({
       if (inst.plate !== activePlate) continue;
       keep.add(inst.id);
       let mesh = group.children.find((c) => (c as THREE.Mesh).userData?.instanceId === inst.id) as THREE.Mesh | undefined;
-      const geo = geoCache.get(inst.flip) ?? geoCache.get('none');
-      if (!geo) continue;
       if (!mesh) {
-        mesh = new THREE.Mesh(geo, material);
+        mesh = new THREE.Mesh(baseGeo, material);
         mesh.castShadow = true;
         mesh.userData.instanceId = inst.id;
         group.add(mesh);
-      } else if (mesh.geometry !== geo) {
-        mesh.geometry = geo;
       }
       mesh.position.set(inst.x, 0, inst.z);
       mesh.rotation.y = (inst.rotY * Math.PI) / 180;
@@ -523,7 +540,8 @@ export default function PlateViewport({
     // Selection footprint box
     const sel = instances.find((i) => i.id === selectedInstanceId && i.plate === activePlate);
     if (sel && item.geom) {
-      const fp = flipFootprint(item.geom.bbox, sel.flip);
+      const bbox = item.geom.bbox;
+      const fp = flipFootprint(bbox, orientRef.current);
       const a = rotatedFootprint(fp.w, fp.d, sel.rotY);
       selBox.scale.set(Math.max(a.w + 3, 6), 1, Math.max(a.d + 3, 6));
       selBox.position.set(sel.x, 3, sel.z);
