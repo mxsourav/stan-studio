@@ -7,22 +7,33 @@ import {
   ASSEMBLY_MODES,
   COLOR_MODES,
   DELIVERY_MODES,
+  EXTRA_PLATE_FEE,
+  FILAMENT_COLORS,
   INFILL_PRESETS,
   LIBRARY,
   MATERIALS,
   MAX_FILE_MB,
   SOURCING_CATEGORIES,
   addLogEntry,
+  buildAutoLayout,
+  clampToPlate,
   colorMode,
   commissionWhatsAppUrl,
   estimatePrint,
+  filamentColor,
+  flipFootprint,
   generateHubTicketId,
   getShelfFile,
+  instanceCollides,
+  layFlatFlip,
   libraryGrams,
   listLog,
   listShelf,
+  packInstancesOnPlates,
+  plateSlots,
   putShelfFile,
   removeShelfItem,
+  rotatedFootprint,
   saveShelfItem,
   sourcingWhatsAppUrl,
   storageDegraded,
@@ -30,6 +41,7 @@ import {
   type Estimate,
   type LibraryItem,
   type LogEntry,
+  type PlateInstance,
   type ShelfItem,
   type SourcingRequest,
 } from '../../lib/stlHub';
@@ -186,7 +198,14 @@ function useCommission(refresh: () => void): CommissionFn {
             item_name: item.name,
             file_name: item.fileName ?? null,
             specs: item.geom ? (item.geom as unknown as Record<string, unknown>) : null,
-            params: { ...item.params },
+            params: {
+              ...item.params,
+              filamentPrimary: filamentColor(item.params.primaryColor).name,
+              filamentSecondary:
+                item.params.colorMode !== 'single' && item.params.secondaryColor
+                  ? filamentColor(item.params.secondaryColor).name
+                  : null,
+            },
             estimate: { low: Math.round(est.low), high: Math.round(est.high), grams: Number(est.gramsTotal.toFixed(1)) },
             note: null,
             storage_path: storagePath,
@@ -395,7 +414,14 @@ function ShelfWorkspace({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [layout, setLayout] = useState<PlateInstance[]>([]);
+  const [activePlate, setActivePlate] = useState(0);
+  const [tool, setTool] = useState<'move' | 'rotate'>('move');
+  const [clipboard, setClipboard] = useState<Omit<PlateInstance, 'id'> | null>(null);
+  const [overflow, setOverflow] = useState<{ numPlates: number; maxPerPlate: number; leftover: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const paramsScrollRef = useRef<HTMLDivElement>(null);
+  const persistTimer = useRef<number | undefined>(undefined);
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
   const handleFile = useCallback(
@@ -466,15 +492,268 @@ function ShelfWorkspace({
     [reload, selectedId, onSelect],
   );
 
+  const viewportApi = useRef<PlateViewApi | null>(null);
+  // INSTANCE selection is separate from ITEM selection (selectedId prop):
+  // instance ids live in the plate layout, never in the shelf.
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
+  const selectedInstance = layout.find((i) => i.id === selectedInstanceId) ?? null;
+
+  // Layout init on selection change — persisted placements win, else auto-pack.
+  // Params scroll resets to the very top (anti-clipping: MATERIAL/INFILL first).
+  useEffect(() => {
+    if (!selected) {
+      setLayout([]);
+      setActivePlate(0);
+      return;
+    }
+    const fp = flipFootprint(selected.geom?.bbox ?? { x: 10, y: 10, z: 10 }, 'none');
+    const next = selected.placement?.length ? selected.placement : buildAutoLayout(selected.params.qty, fp.w, fp.d);
+    setLayout(next);
+    setActivePlate(0);
+    setSelectedInstanceId((cur) => (cur && next.some((i) => i.id === cur) ? cur : (next[0]?.id ?? null)));
+    if (paramsScrollRef.current) paramsScrollRef.current.scrollTop = 0;
+    if (paramsScrollRef.current) paramsScrollRef.current.scrollTop = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  const bbox = selected?.geom?.bbox ?? null;
+  const plateIndices = [...new Set(layout.map((i) => i.plate))].sort((a, b) => a - b);
+  const numPlates = plateIndices.length || 1;
+  const plateCounts = plateIndices.map((p) => layout.filter((i) => i.plate === p).length);
+  const collision = selectedInstance && bbox ? instanceCollides(selectedInstance, layout, bbox) : false;
+  const selFp = bbox ? flipFootprint(bbox, selectedInstance?.flip ?? 'none') : null;
+  const packGrid = bbox && selFp ? packInstancesOnPlates(selFp.w, selFp.d) : null;
+  const est = selected
+    ? estimatePrint({
+        volumeMm3: selected.geom?.volumeMm3 ?? 0,
+        ...selected.params,
+        qty: layout.length || selected.params.qty,
+        plates: numPlates,
+      })
+    : null;
+
+  /** Persist the layout + synced qty WITHOUT a remix-history entry. */
+  const persistLayout = useCallback(
+    (item: ShelfItem, next: PlateInstance[], params?: Partial<ShelfItem['params']>) => {
+      void saveShelfItem({
+        ...item,
+        placement: next,
+        params: { ...item.params, ...params, qty: next.length },
+        updatedAt: Date.now(),
+      }).then(reload);
+    },
+    [reload],
+  );
+
+  /** Live drag-move — instant state, debounced persistence. */
+  const handleMove = useCallback(
+    (id: string, x: number, z: number) => {
+      setLayout((cur) => {
+        const next = cur.map((i) => (i.id === id ? { ...i, x, z } : i));
+        window.clearTimeout(persistTimer.current);
+        const item = items.find((it) => it.id === selectedId);
+        if (item) persistTimer.current = window.setTimeout(() => persistLayout(item, next), 600);
+        return next;
+      });
+    },
+    [items, selectedId, persistLayout],
+  );
+
+  /** Live drag-rotate (Rotate tool) — degrees, wrapped 0–360. */
+  const handleRotate = useCallback(
+    (id: string, rotY: number) => {
+      setLayout((cur) => {
+        const next = cur.map((i) => (i.id === id ? { ...i, rotY: ((Math.round(rotY) % 360) + 360) % 360 } : i));
+        window.clearTimeout(persistTimer.current);
+        const item = items.find((it) => it.id === selectedId);
+        if (item) persistTimer.current = window.setTimeout(() => persistLayout(item, next), 600);
+        return next;
+      });
+    },
+    [items, selectedId, persistLayout],
+  );
+
+  /** Grow/shrink the layout to a target qty, filling free slots, opening plates. */
+  const syncLayoutToQty = useCallback((item: ShelfItem, target: number, cur: PlateInstance[]): PlateInstance[] => {
+    const bb = item.geom?.bbox ?? { x: 10, y: 10, z: 10 };
+    if (target <= cur.length) return cur.slice(0, Math.max(1, target));
+    const fp = flipFootprint(bb, 'none');
+    const { cols, rows } = packInstancesOnPlates(fp.w, fp.d);
+    const slots = plateSlots(cols, rows, fp.w, fp.d);
+    const next = [...cur];
+    while (next.length < target) {
+      let pushed = false;
+      for (let p = 0; p < 60 && !pushed; p++) {
+        for (let s = 0; s < slots.length && !pushed; s++) {
+          const cand: PlateInstance = { id: uid(), plate: p, x: slots[s].x, z: slots[s].z, rotY: 0, flip: 'none' };
+          if (!instanceCollides(cand, next, bb)) {
+            next.push(cand);
+            pushed = true;
+          }
+        }
+      }
+      if (!pushed) break; // physically impossible — keep qty as-is
+    }
+    return next;
+  }, []);
+
   const setParams = (next: Partial<ShelfItem['params']>) => {
     if (!selected) return;
     const params = { ...selected.params, ...next };
+    if (next.qty !== undefined && next.qty !== layout.length) {
+      const nextLayout = syncLayoutToQty(selected, next.qty, layout);
+      setLayout(nextLayout);
+      persistLayout(selected, nextLayout, params);
+      return;
+    }
     void patchItem(selected, {}, params).then(() => reload());
   };
 
-  const est = selected ? estimatePrint({ volumeMm3: selected.geom?.volumeMm3 ?? 0, ...selected.params }) : null;
+  const switchPlate = (p: number) => {
+    setActivePlate(p);
+    viewportApi.current?.fit();
+  };
 
-  const viewportApi = useRef<PlateViewApi | null>(null);
+  const cloneInstance = () => {
+    if (!selected || !bbox) return;
+    const next = syncLayoutToQty(selected, layout.length + 1, layout);
+    setLayout(next);
+    persistLayout(selected, next);
+    setSelectedInstanceId(next[next.length - 1]?.id ?? null);
+  };
+
+  const copyInstance = () => {
+    if (!selectedInstance) return;
+    const { id: _id, ...rest } = selectedInstance;
+    void _id;
+    setClipboard(rest);
+  };
+
+  const pasteInstance = () => {
+    if (!selected || !bbox || !clipboard) return;
+    const cand: PlateInstance = { id: uid(), ...clipboard };
+    const safe = { ...cand, ...clampToPlate(cand, bbox) };
+    if (!instanceCollides(safe, layout, bbox)) {
+      const next = [...layout, safe];
+      setLayout(next);
+      persistLayout(selected, next);
+      setSelectedInstanceId(safe.id);
+    } else {
+      cloneInstance(); // pasted spot is taken — drop into the next free slot
+    }
+  };
+
+  const deleteInstance = () => {
+    if (!selected) return;
+    if (layout.length <= 1) {
+      setConfirmDelete(true); // last instance — offer removing the shelf item
+      return;
+    }
+    const idx = layout.findIndex((i) => i.id === selectedInstanceId);
+    const next = layout.filter((i) => i.id !== selectedInstanceId);
+    const plates = [...new Set(next.map((i) => i.plate))].sort((a, b) => a - b);
+    const remap = new Map(plates.map((p, ix) => [p, ix]));
+    const compact = next.map((i) => ({ ...i, plate: remap.get(i.plate) ?? 0 }));
+    setLayout(compact);
+    persistLayout(selected, compact);
+    setSelectedInstanceId(compact[Math.max(0, Math.min(idx, compact.length - 1))]?.id ?? null);
+    if (activePlate >= plates.length) switchPlate(Math.max(0, plates.length - 1));
+  };
+
+  const cutInstance = () => {
+    copyInstance();
+    deleteInstance();
+  };
+
+  /** Re-pack every plate's instances into centered, collision-free grids. */
+  const autoAlign = () => {
+    if (!selected || !bbox) return;
+    const perPlate = new Map<number, PlateInstance[]>();
+    for (const i of layout) {
+      const arr = perPlate.get(i.plate) ?? [];
+      arr.push(i);
+      perPlate.set(i.plate, arr);
+    }
+    const next: PlateInstance[] = [];
+    for (const [p, arr] of [...perPlate.entries()].sort((a, b) => a[0] - b[0])) {
+      const cells = arr.map((i) => {
+        const fp = flipFootprint(bbox, i.flip);
+        const r = rotatedFootprint(fp.w, fp.d, i.rotY);
+        return { w: r.w, d: r.d };
+      });
+      const cw = Math.max(...cells.map((c) => c.w)) + 2;
+      const cd = Math.max(...cells.map((c) => c.d)) + 2;
+      const cols = Math.max(1, Math.floor(250 / cw));
+      const rows = Math.max(1, Math.ceil(arr.length / cols));
+      for (let k = 0; k < arr.length; k++) {
+        next.push({
+          ...arr[k],
+          plate: p,
+          x: ((k % cols) - (cols - 1) / 2) * cw,
+          z: (Math.floor(k / cols) - (rows - 1) / 2) * cd,
+        });
+      }
+    }
+    setLayout(next);
+    persistLayout(selected, next);
+  };
+
+  const applyFlipToSelected = (flip: PlateInstance['flip']) => {
+    if (!selected || !bbox || !selectedInstance) return;
+    const updated = { ...selectedInstance, flip };
+    const safe = { ...updated, ...clampToPlate(updated, bbox) };
+    setLayout((cur) => cur.map((i) => (i.id === safe.id ? safe : i)));
+    persistLayout(selected, layout.map((i) => (i.id === safe.id ? safe : i)));
+  };
+
+  const rotateSelectedBy = (delta: number) => {
+    if (!selected || !bbox || !selectedInstance) return;
+    const rotY = ((Math.round(selectedInstance.rotY + delta) % 360) + 360) % 360;
+    const updated = { ...selectedInstance, rotY };
+    const safe = { ...updated, ...clampToPlate(updated, bbox) };
+    setLayout((cur) => cur.map((i) => (i.id === safe.id ? safe : i)));
+    persistLayout(selected, layout.map((i) => (i.id === safe.id ? safe : i)));
+  };
+
+  const layFlat = () => {
+    if (!bbox) return;
+    applyFlipToSelected(layFlatFlip(bbox));
+  };
+
+  // Overflow popup — fires only when an ADDITIONAL build plate becomes necessary
+  const prevPlatesRef = useRef(0);
+  useEffect(() => {
+    if (numPlates > prevPlatesRef.current && prevPlatesRef.current > 0) {
+      setOverflow({
+        numPlates,
+        maxPerPlate: packGrid?.maxPerPlate ?? layout.length,
+        leftover: plateCounts[plateCounts.length - 1] ?? 0,
+      });
+    }
+    prevPlatesRef.current = numPlates;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numPlates]);
+
+  // Keyboard shortcuts — viewport-scoped (skips typing targets)
+  const onViewportKey = (e: React.KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    const meta = e.ctrlKey || e.metaKey;
+    const k = e.key.toLowerCase();
+    if (meta && k === 'c') copyInstance();
+    else if (meta && k === 'v') pasteInstance();
+    else if (meta && k === 'x') cutInstance();
+    else if (meta && k === 'd') {
+      e.preventDefault();
+      cloneInstance();
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      deleteInstance();
+    } else if (!meta && k === 'm') setTool('move');
+    else if (!meta && k === 'r') setTool('rotate');
+    else if (!meta && k === 'f') layFlat();
+    else if (!meta && k === 'a') autoAlign();
+  };
 
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[auto_300px] overflow-visible lg:grid-cols-[360px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
@@ -524,8 +803,8 @@ function ShelfWorkspace({
           {error && <p className="mt-2 rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[10.5px] text-red-300">{error}</p>}
         </div>
 
-        {/* Middle: process parameters — top-aligned, scrollable, never clipped */}
-        <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+        {/* Middle: process parameters — top-aligned (scrollTop=0), scrollable, never clipped */}
+        <div ref={paramsScrollRef} className="no-scrollbar flex min-h-0 flex-1 flex-col items-stretch justify-start overflow-y-auto p-4">
           {selected ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-start justify-between gap-2">
@@ -570,6 +849,93 @@ function ShelfWorkspace({
                 )}
               </div>
               <ItemEditor item={selected} onSetParams={setParams} />
+
+              {/* Filament color — live-shades the 3D meshes */}
+              <div>
+                <SectionLabel>
+                  Filament color{selected.params.primaryColor ? ` — ${filamentColor(selected.params.primaryColor).name}` : ''}
+                </SectionLabel>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {FILAMENT_COLORS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-label={`Filament color ${c.name}`}
+                      title={c.name}
+                      onClick={() => setParams({ primaryColor: c.id })}
+                      className={`h-8 w-8 rounded-full border transition active:scale-[0.95] ${
+                        (selected.params.primaryColor ?? 'polar-white') === c.id
+                          ? 'border-white shadow-[0_0_0_2px_rgba(255,255,255,0.35)]'
+                          : 'border-white/20 hover:border-white/50'
+                      }`}
+                      style={{ backgroundColor: c.hex }}
+                    />
+                  ))}
+                </div>
+                {selected.params.colorMode !== 'single' && (
+                  <div className="mt-3">
+                    <SectionLabel>
+                      Secondary / Accent Color{selected.params.secondaryColor ? ` — ${filamentColor(selected.params.secondaryColor).name}` : ''}
+                    </SectionLabel>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {FILAMENT_COLORS.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          aria-label={`Accent color ${c.name}`}
+                          title={c.name}
+                          onClick={() => setParams({ secondaryColor: c.id })}
+                          className={`h-8 w-8 rounded-full border transition active:scale-[0.95] ${
+                            selected.params.secondaryColor === c.id
+                              ? 'border-white shadow-[0_0_0_2px_rgba(255,255,255,0.35)]'
+                              : 'border-white/20 hover:border-white/50'
+                          }`}
+                          style={{ backgroundColor: c.hex }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Orientation — flip / lay flat / yaw */}
+              {selectedInstance && bbox && (
+                <div>
+                  <SectionLabel>Orientation</SectionLabel>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <Chip active={false} onClick={layFlat}>
+                      Lay Flat
+                    </Chip>
+                    <Chip active={selectedInstance.flip === 'x'} onClick={() => applyFlipToSelected('x')}>
+                      Flip X 90°
+                    </Chip>
+                    <Chip active={selectedInstance.flip === 'y'} onClick={() => applyFlipToSelected('y')}>
+                      Flip Y 90°
+                    </Chip>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Chip active={false} onClick={() => rotateSelectedBy(-45)}>
+                      −45°
+                    </Chip>
+                    <Chip active={false} onClick={() => rotateSelectedBy(45)}>
+                      +45°
+                    </Chip>
+                    <Chip active={false} onClick={() => rotateSelectedBy(90)}>
+                      +90°
+                    </Chip>
+                    <input
+                      type="range"
+                      min={0}
+                      max={360}
+                      value={selectedInstance.rotY}
+                      onChange={(e) => handleRotate(selectedInstance.id, Number(e.target.value))}
+                      aria-label="Rotate Z"
+                      className="h-1 min-w-16 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-white"
+                    />
+                    <span className="w-9 shrink-0 text-right font-mono text-[10px] tabular-nums text-zinc-400">{selectedInstance.rotY}°</span>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-[12px] leading-relaxed text-zinc-500">
@@ -592,6 +958,11 @@ function ShelfWorkspace({
                 <FreeDeliveryChip est={est} />
                 {selected.syncState && <SyncPill state={selected.syncState} />}
               </div>
+              {est.plates > 1 && (
+                <p className="mt-1.5 font-mono text-[9.5px] uppercase tracking-[0.1em] text-amber-200/80">
+                  {est.plates} PLATES ({plateCounts.join(' + ')} PCS) · INCLUDES +₹{est.extraPlateFee} EXTRA PLATE SETUP
+                </p>
+              )}
               <div className="mt-2.5 flex gap-2 [&>button]:flex-1">
                 <GhostAction onClick={() => void duplicate(selected)}>Remix</GhostAction>
                 <PrimaryAction onClick={() => onCommission(selected, est)}>
@@ -609,13 +980,87 @@ function ShelfWorkspace({
       </aside>
 
       {/* ── RIGHT 3D BUILD-PLATE VIEWPORT ── */}
-      <section className="relative min-h-0 bg-[#141418] lg:col-start-2 lg:row-start-1 lg:h-full">
+      <section
+        className="relative min-h-0 bg-[#141418] outline-none lg:col-start-2 lg:row-start-1 lg:h-full"
+        tabIndex={0}
+        onKeyDown={onViewportKey}
+      >
         {selected ? (
           <>
-            <PlateViewport item={selected} onReady={(api) => (viewportApi.current = api)} className="absolute inset-0" />
+            <PlateViewport
+              item={selected}
+              instances={layout}
+              activePlate={activePlate}
+              selectedInstanceId={selectedInstanceId}
+              collision={collision}
+              interaction={tool}
+              colors={{
+                primary: filamentColor(selected.params.primaryColor).hex,
+                secondary:
+                  selected.params.colorMode !== 'single' && selected.params.secondaryColor
+                    ? filamentColor(selected.params.secondaryColor).hex
+                    : null,
+              }}
+              onSelectInstance={setSelectedInstanceId}
+              onMoveInstance={handleMove}
+              onRotateInstance={handleRotate}
+              onReady={(api) => (viewportApi.current = api)}
+              className="absolute inset-0"
+            />
+            {/* HUD — slicer toolbar (top-center) */}
+            <div className="no-scrollbar absolute left-1/2 top-3 flex max-w-[96%] -translate-x-1/2 gap-1 overflow-x-auto rounded-xl border border-white/10 bg-black/55 p-1 backdrop-blur">
+              {(
+                [
+                  ['move', `Select/Move (M)`, tool === 'move'],
+                  ['rotate', `Rotate (R)`, tool === 'rotate'],
+                ] as Array<[string, string, boolean]>
+              ).map(([t, label, active]) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTool(t as 'move' | 'rotate')}
+                  className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider transition ${
+                    active ? 'bg-white/20 text-white' : 'text-zinc-400 hover:bg-white/10 hover:text-zinc-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              <span aria-hidden className="mx-0.5 w-px shrink-0 bg-white/15" />
+              {(
+                [
+                  ['Lay Flat (F)', layFlat],
+                  ['Clone (D)', cloneInstance],
+                  ['Copy', copyInstance],
+                  ['Cut', cutInstance],
+                  ['Paste', pasteInstance],
+                  ['Delete', deleteInstance],
+                  ['Auto-Align (A)', autoAlign],
+                ] as Array<[string, () => void]>
+              ).map(([label, fn]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={fn}
+                  className="shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-[0.99]"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* HUD — collision warning */}
+            {collision && (
+              <button
+                type="button"
+                onClick={autoAlign}
+                className="absolute left-1/2 top-[54px] -translate-x-1/2 whitespace-nowrap rounded-lg border border-red-400/40 bg-red-500/20 px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-red-200 backdrop-blur transition hover:bg-red-500/30"
+              >
+                Collision detected — click Auto-Align to fix
+              </button>
+            )}
             {/* HUD — part telemetry (top-left) */}
             {selected.geom && (
-              <div className="pointer-events-none absolute left-3 top-3 max-w-[70%] rounded-lg border border-white/10 bg-black/55 px-2.5 py-1.5 font-mono text-[10px] tabular-nums text-zinc-300 backdrop-blur">
+              <div className="pointer-events-none absolute left-3 top-[54px] max-w-[70%] rounded-lg border border-white/10 bg-black/55 px-2.5 py-1.5 font-mono text-[10px] tabular-nums text-zinc-300 backdrop-blur">
                 {selected.geom.bbox.x} × {selected.geom.bbox.y} × {selected.geom.bbox.z} mm
                 {selected.geom.triangles > 0
                   ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris`
@@ -640,6 +1085,23 @@ function ShelfWorkspace({
                 Reset orbit
               </button>
             </div>
+            {/* HUD — plate switcher (bottom-center) */}
+            {numPlates > 1 && (
+              <div className="absolute bottom-12 left-1/2 flex -translate-x-1/2 gap-1 rounded-xl border border-white/10 bg-black/55 p-1 backdrop-blur">
+                {plateIndices.map((p, ix) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => switchPlate(p)}
+                    className={`shrink-0 whitespace-nowrap rounded-lg px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider transition ${
+                      activePlate === p ? 'bg-white/20 text-white' : 'text-zinc-400 hover:bg-white/10 hover:text-zinc-100'
+                    }`}
+                  >
+                    Plate {p + 1} ({plateCounts[ix]} pcs)
+                  </button>
+                ))}
+              </div>
+            )}
             {/* HUD — interaction hint (bottom-left) */}
             <p className="pointer-events-none absolute bottom-3 left-3 font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-500">
               Drag to orbit · scroll to zoom · 256×256 mm A1 plate
@@ -655,6 +1117,38 @@ function ShelfWorkspace({
           </div>
         )}
       </section>
+
+      {/* Multi-plate overflow popup — VisionOS glass */}
+      {overflow && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="liquid-glass w-full max-w-md rounded-3xl p-6">
+            <p className="text-[15px] font-semibold text-zinc-100">New Build Plate Required (Plate {overflow.numPlates})</p>
+            <p className="mt-2.5 text-[12.5px] leading-relaxed text-zinc-400">
+              Only {overflow.maxPerPlate} pcs fit on a single 256×256mm A1 plate without overlapping. The remaining{' '}
+              {overflow.leftover} pcs have been placed onto Plate {overflow.numPlates}. Each additional plate adds +₹
+              {EXTRA_PLATE_FEE} for build-plate prep &amp; print setup.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row [&>button]:flex-1">
+              <PrimaryAction
+                onClick={() => {
+                  switchPlate(overflow.numPlates - 1);
+                  setOverflow(null);
+                }}
+              >
+                Switch to Plate {overflow.numPlates}
+              </PrimaryAction>
+              <GhostAction
+                onClick={() => {
+                  switchPlate(0);
+                  setOverflow(null);
+                }}
+              >
+                Stay on Plate 1
+              </GhostAction>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
