@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IconCube, IconUpload, IconWhatsApp } from '../icons';
-import { drawMeshOnCanvas, drawSlicerPlate, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
+import { drawMeshOnCanvas, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
 import { readStlMesh } from '../../lib/stl';
+import PlateViewport from './PlateViewport';
 import {
   ASSEMBLY_MODES,
   COLOR_MODES,
@@ -211,12 +212,11 @@ async function patchItem(item: ShelfItem, patch: Partial<ShelfItem>, params: She
   return updated;
 }
 
-// ─── Mesh preview (drag-to-rotate when the parsed mesh is in session memory) ──
+// ─── Mesh thumbnail (drag-to-rotate when the parsed mesh is in session memory) ──
 
-function MeshView({ item, size = 72, plate = false }: { item: ShelfItem; size?: number; plate?: boolean }) {
+function MeshView({ item, size = 72 }: { item: ShelfItem; size?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const view = useRef({ yaw: Math.PI / 4, pitch: Math.atan(1 / Math.SQRT2) });
-  const zoom = useRef(1);
   const dragging = useRef(false);
   const mesh = sessionMeshCache.get(item.id);
 
@@ -226,27 +226,12 @@ function MeshView({ item, size = 72, plate = false }: { item: ShelfItem; size?: 
     if (!c || !m) return;
     c.width = size * 2; // crisp on hi-dpi
     c.height = size * 2;
-    if (plate) drawSlicerPlate(c, m, view.current.yaw, view.current.pitch, zoom.current);
-    else drawMeshOnCanvas(c, m, view.current.yaw, view.current.pitch);
-  }, [item.id, size, plate]);
+    drawMeshOnCanvas(c, m, view.current.yaw, view.current.pitch);
+  }, [item.id, size]);
 
   useEffect(() => {
     draw();
   }, [draw]);
-
-  // Wheel zoom (plate mode) — non-passive so we can preventDefault page scroll
-  useEffect(() => {
-    if (!plate) return;
-    const c = canvasRef.current;
-    if (!c) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      zoom.current = Math.min(14, Math.max(0.6, zoom.current * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
-      draw();
-    };
-    c.addEventListener('wheel', onWheel, { passive: false });
-    return () => c.removeEventListener('wheel', onWheel);
-  }, [plate, draw]);
 
   if (!mesh) {
     return item.thumb ? (
@@ -264,7 +249,7 @@ function MeshView({ item, size = 72, plate = false }: { item: ShelfItem; size?: 
       width={size * 2}
       height={size * 2}
       style={{ width: size, height: size, touchAction: 'none' }}
-      title={plate ? 'Drag to rotate · scroll to zoom' : 'Drag to rotate'}
+      title="Drag to rotate"
       className="cursor-grab rounded-xl border border-white/[0.08] bg-black/40 active:cursor-grabbing"
       onPointerDown={(e) => {
         dragging.current = true;
@@ -410,7 +395,6 @@ function ShelfWorkspace({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const selected = items.find((i) => i.id === selectedId) ?? null;
-  const previewSize = typeof window !== 'undefined' && window.innerWidth < 640 ? 230 : 320;
 
   const handleFile = useCallback(
     async (file: File | undefined | null) => {
@@ -547,9 +531,9 @@ function ShelfWorkspace({
         {/* Main row — Bambu A1 build-plate viewport + remix rail, one screen */}
         {selected ? (
           <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,330px)]">
-            {/* Build plate viewport */}
-            <div className="flex min-h-0 flex-col items-center justify-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
-              <div className="flex w-full items-start justify-between gap-3">
+            {/* Build plate viewport — Bambu-style WebGL scene */}
+            <div className="relative flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+              <div className="flex w-full shrink-0 items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-[14px] font-semibold text-zinc-100">{selected.name}</p>
                   {selected.geom && (
@@ -593,9 +577,9 @@ function ShelfWorkspace({
                   </button>
                 )}
               </div>
-              <MeshView item={selected} size={previewSize} plate />
-              <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-600">
-                Drag to rotate · scroll to zoom · true mm scale
+              <PlateViewport item={selected} className="mt-2 h-[260px] lg:h-auto lg:flex-1" />
+              <p className="shrink-0 pt-2 font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-600">
+                Drag to orbit · scroll to zoom · true mm scale on the A1 plate
               </p>
             </div>
 
