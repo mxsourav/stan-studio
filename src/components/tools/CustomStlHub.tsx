@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { IconCube, IconUpload, IconWhatsApp } from '../icons';
-import { drawMeshOnCanvas, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
+import { drawMeshOnCanvas, drawSlicerPlate, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
 import { readStlMesh } from '../../lib/stl';
 import {
   ASSEMBLY_MODES,
@@ -213,9 +213,10 @@ async function patchItem(item: ShelfItem, patch: Partial<ShelfItem>, params: She
 
 // ─── Mesh preview (drag-to-rotate when the parsed mesh is in session memory) ──
 
-function MeshView({ item, size = 72 }: { item: ShelfItem; size?: number }) {
+function MeshView({ item, size = 72, plate = false }: { item: ShelfItem; size?: number; plate?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const view = useRef({ yaw: Math.PI / 4, pitch: Math.atan(1 / Math.SQRT2) });
+  const zoom = useRef(1);
   const dragging = useRef(false);
   const mesh = sessionMeshCache.get(item.id);
 
@@ -225,12 +226,27 @@ function MeshView({ item, size = 72 }: { item: ShelfItem; size?: number }) {
     if (!c || !m) return;
     c.width = size * 2; // crisp on hi-dpi
     c.height = size * 2;
-    drawMeshOnCanvas(c, m, view.current.yaw, view.current.pitch);
-  }, [item.id, size]);
+    if (plate) drawSlicerPlate(c, m, view.current.yaw, view.current.pitch, zoom.current);
+    else drawMeshOnCanvas(c, m, view.current.yaw, view.current.pitch);
+  }, [item.id, size, plate]);
 
   useEffect(() => {
     draw();
   }, [draw]);
+
+  // Wheel zoom (plate mode) — non-passive so we can preventDefault page scroll
+  useEffect(() => {
+    if (!plate) return;
+    const c = canvasRef.current;
+    if (!c) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      zoom.current = Math.min(14, Math.max(0.6, zoom.current * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+      draw();
+    };
+    c.addEventListener('wheel', onWheel, { passive: false });
+    return () => c.removeEventListener('wheel', onWheel);
+  }, [plate, draw]);
 
   if (!mesh) {
     return item.thumb ? (
@@ -248,7 +264,7 @@ function MeshView({ item, size = 72 }: { item: ShelfItem; size?: number }) {
       width={size * 2}
       height={size * 2}
       style={{ width: size, height: size, touchAction: 'none' }}
-      title="Drag to rotate"
+      title={plate ? 'Drag to rotate · scroll to zoom' : 'Drag to rotate'}
       className="cursor-grab rounded-xl border border-white/[0.08] bg-black/40 active:cursor-grabbing"
       onPointerDown={(e) => {
         dragging.current = true;
@@ -267,26 +283,25 @@ function MeshView({ item, size = 72 }: { item: ShelfItem; size?: number }) {
   );
 }
 
-// ─── Shelf card (grid item) ──────────────────────────────────────────────────
+// ─── Shelf strip card (horizontal object list, slicer-style) ─────────────────
 
-function ShelfCard({ item, selected, onSelect }: { item: ShelfItem; selected: boolean; onSelect: () => void }) {
+function ShelfStripCard({ item, selected, onSelect }: { item: ShelfItem; selected: boolean; onSelect: () => void }) {
   const est = estimatePrint({ volumeMm3: item.geom?.volumeMm3 ?? 0, ...item.params });
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.995] ${
+      className={`flex w-[158px] shrink-0 items-center gap-2.5 rounded-xl border p-2 text-left transition active:scale-[0.99] ${
         selected ? 'border-white/30 bg-white/[0.08]' : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
       }`}
     >
-      <MeshView item={item} size={44} />
+      <MeshView item={item} size={38} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[12.5px] font-semibold text-zinc-100">{item.name}</span>
-        <span className="mt-0.5 block font-mono text-[10px] tabular-nums text-zinc-400">
+        <span className="block truncate text-[11.5px] font-semibold text-zinc-100">{item.name}</span>
+        <span className="mt-0.5 block font-mono text-[9.5px] tabular-nums text-zinc-400">
           {rupees(est.low)}–{rupees(est.high)} · {est.gramsTotal.toFixed(1)} g
         </span>
       </span>
-      {item.syncState && <SyncPill state={item.syncState} />}
     </button>
   );
 }
@@ -297,7 +312,7 @@ function ItemEditor({ item, onSetParams }: { item: ShelfItem; onSetParams: (next
   const est = estimatePrint({ volumeMm3: item.geom?.volumeMm3 ?? 0, ...item.params });
   const mode = colorMode(item.params.colorMode);
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div>
         <SectionLabel>Material</SectionLabel>
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -336,16 +351,16 @@ function ItemEditor({ item, onSetParams }: { item: ShelfItem; onSetParams: (next
             <button
               type="button"
               onClick={() => onSetParams({ qty: Math.max(1, item.params.qty - 1) })}
-              className="h-9 w-9 rounded-xl border border-white/10 bg-white/[0.05] font-mono text-[14px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.99]"
+              className="h-8 w-8 rounded-xl border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.99]"
               aria-label="Decrease quantity"
             >
               −
             </button>
-            <span className="w-9 text-center font-mono text-[14px] tabular-nums text-zinc-100">{item.params.qty}</span>
+            <span className="w-8 text-center font-mono text-[13px] tabular-nums text-zinc-100">{item.params.qty}</span>
             <button
               type="button"
               onClick={() => onSetParams({ qty: Math.min(99, item.params.qty + 1) })}
-              className="h-9 w-9 rounded-xl border border-white/10 bg-white/[0.05] font-mono text-[14px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.99]"
+              className="h-8 w-8 rounded-xl border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.99]"
               aria-label="Increase quantity"
             >
               +
@@ -395,7 +410,7 @@ function ShelfWorkspace({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const selected = items.find((i) => i.id === selectedId) ?? null;
-  const previewSize = typeof window !== 'undefined' && window.innerWidth < 640 ? 240 : 300;
+  const previewSize = typeof window !== 'undefined' && window.innerWidth < 640 ? 230 : 320;
 
   const handleFile = useCallback(
     async (file: File | undefined | null) => {
@@ -474,9 +489,9 @@ function ShelfWorkspace({
   const est = selected ? estimatePrint({ volumeMm3: selected.geom?.volumeMm3 ?? 0, ...selected.params }) : null;
 
   return (
-    <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-5 sm:px-6 sm:py-6">
-        {/* Upload — full-width dropzone */}
+    <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden">
+      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-3 px-4 py-4 sm:px-6">
+        {/* Compact dropzone */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -494,110 +509,108 @@ function ShelfWorkspace({
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
           }}
-          className={`cursor-pointer rounded-2xl border border-dashed px-4 py-6 text-center transition ${
+          className={`shrink-0 cursor-pointer rounded-2xl border border-dashed px-4 py-3 text-center transition ${
             dragging
               ? 'border-white/50 bg-white/[0.08]'
               : 'border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.05]'
           }`}
         >
           <input ref={inputRef} type="file" accept=".stl" className="hidden" onChange={(e) => void handleFile(e.target.files?.[0])} />
-          <p className="flex items-center justify-center gap-2 text-[13px] font-medium text-zinc-100">
-            <IconUpload size={15} className="text-zinc-400" />
+          <p className="flex items-center justify-center gap-2 text-[12.5px] font-medium text-zinc-100">
+            <IconUpload size={14} className="text-zinc-400" />
             {busy ? 'Parsing mesh…' : 'Drop your .stl here — or tap to browse'}
           </p>
-          <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-500">
+          <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-500">
             Parsed on-device · up to {MAX_FILE_MB} MB · nothing uploads until you commission
           </p>
         </div>
 
+        {/* Object strip — horizontal, slicer-style */}
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-14 text-center">
-            <IconCube size={36} className="text-zinc-600" />
-            <p className="mt-4 text-[13px] font-semibold text-zinc-100">Your private shelf is empty</p>
+          <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-10 text-center">
+            <IconCube size={32} className="text-zinc-600" />
+            <p className="mt-3 text-[13px] font-semibold text-zinc-100">Your private shelf is empty</p>
             <p className="mt-1.5 max-w-sm text-[12px] leading-relaxed text-zinc-400">
               Add a model above — it stays on this device, priced instantly, until you send it to the studio.
             </p>
           </div>
         ) : (
-          <section>
-            <div className="flex items-center justify-between">
-              <SectionLabel>Your shelf</SectionLabel>
-              <p className="font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-600">
-                {items.length} item{items.length === 1 ? '' : 's'} · on-device vault
-              </p>
-            </div>
-            <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-              {items.map((item) => (
-                <ShelfCard key={item.id} item={item} selected={item.id === selectedId} onSelect={() => onSelect(item.id)} />
-              ))}
-            </div>
-          </section>
+          <div className="no-scrollbar flex shrink-0 gap-2 overflow-x-auto pb-0.5">
+            {items.map((item) => (
+              <ShelfStripCard key={item.id} item={item} selected={item.id === selectedId} onSelect={() => onSelect(item.id)} />
+            ))}
+          </div>
         )}
 
-        {error && <p className="rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[11px] text-red-300">{error}</p>}
+        {error && <p className="shrink-0 rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[11px] text-red-300">{error}</p>}
 
-        {/* Selected item — preview + remix parameters in one flowing card */}
-        {selected && (
-          <Group>
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-[15px] font-semibold text-zinc-100">{selected.name}</p>
-                {selected.geom && (
-                  <p className="mt-1 font-mono text-[10px] tabular-nums text-zinc-400">
-                    {selected.geom.bbox.x} × {selected.geom.bbox.y} × {selected.geom.bbox.z} mm
-                    {selected.geom.triangles > 0
-                      ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris`
-                      : ' · library'}
-                    {` · ${(selected.geom.volumeMm3 / 1000).toFixed(1)} cm³`}
-                  </p>
-                )}
-              </div>
-              {confirmDelete ? (
-                <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-zinc-300">
-                  Delete?
-                  <button
-                    type="button"
-                    onClick={() => void remove(selected)}
-                    className="rounded-lg bg-red-500/15 px-2.5 py-1.5 text-red-300 transition hover:bg-red-500/25"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(false)}
-                    className="rounded-lg bg-white/[0.06] px-2.5 py-1.5 transition hover:bg-white/[0.12]"
-                  >
-                    No
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  aria-label="Delete"
-                  className="shrink-0 rounded-lg p-2 text-zinc-500 transition hover:bg-white/[0.08] hover:text-red-300"
-                >
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                    <path d="M4.5 6.5h15M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5M6.5 6.5l1 12a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-            <div className="mt-4 grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
-              <div className="flex flex-col items-center gap-2">
-                <MeshView item={selected} size={previewSize} />
-                {sessionMeshCache.has(selected.id) && (
-                  <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-600">Drag to rotate</p>
-                )}
-              </div>
-              <div className="min-w-0">
-                <SectionLabel>Remix parameters</SectionLabel>
-                <div className="mt-3">
-                  <ItemEditor item={selected} onSetParams={setParams} />
+        {/* Main row — Bambu A1 build-plate viewport + remix rail, one screen */}
+        {selected ? (
+          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,330px)]">
+            {/* Build plate viewport */}
+            <div className="flex min-h-0 flex-col items-center justify-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+              <div className="flex w-full items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-semibold text-zinc-100">{selected.name}</p>
+                  {selected.geom && (
+                    <p className="mt-0.5 font-mono text-[10px] tabular-nums text-zinc-400">
+                      {selected.geom.bbox.x} × {selected.geom.bbox.y} × {selected.geom.bbox.z} mm
+                      {selected.geom.triangles > 0
+                        ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris`
+                        : ' · library'}
+                      {` · ${(selected.geom.volumeMm3 / 1000).toFixed(1)} cm³`}
+                    </p>
+                  )}
                 </div>
+                {confirmDelete ? (
+                  <span className="flex shrink-0 items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-zinc-300">
+                    Delete?
+                    <button
+                      type="button"
+                      onClick={() => void remove(selected)}
+                      className="rounded-lg bg-red-500/15 px-2.5 py-1.5 text-red-300 transition hover:bg-red-500/25"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      className="rounded-lg bg-white/[0.06] px-2.5 py-1.5 transition hover:bg-white/[0.12]"
+                    >
+                      No
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    aria-label="Delete"
+                    className="shrink-0 rounded-lg p-2 text-zinc-500 transition hover:bg-white/[0.08] hover:text-red-300"
+                  >
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                      <path d="M4.5 6.5h15M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5M6.5 6.5l1 12a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <MeshView item={selected} size={previewSize} plate />
+              <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-600">
+                Drag to rotate · scroll to zoom · true mm scale
+              </p>
+            </div>
+
+            {/* Remix rail */}
+            <div className="no-scrollbar min-h-0 overflow-y-auto lg:pr-0.5">
+              <SectionLabel>Remix parameters</SectionLabel>
+              <div className="mt-2.5">
+                <ItemEditor item={selected} onSetParams={setParams} />
               </div>
             </div>
-          </Group>
+          </div>
+        ) : (
+          <p className="shrink-0 text-center text-[12px] leading-relaxed text-zinc-500">
+            Select a shelf item to tune material, infill, color mode and quantity.
+          </p>
         )}
       </div>
 
