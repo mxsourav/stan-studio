@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { IconCube, IconUpload, IconWhatsApp } from '../icons';
+import { IconCube, IconLink, IconLinkBroken, IconUpload, IconWhatsApp } from '../icons';
 import { drawMeshOnCanvas, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
 import { readStlMesh } from '../../lib/stl';
 import PlateViewport from './PlateViewport';
@@ -20,6 +20,7 @@ import {
   clampToPlate,
   colorMode,
   commissionWhatsAppUrl,
+  effectiveGeom,
   estimatePrint,
   filamentColor,
   flipFootprint,
@@ -30,7 +31,10 @@ import {
   libraryGrams,
   listLog,
   listShelf,
+  normalizeScale,
   packInstancesOnPlates,
+  PLATE_SIZE,
+  PLATE_USABLE,
   plateSlots,
   putShelfFile,
   removeShelfItem,
@@ -43,6 +47,7 @@ import {
   type LogEntry,
   type Orient,
   type PlateInstance,
+  type Scale3,
   type ShelfItem,
   type SourcingRequest,
 } from '../../lib/stlHub';
@@ -198,9 +203,10 @@ function useCommission(refresh: () => void): CommissionFn {
             kind: 'commission',
             item_name: item.name,
             file_name: item.fileName ?? null,
-            specs: item.geom ? (item.geom as unknown as Record<string, unknown>) : null,
+            specs: effectiveGeom(item) as unknown as Record<string, unknown>,
             params: {
               ...item.params,
+              scale: normalizeScale(item),
               filamentPrimary: filamentColor(item.params.primaryColor).name,
               filamentSecondary:
                 item.params.colorMode !== 'single' && item.params.secondaryColor
@@ -293,7 +299,7 @@ function MeshView({ item, size = 72 }: { item: ShelfItem; size?: number }) {
 // ─── Shelf strip card (horizontal object list, slicer-style) ─────────────────
 
 function ShelfStripCard({ item, selected, onSelect }: { item: ShelfItem; selected: boolean; onSelect: () => void }) {
-  const est = estimatePrint({ volumeMm3: item.geom?.volumeMm3 ?? 0, ...item.params });
+  const est = estimatePrint({ volumeMm3: effectiveGeom(item).volumeMm3, ...item.params });
   return (
     <button
       type="button"
@@ -316,7 +322,7 @@ function ShelfStripCard({ item, selected, onSelect }: { item: ShelfItem; selecte
 // ─── Tune editor (right rail) ────────────────────────────────────────────────
 
 function ItemEditor({ item, onSetParams }: { item: ShelfItem; onSetParams: (next: Partial<ShelfItem['params']>) => void }) {
-  const est = estimatePrint({ volumeMm3: item.geom?.volumeMm3 ?? 0, ...item.params });
+  const est = estimatePrint({ volumeMm3: effectiveGeom(item).volumeMm3, ...item.params });
   const mode = colorMode(item.params.colorMode);
   return (
     <div className="flex flex-col gap-4">
@@ -423,6 +429,11 @@ function ShelfWorkspace({
   const inputRef = useRef<HTMLInputElement>(null);
   const paramsScrollRef = useRef<HTMLDivElement>(null);
   const persistTimer = useRef<number | undefined>(undefined);
+  const scaleTimer = useRef<number | undefined>(undefined);
+  const [scaleLocked, setScaleLocked] = useState(true); // chain: uniform vs per-axis
+  const [liveScale, setLiveScale] = useState<Scale3 | null>(null); // typing preview — null = committed item.scale
+  const [dimDraft, setDimDraft] = useState({ x: '', y: '', z: '' });
+  const [pctDraft, setPctDraft] = useState('');
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
   const handleFile = useCallback(
@@ -510,7 +521,7 @@ function ShelfWorkspace({
       setActivePlate(0);
       return;
     }
-    const bb = selected.geom?.bbox ?? { x: 10, y: 10, z: 10 };
+    const bb = effectiveGeom(selected).bbox;
     const orient: Orient = selected.orient ?? layFlatFlip(bb);
     const fp = flipFootprint(bb, orient);
     let next: PlateInstance[];
@@ -526,11 +537,19 @@ function ShelfWorkspace({
     setActivePlate(0);
     histRef.current = { stack: [next], idx: 0 };
     setSelectedInstanceId((cur) => (cur && next.some((i) => i.id === cur) ? cur : (next[0]?.id ?? null)));
+    // Scale drafts resync from the (committed) item on every selection change
+    window.clearTimeout(scaleTimer.current);
+    setLiveScale(null);
+    const s = normalizeScale(selected);
+    setDimDraft({ x: String(bb.x), y: String(bb.y), z: String(bb.z) });
+    setPctDraft(String(Math.round(Math.cbrt(s.x * s.y * s.z) * 100)));
     if (paramsScrollRef.current) paramsScrollRef.current.scrollTop = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id]);
 
-  const bbox = selected?.geom?.bbox ?? null;
+  const bbox = selected?.geom ? effectiveGeom({ geom: selected.geom, scale: liveScale ?? normalizeScale(selected) }).bbox : null;
+  /** Effective factors right now — live typing preview wins over the committed item.scale. */
+  const scale: Scale3 = liveScale ?? (selected ? normalizeScale(selected) : { x: 1, y: 1, z: 1 });
   // Item-level orientation — ALL instances share it (viewport derives the same way)
   const orient: Orient = selected?.orient ?? (bbox ? layFlatFlip(bbox) : 'none');
   const plateIndices = [...new Set(layout.map((i) => i.plate))].sort((a, b) => a - b);
@@ -541,7 +560,7 @@ function ShelfWorkspace({
   const packGrid = bbox && selFp ? packInstancesOnPlates(selFp.w, selFp.d) : null;
   const est = selected
     ? estimatePrint({
-        volumeMm3: selected.geom?.volumeMm3 ?? 0,
+        volumeMm3: effectiveGeom({ geom: selected.geom, scale: liveScale ?? normalizeScale(selected) }).volumeMm3,
         ...selected.params,
         qty: layout.length || selected.params.qty,
         plates: numPlates,
@@ -594,6 +613,103 @@ function ShelfWorkspace({
     persistLayout(selected, snap, { silent: true });
   };
 
+  // ── Scaling — live preview while typing, debounced persist + re-clamp on commit ──
+  /** Commit a scale: instant live preview, then (debounced) persist the item
+   *  scale, re-clamp every instance to the new effective footprint and — only
+   *  if the re-clamped layout collides — re-pack. immediate=true skips the
+   *  debounce (steppers, presets, sliders). */
+  const commitScale = (next: Scale3, immediate = false) => {
+    if (!selected) return;
+    const clamped: Scale3 = {
+      x: Math.min(100, Math.max(0.01, next.x || 1)),
+      y: Math.min(100, Math.max(0.01, next.y || 1)),
+      z: Math.min(100, Math.max(0.01, next.z || 1)),
+    };
+    setLiveScale(clamped);
+    // Re-sync every draft field from the new factors (sibling axes follow on
+    // locked edits; keystroke debounce means the typed field is never clobbered
+    // mid-word — this runs 400ms after the last keystroke, or instantly for
+    // steppers/presets/slider).
+    const rawB = selected.geom?.bbox ?? { x: 10, y: 10, z: 10 };
+    setDimDraft({
+      x: String(Number((rawB.x * clamped.x).toFixed(2))),
+      y: String(Number((rawB.y * clamped.y).toFixed(2))),
+      z: String(Number((rawB.z * clamped.z).toFixed(2))),
+    });
+    setPctDraft(String(Math.round(Math.cbrt(clamped.x * clamped.y * clamped.z) * 100)));
+    const item = selected;
+    const curOrient = orient;
+    const curLayout = layout;
+    const curActivePlate = activePlate;
+    const run = () => {
+      const scaledItem: ShelfItem = { ...item, scale: clamped, updatedAt: Date.now() };
+      const bb = effectiveGeom(scaledItem).bbox;
+      let nextLayout = curLayout.map((i) => ({ ...i, ...clampToPlate(i, bb, curOrient) }));
+      if (nextLayout.some((i) => instanceCollides(i, nextLayout, bb, curOrient))) {
+        nextLayout = repackAll(nextLayout, bb, curOrient);
+        const maxPlate = nextLayout.reduce((m, i) => Math.max(m, i.plate), 0);
+        if (curActivePlate > maxPlate) setActivePlate(maxPlate);
+      }
+      setLayout(nextLayout);
+      void saveShelfItem(scaledItem).then(reload);
+      persistLayout(scaledItem, nextLayout);
+    };
+    window.clearTimeout(scaleTimer.current);
+    if (immediate) run();
+    else scaleTimer.current = window.setTimeout(run, 400);
+  };
+
+  /** Typed mm → new scale. Invalid/zero/negative input (or out of the 0.1–2000
+   *  mm safety band) is ignored — the field just keeps its previous value. */
+  const applyDim = (axis: 'x' | 'y' | 'z', rawTarget: string, immediate = false) => {
+    if (!selected || !selected.geom) return;
+    const target = Number(rawTarget.replace(',', '.'));
+    if (!Number.isFinite(target) || target < 0.1 || target > 2000) return;
+    const raw = selected.geom.bbox;
+    if (scaleLocked) {
+      const cur = raw[axis] * scale[axis];
+      const r = Math.min(100, Math.max(0.001, target / Math.max(0.001, cur)));
+      commitScale({ x: scale.x * r, y: scale.y * r, z: scale.z * r }, immediate);
+    } else {
+      const f = Math.min(100, Math.max(0.01, target / Math.max(0.001, raw[axis])));
+      commitScale({ ...scale, [axis]: f }, immediate);
+    }
+  };
+
+  const stepDim = (axis: 'x' | 'y' | 'z', delta: number) => {
+    if (!selected || !selected.geom) return;
+    const cur = selected.geom.bbox[axis] * scale[axis];
+    applyDim(axis, String(Math.max(0.1, Number((cur + delta).toFixed(2)))), true);
+  };
+
+  /** Overall magnitude = geometric mean of the three factors (×100). */
+  const pctNow = Math.round(Math.cbrt(scale.x * scale.y * scale.z) * 100);
+  const applyPct = (raw: string, immediate = false) => {
+    const p = Number(raw.replace(',', '.'));
+    if (!Number.isFinite(p) || p < 1 || p > 10000) return;
+    const r = p / Math.max(1, pctNow);
+    commitScale({ x: scale.x * r, y: scale.y * r, z: scale.z * r }, immediate);
+  };
+  const stepPct = (delta: number) => applyPct(String(pctNow + delta), true);
+
+  /** Fit to Bed: uniform shrink so the model fits the printable volume
+   *  (244×244 plate area × 256mm Z height). No-op if it already fits. */
+  const fitToBed = () => {
+    if (!selected || !selected.geom) return;
+    const raw = selected.geom.bbox;
+    const cur = { x: raw.x * scale.x, y: raw.y * scale.y, z: raw.z * scale.z };
+    const f = Math.min(
+      1,
+      PLATE_USABLE / Math.max(0.001, cur.x),
+      PLATE_USABLE / Math.max(0.001, cur.z),
+      PLATE_SIZE / Math.max(0.001, cur.y),
+    );
+    if (f >= 1) return;
+    commitScale({ x: scale.x * f, y: scale.y * f, z: scale.z * f }, true);
+  };
+
+  const resetScale = () => commitScale({ x: 1, y: 1, z: 1 }, true);
+
   /** Live drag-move — instant state, debounced persistence. */
   const handleMove = useCallback(
     (id: string, x: number, z: number) => {
@@ -624,7 +740,7 @@ function ShelfWorkspace({
 
   /** Grow/shrink the layout to a target qty, filling free slots, opening plates. */
   const syncLayoutToQty = useCallback((item: ShelfItem, target: number, cur: PlateInstance[]): PlateInstance[] => {
-    const bb = item.geom?.bbox ?? { x: 10, y: 10, z: 10 };
+    const bb = effectiveGeom(item).bbox;
     const orient: Orient = item.orient ?? layFlatFlip(bb);
     const fp = flipFootprint(bb, orient);
     if (target <= cur.length) return cur.slice(0, Math.max(1, target));
@@ -717,18 +833,17 @@ function ShelfWorkspace({
     deleteInstance();
   };
 
-  /** Global re-pack: EVERY plate reflows into centered, collision-free grids at
-   *  the true item footprint; overflow spills onto fresh plates. Per-instance
-   *  yaw is preserved; empty plates compact away. Clears any collision state. */
-  const autoAlign = () => {
-    if (!selected || !bbox) return;
-    const fp = flipFootprint(bbox, orient);
+  /** Global re-pack helper: EVERY plate reflows into centered, collision-free
+   *  grids at the given effective footprint; overflow spills onto fresh plates;
+   *  per-instance yaw is preserved; empty plates compact away. */
+  const repackAll = (cur: PlateInstance[], bb: { x: number; y: number; z: number }, or: Orient): PlateInstance[] => {
+    const fp = flipFootprint(bb, or);
     const { cols, rows, maxPerPlate } = packInstancesOnPlates(fp.w, fp.d);
     const cellW = fp.w + INSTANCE_GAP;
     const cellD = fp.d + INSTANCE_GAP;
     const slots = plateSlots(cols, rows, cellW, cellD);
     const perPlate = new Map<number, PlateInstance[]>();
-    for (const i of layout) {
+    for (const i of cur) {
       const arr = perPlate.get(i.plate) ?? [];
       arr.push(i);
       perPlate.set(i.plate, arr);
@@ -744,28 +859,26 @@ function ShelfWorkspace({
         plate += 1;
       }
     }
+    return next;
+  };
+
+  /** Auto-Align: global re-pack of the current layout at the current footprint. */
+  const autoAlign = () => {
+    if (!selected || !bbox) return;
+    const next = repackAll(layout, bbox, orient);
     setLayout(next);
     persistLayout(selected, next);
-    if (activePlate >= plate) switchPlate(Math.max(0, plate - 1));
+    const maxPlate = next.reduce((m, i) => Math.max(m, i.plate), 0);
+    if (activePlate > maxPlate) switchPlate(maxPlate);
   };
 
   /** Orientation is ITEM-level: set the shared orient, then re-pack ALL plates
-   *  with the new uniform footprint. Every instance yaw is preserved. */
+   *  with the NEW orientation's footprint. Every instance yaw is preserved. */
   const applyFlipToAll = (nextOrient: Orient) => {
     if (!selected || !bbox) return;
-    const fp = flipFootprint(bbox, nextOrient);
-    const { cols, rows, maxPerPlate } = packInstancesOnPlates(fp.w, fp.d);
-    const cellW = fp.w + INSTANCE_GAP;
-    const cellD = fp.d + INSTANCE_GAP;
-    const slots = plateSlots(cols, rows, cellW, cellD);
-    const repacked: PlateInstance[] = layout.map((i, k) => ({
-      ...i,
-      plate: Math.floor(k / maxPerPlate),
-      x: slots[k % maxPerPlate].x,
-      z: slots[k % maxPerPlate].z,
-    }));
-    setLayout(repacked);
-    persistLayout(selected, repacked, { orient: nextOrient });
+    const next = repackAll(layout, bbox, nextOrient);
+    setLayout(next);
+    persistLayout(selected, next, { orient: nextOrient });
     switchPlate(0);
   };
 
@@ -880,10 +993,10 @@ function ShelfWorkspace({
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="break-words text-[14px] font-semibold leading-snug text-zinc-100">{selected.name}</p>
-                  {selected.geom && (
+                  {bbox && (
                     <p className="mt-0.5 font-mono text-[10px] tabular-nums text-zinc-400">
-                      {selected.geom.bbox.x} × {selected.geom.bbox.y} × {selected.geom.bbox.z} mm
-                      {` · ${(selected.geom.volumeMm3 / 1000).toFixed(1)} cm³`}
+                      {bbox.x} × {bbox.y} × {bbox.z} mm
+                      {` · ${(effectiveGeom({ geom: selected.geom, scale: liveScale ?? normalizeScale(selected) }).volumeMm3 / 1000).toFixed(1)} cm³`}
                     </p>
                   )}
                 </div>
@@ -919,6 +1032,152 @@ function ShelfWorkspace({
                 )}
               </div>
               <ItemEditor item={selected} onSetParams={setParams} />
+
+              {/* Scale & dimensions — mm-precise, uniform-lock, % control */}
+              {selected.geom && (
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <SectionLabel>Scale &amp; Dimensions</SectionLabel>
+                    <span className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] tabular-nums text-zinc-400">{pctNow}%</span>
+                      <button
+                        type="button"
+                        onClick={() => setScaleLocked((v) => !v)}
+                        aria-label={scaleLocked ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
+                        title={scaleLocked ? 'Uniform scaling (locked)' : 'Independent axis scaling (unlocked)'}
+                        className={`rounded-lg border p-1.5 transition active:scale-[0.97] ${
+                          scaleLocked
+                            ? 'border-white/25 bg-white/[0.12] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                            : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-zinc-100'
+                        }`}
+                      >
+                        {scaleLocked ? <IconLink size={13} /> : <IconLinkBroken size={13} />}
+                      </button>
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {(['x', 'y', 'z'] as const).map((axis) => {
+                      const label = axis === 'x' ? 'X · Length' : axis === 'y' ? 'Y · Height' : 'Z · Width';
+                      const accent = axis === 'x' ? 'text-red-300/80' : axis === 'y' ? 'text-emerald-300/80' : 'text-blue-300/80';
+                      return (
+                        <div key={axis} className="flex items-center gap-2">
+                          <span className={`w-[68px] shrink-0 font-mono text-[10px] tabular-nums ${accent}`}>{label}</span>
+                          <button
+                            type="button"
+                            aria-label={`Decrease ${axis.toUpperCase()}`}
+                            onClick={() => stepDim(axis, -1)}
+                            className="h-8 w-8 shrink-0 rounded-lg border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.97]"
+                          >
+                            −
+                          </button>
+                          <div className="flex h-8 min-w-0 flex-1 items-center rounded-lg border border-white/10 bg-white/[0.04] px-2.5 transition focus-within:border-white/30">
+                            <input
+                              inputMode="decimal"
+                              aria-label={`${axis.toUpperCase()} size in mm`}
+                              value={dimDraft[axis]}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (/^\d*\.?\d*$/.test(v)) {
+                                  setDimDraft((d) => ({ ...d, [axis]: v }));
+                                  applyDim(axis, v);
+                                } else {
+                                  setDimDraft((d) => ({ ...d })); // force re-render — DOM snaps back to the draft
+                                }
+                              }}
+                              onBlur={() => setDimDraft((d) => ({ ...d, [axis]: String(bbox?.[axis] ?? d[axis]) }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                              }}
+                              className="w-full bg-transparent font-mono text-[12px] tabular-nums text-zinc-100 outline-none"
+                            />
+                            <span className="shrink-0 font-mono text-[9.5px] uppercase tracking-wider text-zinc-500">mm</span>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label={`Increase ${axis.toUpperCase()}`}
+                            onClick={() => stepDim(axis, 1)}
+                            className="h-8 w-8 shrink-0 rounded-lg border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.97]"
+                          >
+                            +
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <button
+                      type="button"
+                      aria-label="Decrease scale percent"
+                      onClick={() => stepPct(-5)}
+                      className="h-8 w-8 shrink-0 rounded-lg border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.97]"
+                    >
+                      −
+                    </button>
+                    <div className="flex h-8 w-[92px] shrink-0 items-center rounded-lg border border-white/10 bg-white/[0.04] px-2.5 transition focus-within:border-white/30">
+                      <input
+                        inputMode="decimal"
+                        aria-label="Scale percent"
+                        value={pctDraft}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (/^\d*\.?\d*$/.test(v)) {
+                            setPctDraft(v);
+                            applyPct(v);
+                          } else {
+                            setPctDraft((v2) => String(v2)); // force re-render — DOM snaps back
+                          }
+                        }}
+                        onBlur={() => setPctDraft(String(pctNow))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                        }}
+                        className="w-full bg-transparent font-mono text-[12px] tabular-nums text-zinc-100 outline-none"
+                      />
+                      <span className="shrink-0 font-mono text-[9.5px] uppercase tracking-wider text-zinc-500">%</span>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Increase scale percent"
+                      onClick={() => stepPct(5)}
+                      className="h-8 w-8 shrink-0 rounded-lg border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.97]"
+                    >
+                      +
+                    </button>
+                    <input
+                      type="range"
+                      min={25}
+                      max={400}
+                      step={5}
+                      aria-label="Scale percent slider"
+                      onMouseDown={(e) => applyPct((e.target as HTMLInputElement).value)}
+                      onTouchStart={(e) => applyPct((e.target as HTMLInputElement).value)}
+                      onChange={(e) => applyPct(e.target.value, true)}
+                      className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-white"
+                    />
+                  </div>
+
+                  <p className="mt-2 font-mono text-[9.5px] tabular-nums text-zinc-500">
+                    {bbox ? `${bbox.x} × ${bbox.y} × ${bbox.z} mm` : '—'}
+                    {` · ${(effectiveGeom({ geom: selected.geom, scale: liveScale ?? normalizeScale(selected) }).volumeMm3 / 1000).toFixed(1)} cm³`}
+                    {selected.geom.triangles > 0 ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris` : ''}
+                    {scaleLocked ? ' · uniform' : ' · free axes'}
+                  </p>
+
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <Chip active={false} onClick={fitToBed}>
+                      Fit to Bed
+                    </Chip>
+                    <Chip active={false} onClick={resetScale}>
+                      Reset Scale
+                    </Chip>
+                    <Chip active={false} onClick={layFlat}>
+                      Lay Flat
+                    </Chip>
+                  </div>
+                </div>
+              )}
 
               {/* Filament color — live-shades the 3D meshes */}
               <div>
@@ -1064,6 +1323,7 @@ function ShelfWorkspace({
               selectedInstanceId={selectedInstanceId}
               collision={collision}
               interaction={tool}
+              scaleOverride={liveScale ?? undefined}
               colors={{
                 primary: filamentColor(selected.params.primaryColor).hex,
                 secondary:
@@ -1147,14 +1407,14 @@ function ShelfWorkspace({
                 Collision detected — click Auto-Align to fix
               </button>
             )}
-            {/* HUD — part telemetry (top-left) */}
-            {selected.geom && (
+            {/* HUD — part telemetry (top-left, effective scaled dims) */}
+            {bbox && (
               <div className="pointer-events-none absolute left-3 top-[54px] max-w-[70%] rounded-lg border border-white/10 bg-black/55 px-2.5 py-1.5 font-mono text-[10px] tabular-nums text-zinc-300 backdrop-blur">
-                {selected.geom.bbox.x} × {selected.geom.bbox.y} × {selected.geom.bbox.z} mm
-                {selected.geom.triangles > 0
+                {bbox.x} × {bbox.y} × {bbox.z} mm
+                {selected.geom && selected.geom.triangles > 0
                   ? ` · ${selected.geom.triangles.toLocaleString('en-IN')} tris`
                   : ' · library'}
-                {` · ${(selected.geom.volumeMm3 / 1000).toFixed(1)} cm³`}
+                {` · ${(est?.gramsTotal ?? 0).toFixed(0)} g filament`}
               </div>
             )}
             {/* HUD — view controls (bottom-right, clear of the toolbar) */}

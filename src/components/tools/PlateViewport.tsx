@@ -4,14 +4,17 @@ import { sessionMeshCache } from '../../lib/stlThumb';
 import { readStlMesh } from '../../lib/stl';
 import {
   clampToPlate,
+  effectiveGeom,
   filamentColor,
   flipFootprint,
   getShelfFile,
   layFlatFlip,
+  normalizeScale,
   PLATE_SIZE,
   rotatedFootprint,
   type Orient,
   type PlateInstance,
+  type Scale3,
   type ShelfItem,
 } from '../../lib/stlHub';
 
@@ -93,9 +96,13 @@ function applyFilamentColors(geo: THREE.BufferGeometry, primary: string, seconda
   geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
 }
 
-/** Bake a flip orientation into a geometry clone: bottom at y=0, centered XZ. */
-function bakeFlip(base: THREE.BufferGeometry, flip: Orient): THREE.BufferGeometry {
+/** Bake scale + orientation into a geometry clone: scaled on the RAW axes
+ *  first (so non-uniform scale follows the file's axes), then flipped, then
+ *  re-seated — bottom at y=0, centered XZ. */
+function bakeFlip(base: THREE.BufferGeometry, flip: Orient, scale?: Scale3): THREE.BufferGeometry {
   const g = base.clone();
+  const s = scale ?? { x: 1, y: 1, z: 1 };
+  if (s.x !== 1 || s.y !== 1 || s.z !== 1) g.applyMatrix4(new THREE.Matrix4().makeScale(s.x, s.y, s.z));
   if (flip === 'x') g.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2));
   if (flip === 'y') g.applyMatrix4(new THREE.Matrix4().makeRotationY(Math.PI / 2));
   g.computeBoundingBox();
@@ -112,6 +119,7 @@ export default function PlateViewport({
   collision,
   colors,
   interaction = 'move',
+  scaleOverride,
   onSelectInstance,
   onMoveInstance,
   onRotateInstance,
@@ -125,6 +133,7 @@ export default function PlateViewport({
   collision: boolean;
   colors: PlateColors;
   interaction?: 'move' | 'rotate'; // drag on an instance moves or spins it
+  scaleOverride?: Scale3; // live typing preview — wins over item.scale
   onSelectInstance: (id: string | null) => void;
   onMoveInstance: (id: string, x: number, z: number) => void;
   onRotateInstance?: (id: string, rotY: number) => void;
@@ -139,7 +148,7 @@ export default function PlateViewport({
   // Mutable bridges between the stable scene and the React-driven state
   const sceneRef = useRef<THREE.Group | null>(null); // instance group
   const rawGeoRef = useRef<THREE.BufferGeometry | null>(null); // normalized, bottom-seated, centered
-  const bakedRef = useRef<{ orient: Orient; geo: THREE.BufferGeometry } | null>(null);
+  const bakedRef = useRef<{ orient: Orient; scale: Scale3; geo: THREE.BufferGeometry } | null>(null);
   const orientRef = useRef<Orient>('none');
   const materialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const selBoxRef = useRef<THREE.LineSegments | null>(null);
@@ -148,12 +157,12 @@ export default function PlateViewport({
   const grabOffsetRef = useRef({ x: 0, z: 0 });
   const modelRadiusRef = useRef<number | null>(null);
   const cbRef = useRef({ onSelectInstance, onMoveInstance, onRotateInstance });
-  const propsRef = useRef({ instances, activePlate, item, interaction });
+  const propsRef = useRef({ instances, activePlate, item, interaction, scaleOverride });
   const kickRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     cbRef.current = { onSelectInstance, onMoveInstance, onRotateInstance };
-    propsRef.current = { instances, activePlate, item, interaction };
+    propsRef.current = { instances, activePlate, item, interaction, scaleOverride };
   });
 
   useEffect(() => {
@@ -251,8 +260,10 @@ export default function PlateViewport({
       const fit = () => {
         const mine = propsRef.current.instances.filter((i) => i.plate === propsRef.current.activePlate);
         if (mine.length === 1 && modelRadiusRef.current) {
-          // single instance — frame it prominently, plate in context
-          radius = clampR(Math.max((modelRadiusRef.current / halfFov) * 1.5, plateFitDist * 0.34));
+          // single instance — frame it prominently, plate in context (scale-aware)
+          const s = normalizeScale(propsRef.current.item);
+          const r = modelRadiusRef.current * Math.max(s.x, s.y, s.z);
+          radius = clampR(Math.max((r / halfFov) * 1.5, plateFitDist * 0.34));
           target.y = 24;
         } else {
           radius = clampR(plateFitDist);
@@ -500,13 +511,18 @@ export default function PlateViewport({
     const selBox = selBoxRef.current;
     if (!group || !material || !selBox) return;
 
-    // Lazy (re)bake — orientation is item-level; a change re-bakes the shared geometry
+    // Lazy (re)bake — orientation AND scale are item-level; a change re-bakes
+    // the shared geometry (scale applies on the raw axes, then the flip).
     const wantOrient: Orient = item.orient ?? (item.geom ? layFlatFlip(item.geom.bbox) : 'none');
+    const wantScale = scaleOverride ?? normalizeScale(item);
     orientRef.current = wantOrient;
     let baked = bakedRef.current;
-    if (rawGeoRef.current && (!baked || baked.orient !== wantOrient)) {
+    const scaleChanged =
+      !baked || baked.orient !== wantOrient ||
+      baked.scale.x !== wantScale.x || baked.scale.y !== wantScale.y || baked.scale.z !== wantScale.z;
+    if (rawGeoRef.current && scaleChanged) {
       baked?.geo.dispose();
-      baked = { orient: wantOrient, geo: bakeFlip(rawGeoRef.current, wantOrient) };
+      baked = { orient: wantOrient, scale: wantScale, geo: bakeFlip(rawGeoRef.current, wantOrient, wantScale) };
       bakedRef.current = baked;
     }
     if (!baked) return;
@@ -537,10 +553,10 @@ export default function PlateViewport({
       if (!keep.has((child as THREE.Mesh).userData?.instanceId)) group.remove(child);
     }
 
-    // Selection footprint box
+    // Selection footprint box (effective — scaled — bbox)
     const sel = instances.find((i) => i.id === selectedInstanceId && i.plate === activePlate);
-    if (sel && item.geom) {
-      const bbox = item.geom.bbox;
+    if (sel) {
+      const bbox = effectiveGeom({ geom: item.geom, scale: scaleOverride ?? normalizeScale(item) }).bbox;
       const fp = flipFootprint(bbox, orientRef.current);
       const a = rotatedFootprint(fp.w, fp.d, sel.rotY);
       selBox.scale.set(Math.max(a.w + 3, 6), 1, Math.max(a.d + 3, 6));

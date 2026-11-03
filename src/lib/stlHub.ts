@@ -288,11 +288,40 @@ export interface ShelfItem {
   thumb: string; // PNG dataURL ('' → house-glyph fallback)
   params: ShelfParams;
   orient?: Orient; // item-level orientation — applies to ALL instances (default: lay-flat)
+  scale?: Scale3; // per-axis scale factors — undefined = {1,1,1} (100% imported size)
   placement?: PlateInstance[]; // per-instance plate layout (persisted)
   history: Array<{ at: number; material: string; infill: number; colorMode: string; qty: number }>;
   lastTicketId?: string;
   fileStored?: boolean; // blob uploaded to Supabase storage at least once
   syncState?: 'syncing' | 'synced' | 'local-only';
+}
+
+/** Per-axis scale factors — 1 = 100% of the imported size. */
+export type Scale3 = { x: number; y: number; z: number };
+
+/** Scale of an item, normalized — every consumer goes through this. */
+export function normalizeScale(item: Pick<ShelfItem, 'scale'>): Scale3 {
+  return item.scale ?? { x: 1, y: 1, z: 1 };
+}
+
+/**
+ * Geometry AS RENDERED AND PRINTED: the stored mesh scaled by the item's
+ * factors. Volume is exact (×sx·sy·sz); surface uses the pairwise-mean
+ * approximation for non-uniform scales (exact s² when uniform). Everything
+ * that displays dims, prices, packs plates or composes tickets reads THIS,
+ * never the raw stored geom.
+ */
+export function effectiveGeom(item: Pick<ShelfItem, 'geom' | 'scale'>): ShelfGeom {
+  const g = item.geom ?? { triangles: 0, bbox: { x: 10, y: 10, z: 10 }, volumeMm3: 0, surfaceMm2: 0 };
+  const s = normalizeScale(item);
+  const pairSum = s.x * s.y + s.y * s.z + s.z * s.x;
+  const r2 = (n: number) => Number(n.toFixed(2));
+  return {
+    triangles: g.triangles,
+    bbox: { x: r2(g.bbox.x * s.x), y: r2(g.bbox.y * s.y), z: r2(g.bbox.z * s.z) },
+    volumeMm3: Number((g.volumeMm3 * s.x * s.y * s.z).toFixed(1)),
+    surfaceMm2: Number((g.surfaceMm2 * (pairSum / 3)).toFixed(1)),
+  };
 }
 
 export interface LogEntry {
@@ -447,8 +476,15 @@ const fmt = (n: number, digits = 1) =>
 const rupees = (n: number) => `₹${fmt(n, 0)}`;
 
 export function buildCommissionMessage(item: ShelfItem, est: Estimate, ticketId: string): string {
-  const g = item.geom;
-  const volCm3 = g ? g.volumeMm3 / 1000 : 0;
+  const g = effectiveGeom(item);
+  const s = normalizeScale(item);
+  const scaled = s.x !== 1 || s.y !== 1 || s.z !== 1;
+  const scaleLine = !scaled
+    ? null
+    : s.x === s.y && s.y === s.z
+      ? `Scale: ${Math.round(s.x * 100)}% (uniform)`
+      : `Scale: X ${Math.round(s.x * 100)}% · Y ${Math.round(s.y * 100)}% · Z ${Math.round(s.z * 100)}%`;
+  const volCm3 = g.volumeMm3 / 1000;
   const lines = [
     `Build Request: #${ticketId}`,
     `Item: ${item.name}`,
@@ -456,6 +492,7 @@ export function buildCommissionMessage(item: ShelfItem, est: Estimate, ticketId:
       ? `File: ${item.fileName ?? item.name}${g.triangles ? ` | ${g.triangles.toLocaleString('en-IN')} tris` : ''}`
       : `Source: Studio Library`,
     g ? `Size: ${g.bbox.x} × ${g.bbox.y} × ${g.bbox.z} mm | Vol: ${fmt(volCm3, 1)} cm³` : null,
+    scaleLine,
     `Material: ${item.params.material} | Infill: ${item.params.infill}% | Qty: ${item.params.qty}`,
     `Color: ${colorMode(item.params.colorMode).label}`,
     item.params.primaryColor || item.params.secondaryColor

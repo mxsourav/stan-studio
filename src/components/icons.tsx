@@ -42,6 +42,27 @@ export function IconCube(props: IconProps) {
   );
 }
 
+/** Chain link — aspect ratio LOCKED (uniform scaling). */
+export function IconLink(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M10 14a4.2 4.2 0 0 0 6.3.4l2.5-2.5a4.2 4.2 0 0 0-6-6l-1.2 1.2" />
+      <path d="M14 10a4.2 4.2 0 0 0-6.3-.4l-2.5 2.5a4.2 4.2 0 0 0 6 6l1.2-1.2" />
+    </svg>
+  );
+}
+
+/** Broken chain — aspect ratio UNLOCKED (independent axis scaling). */
+export function IconLinkBroken(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M12.6 8.9l1-1a4.2 4.2 0 0 1 6 6l-2.5 2.5a4.2 4.2 0 0 1-6.3-.4" />
+      <path d="M11.4 15.1l-1 1a4.2 4.2 0 0 1-6-6l2.5-2.5a4.2 4.2 0 0 1 6.3.4" />
+      <path d="M4.5 19.5l15-15" />
+    </svg>
+  );
+}
+
 export function IconCubeFill(props: IconProps) {
   return (
     <svg {...base({ ...props, fill: 'currentColor', stroke: 'none' })}>
