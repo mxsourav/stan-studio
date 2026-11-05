@@ -225,6 +225,30 @@ app.post('/api/hub-requests', orderLimiter, async (req, res) => {
   }
 });
 
+// 3D Forge — Groq CORS proxy. api.groq.com blocks browser-origin requests,
+// so the Forge's BYOK key travels in the request body and this route plays
+// relay (server-to-server, no CORS). Nothing is stored or logged here.
+// Optional body.path forwards to another Groq path (e.g. "models").
+app.post('/api/forge/groq', orderLimiter, async (req, res) => {
+  try {
+    const { apiKey, path, ...payload } = req.body || {};
+    if (!apiKey || !/^gsk_/.test(String(apiKey))) {
+      return res.status(400).json({ ok: false, error: 'missing Groq apiKey (gsk_…)' });
+    }
+    const safePath = ['chat/completions', 'models'].includes(String(path)) ? String(path) : 'chat/completions';
+    const upstream = await fetch(`https://api.groq.com/openai/v1/${safePath}`, {
+      method: safePath === 'models' ? 'GET' : 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${String(apiKey).slice(0, 200)}` },
+      body: safePath === 'models' ? undefined : JSON.stringify(payload),
+    });
+    const text = await upstream.text();
+    res.status(upstream.status).type('application/json').send(text);
+  } catch (e) {
+    console.error('[forge-groq] relay failed:', e);
+    res.status(502).json({ ok: false, error: 'Groq relay failed' });
+  }
+});
+
 app.get('/api/admin/hub-requests', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const { data, error } = await supabase

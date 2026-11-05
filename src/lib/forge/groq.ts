@@ -7,8 +7,11 @@
  * connected base, deep-relief (not through-hole) carving.
  */
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'qwen/qwen3.8-27b'; // llama-3.3 left Groq's free tier — Qwen is the active slot
+// api.groq.com blocks browser-origin calls (CORS) — relay through the
+// studio's own serverless backend, which forwards to Groq server-to-server.
+const API_BASE = ((import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '')) || '';
+const PROXY_URL = `${API_BASE}/api/forge/groq`;
 
 const PRINT_RULES = [
   'SINGLE solid object: one connected silhouette, nothing detached.',
@@ -63,31 +66,56 @@ function extractJson(text: string): { imagePrompt?: string; caption?: string } |
   }
 }
 
+/** Auto-adapt when a model id vanishes from the free tier: pick the first
+ *  active chat model that isn't a guard/safety filter. */
+async function resolveModel(apiKey: string, signal?: AbortSignal): Promise<string> {
+  try {
+    const res = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+      body: JSON.stringify({ apiKey, path: 'models' }),
+    });
+    if (!res.ok) return MODEL;
+    const data = (await res.json()) as { data?: Array<{ id?: string; active?: boolean }> };
+    const candidates = (data.data ?? [])
+      .filter((m) => m.active !== false && m.id && !/guard|whisper|tts|embed/i.test(m.id))
+      .map((m) => m.id!);
+    if (candidates.includes(MODEL)) return MODEL;
+    return candidates[0] ?? MODEL;
+  } catch {
+    return MODEL;
+  }
+}
+
 export async function enhancePrompt(idea: string, groqKey: string, signal?: AbortSignal): Promise<EnhancedPrompt> {
   const fallback = templateEnhance(idea);
   if (!groqKey) return fallback;
   try {
-    const res = await fetch(GROQ_URL, {
+    const model = await resolveModel(groqKey, signal);
+    const payload = {
+      apiKey: groqKey,
+      model,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: idea },
+      ],
+      temperature: 0.7,
+      max_tokens: 700,
+    };
+    const res = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+      headers: { 'Content-Type': 'application/json' },
       signal,
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: idea },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.7,
-        max_tokens: 700,
-      }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) return fallback;
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const content = data.choices?.[0]?.message?.content ?? '';
     const parsed = extractJson(content);
-    if (!parsed?.imagePrompt || !parsed?.caption) return fallback;
-    return { imagePrompt: parsed.imagePrompt, caption: parsed.caption, usedGroq: true };
+    if (!parsed?.imagePrompt) return fallback;
+    const caption = parsed.caption ?? idea.trim().replace(/\s+/g, ' ').slice(0, 90);
+    return { imagePrompt: parsed.imagePrompt, caption, usedGroq: true };
   } catch {
     return fallback;
   }

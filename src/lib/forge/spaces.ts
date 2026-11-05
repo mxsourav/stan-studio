@@ -71,23 +71,34 @@ interface SpaceSchema {
 const probeCache = new Map<string, { schema: SpaceSchema | null; at: number }>();
 const clients = new Map<string, Client>();
 const PROBE_TTL = 5 * 60 * 1000;
+const NULL_TTL = 15 * 1000; // failed probes retry soon — spaces wake lazily
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchSchemaJson(sub: string): Promise<unknown | null> {
+  // ZeroGPU spaces sleep aggressively: HF's space host answers 404/503 WITHOUT
+  // CORS headers while waking, which a browser fetch sees as a network error.
+  // Retry both paths — the first hit usually wakes the space for the rest.
   for (const path of ['/gradio_api/info', '/info']) {
-    try {
-      const res = await fetch(`https://${sub}.hf.space${path}`);
-      if (res.ok) return (await res.json()) as unknown;
-    } catch {
-      /* try next path */
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(`https://${sub}.hf.space${path}`);
+        if (res.ok) return (await res.json()) as unknown;
+      } catch {
+        /* sleeping or cold — retry */
+      }
+      await sleep(4000 * (attempt + 1));
     }
   }
   return null;
 }
 
-/** Runtime schema probe — survives gradio-version drift across spaces. */
+/** Runtime schema probe — survives gradio-version drift across spaces.
+ *  Null results are cached only briefly (spaces wake lazily). */
 export async function probeSchema(sub: string): Promise<SpaceSchema | null> {
   const cached = probeCache.get(sub);
-  if (cached && Date.now() - cached.at < PROBE_TTL) return cached.schema;
+  const ttl = cached?.schema ? PROBE_TTL : NULL_TTL;
+  if (cached && Date.now() - cached.at < ttl) return cached.schema;
   const raw = await fetchSchemaJson(sub);
   let schema: SpaceSchema | null = null;
   if (raw && typeof raw === 'object') {
@@ -203,13 +214,15 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
   for (const space of SPACE_CHAIN) {
     try {
       onEvent({ stage: 'probe', space: space.id });
+      // connect FIRST — Client.connect handles space wake with its own retry
+      // loop (probe fetches alone give up on a sleeping space)
+      const client = await getClient(space, hfToken);
       const schema = await probeSchema(space.subdomain);
       const required = space.kind === 'hunyuan' ? ['/shape_generation', '/on_export_click'] : ['/image_to_3d', '/extract_glb'];
       const missing = schema ? required.filter((e) => !schema.endpoints[e]) : required;
       if (!schema || missing.length > 0) {
         throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
       }
-      const client = await getClient(space, hfToken);
 
       onEvent({ stage: 'shape', space: space.id, queue: null, eta: null });
       const shapeParams = schema.endpoints[space.kind === 'hunyuan' ? '/shape_generation' : '/image_to_3d'];

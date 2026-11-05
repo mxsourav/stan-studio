@@ -120,6 +120,7 @@ export default function Forge() {
   const [meshBusy, setMeshBusy] = useState(false);
   const [meshStatus, setMeshStatus] = useState<string | null>(null);
   const [meshErr, setMeshErr] = useState<string | null>(null);
+  const [spaceFails, setSpaceFails] = useState<string[]>([]);
   const [result, setResult] = useState<ForgeMeshResult | null>(null);
   const [stlInfo, setStlInfo] = useState<StlInfo | null>(null);
   const [stlMesh, setStlMesh] = useState<{ tris: Float64Array; count: number } | null>(null);
@@ -203,6 +204,7 @@ export default function Forge() {
     if (!imageBlob || !enhanced) return;
     setMeshBusy(true);
     setMeshErr(null);
+    setSpaceFails([]);
     setResult(null);
     setStlInfo(null);
     setStlMesh(null);
@@ -227,6 +229,10 @@ export default function Forge() {
             if (typeof e.eta === 'number' && e.eta > 0) bits.push(`~${e.eta}s`);
             if (e.stage === 'local-export') bits.push('cloud export failed — local fallback');
             setMeshStatus(bits.join(' · '));
+            if (e.stage === 'space-failed' && e.space) {
+              const name = e.space.split('/')[1] ?? e.space;
+              setSpaceFails((f) => [...f, `${name}: ${e.detail ?? 'unavailable'}`]);
+            }
           },
         });
       }
@@ -447,6 +453,14 @@ export default function Forge() {
             </span>
             <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-zinc-500">{preset.label}</span>
           </div>
+          {spaceFails.length > 0 && (
+            <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5">
+              <p className="font-mono text-[9.5px] uppercase tracking-wider text-zinc-500">space chain attempts</p>
+              {spaceFails.map((f, i) => (
+                <p key={i} className="mt-1 font-mono text-[10px] leading-relaxed text-zinc-400">{f}</p>
+              ))}
+            </div>
+          )}
           {meshErr && (
             <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[10.5px] leading-relaxed text-red-300">
               {meshErr.includes('quota') ? meshErr + ' — try Draft mode or wait for the 24h reset.' : meshErr}
