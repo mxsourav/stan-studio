@@ -3,6 +3,7 @@ import { Navigate, useParams } from 'react-router-dom';
 import FilamentCalculator from '../components/tools/FilamentCalculator';
 import PrintEstimator from '../components/tools/PrintEstimator';
 import CustomStlHub from '../components/tools/CustomStlHub';
+import Forge from '../components/tools/Forge';
 import WorkspaceChrome from '../components/tools/WorkspaceChrome';
 import { TOOLS } from '../components/StudioShowcase';
 
@@ -19,6 +20,7 @@ import { TOOLS } from '../components/StudioShowcase';
 const TELEMETRY: Record<string, string[]> = {
   calc: ['1.75mm real filament geometry', '5 materials', 'bidirectional m ⇄ g ⇄ ₹'],
   estimator: ['signed-tetrahedron volume', '6 mm³/s effective flow + 15% travel', 'rough estimate'],
+  forge: ['groq llama-3.3 prompt sculpting', 'pollinations statue drafts', 'hunyuan3d shape → stl export'],
 };
 
 function TelemetryBar({ facts }: { facts: string[] }) {
@@ -84,6 +86,11 @@ export default function ToolWorkspace() {
                 </div>
                 <TelemetryBar facts={TELEMETRY.estimator} />
               </>
+            )}
+            {tool.mode === 'forge' && (
+              <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto">
+                <Forge />
+              </div>
             )}
           </div>
         </>

@@ -203,6 +203,17 @@ export function IconSparkle(props: IconProps) {
   );
 }
 
+/** Forge — hammer striking a block: idea → printable matter. */
+export function IconForge(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M13.5 6.5l4-3.2 3.2 3.2-3.2 4-2.2-1.8-1.8-2.2z" />
+      <path d="M14.7 9.3L5.6 18.4a2 2 0 0 1-2.9-2.9l9.1-9.1" />
+      <path d="M3 21h7" />
+    </svg>
+  );
+}
+
 export function IconArrowRight(props: IconProps) {
   return (
     <svg {...base(props)}>

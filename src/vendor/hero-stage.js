@@ -1336,7 +1336,7 @@ window.addEventListener('stan:modal-toggle', () => {
         render();
     }
 });
-window.addEventListener('scroll', () => {
+const handleWakeScroll = () => {
     if (!isLoopRunning && (!document.hidden) && (!window.__stanModalOpen)) {
         const runway = getHeroRunway();
         const scrollY = window.pageYOffset || window.scrollY || 0;
@@ -1344,7 +1344,8 @@ window.addEventListener('scroll', () => {
             render();
         }
     }
-}, { passive: true });
+};
+window.addEventListener('scroll', handleWakeScroll, { passive: true });
 
 // Start render loop
 render();
@@ -2465,6 +2466,7 @@ initBambuPrinter();
            handler sets previously pinned the dead renderer/scene in memory
            and fought the next mount's init after every back-navigation. */
         window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('scroll', handleWakeScroll);
         window.removeEventListener('resize', handleScroll);
         window.removeEventListener('pageshow', handlePageShow);
         window.removeEventListener('mousemove', handleMouseParallax);

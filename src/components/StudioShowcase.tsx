@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { IconArrowRight, IconBoxSealedFill, IconGridFill, IconRulerFill, IconSparkle } from './icons';
+import { IconArrowRight, IconBoxSealedFill, IconForge, IconGridFill, IconRulerFill, IconSparkle } from './icons';
 
 /**
  * "Inside the studio" — compact asymmetric bento.
@@ -8,7 +8,7 @@ import { IconArrowRight, IconBoxSealedFill, IconGridFill, IconRulerFill, IconSpa
  * opens its dedicated fullscreen workspace route (/tools/:toolId).
  */
 
-export type ToolMode = 'studio' | 'calc' | 'estimator' | 'hub';
+export type ToolMode = 'studio' | 'calc' | 'estimator' | 'hub' | 'forge';
 
 export interface Tool {
   id: string;
@@ -50,6 +50,15 @@ export const TOOLS: Tool[] = [
     specs: ['mesh volume', 'hours', '₹ pricing'],
   },
   {
+    id: 'forge',
+    title: '3D Forge',
+    tagline: 'Idea → image → printable idol',
+    body: 'Cloud pipeline for the print floor: an LLM sculpts the prompt, AI drafts the statue view, and Hunyuan3D turns it into a decimated STL — straight to the shelf.',
+    icon: <IconForge size={18} className="text-white" />,
+    mode: 'forge',
+    specs: ['groq LLM', 'pollinations 2D', 'hunyuan3D 3D'],
+  },
+  {
     id: 'stl-hub',
     title: 'Custom STL Hub',
     tagline: 'Your prints, organized',
@@ -60,15 +69,18 @@ export const TOOLS: Tool[] = [
   },
 ];
 
-/** Spotlight only: tracks the cursor into CSS vars for the radial glow. */
+/** Spotlight only: tracks the cursor into CSS vars for the radial glow.
+ *  Returns a ref-cleanup so the mousemove listener dies with the card. */
 function useSpotlight<T extends HTMLElement>() {
   const ref = useCallback((el: T | null) => {
     if (!el) return;
-    el.addEventListener('mousemove', (e: MouseEvent) => {
+    const onMove = (e: MouseEvent) => {
       const r = el.getBoundingClientRect();
       el.style.setProperty('--mx', `${e.clientX - r.left}px`);
       el.style.setProperty('--my', `${e.clientY - r.top}px`);
-    });
+    };
+    el.addEventListener('mousemove', onMove);
+    return () => el.removeEventListener('mousemove', onMove);
   }, []);
   return ref;
 }
@@ -100,6 +112,7 @@ export default function StudioShowcase({
   const heroRef = useSpotlight<HTMLElement>();
   const calcRef = useSpotlight<HTMLElement>();
   const estRef = useSpotlight<HTMLElement>();
+  const forgeRef = useSpotlight<HTMLElement>();
   const hubRef = useSpotlight<HTMLElement>();
 
   const card = (
@@ -247,10 +260,11 @@ export default function StudioShowcase({
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-12">
-          {card(TOOLS[0], heroRef, 'md:col-span-8 min-h-[160px] sm:min-h-[180px] md:min-h-[210px]')}
-          {card(TOOLS[1], calcRef, 'md:col-span-4')}
-          {card(TOOLS[2], estRef, 'md:col-span-5')}
-          {card(TOOLS[3], hubRef, 'md:col-span-7')}
+          {card(TOOLS.find((t) => t.id === 'shadow-lamp') ?? TOOLS[0], heroRef, 'md:col-span-8 min-h-[160px] sm:min-h-[180px] md:min-h-[210px]')}
+          {card(TOOLS.find((t) => t.id === 'filament-calc') ?? TOOLS[1], calcRef, 'md:col-span-4')}
+          {card(TOOLS.find((t) => t.id === 'print-estimator') ?? TOOLS[2], estRef, 'md:col-span-5')}
+          {card(TOOLS.find((t) => t.id === 'forge') ?? TOOLS[3], forgeRef, 'md:col-span-4')}
+          {card(TOOLS.find((t) => t.id === 'stl-hub') ?? TOOLS[4], hubRef, 'md:col-span-3')}
         </div>
       </div>
     </section>
