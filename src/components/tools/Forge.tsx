@@ -121,6 +121,8 @@ export default function Forge() {
   const [meshStatus, setMeshStatus] = useState<string | null>(null);
   const [meshErr, setMeshErr] = useState<string | null>(null);
   const [spaceFails, setSpaceFails] = useState<string[]>([]);
+  const [eventLog, setEventLog] = useState<Array<{ label: string; at: number }>>([]);
+  const [meshStartedAt, setMeshStartedAt] = useState<number | null>(null);
   const [result, setResult] = useState<ForgeMeshResult | null>(null);
   const [stlInfo, setStlInfo] = useState<StlInfo | null>(null);
   const [stlMesh, setStlMesh] = useState<{ tris: Float64Array; count: number } | null>(null);
@@ -202,6 +204,9 @@ export default function Forge() {
   // ── Stage 3: forge the mesh ──
   const doForge = async () => {
     if (!imageBlob || !enhanced) return;
+    const t0 = Date.now();
+    setMeshStartedAt(t0);
+    setEventLog([]);
     setMeshBusy(true);
     setMeshErr(null);
     setSpaceFails([]);
@@ -209,11 +214,13 @@ export default function Forge() {
     setStlInfo(null);
     setStlMesh(null);
     setHubDone(false);
+    const logEvent = (label: string) => setEventLog((log) => [...log.slice(-7), { label, at: Date.now() }]);
     try {
       let out: ForgeMeshResult;
       if (isMock) {
+        logEvent('mock pipeline engaged');
         setMeshStatus('mock: forging box');
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 1400));
         const stl = mockStlBlob(40, 45, 30);
         out = { stlBlob: stl, meshBlob: stl, triangles: 12, source: 'local', space: 'mock' };
       } else {
@@ -228,7 +235,9 @@ export default function Forge() {
             if (typeof e.queue === 'number') bits.push(`queue #${e.queue}`);
             if (typeof e.eta === 'number' && e.eta > 0) bits.push(`~${e.eta}s`);
             if (e.stage === 'local-export') bits.push('cloud export failed — local fallback');
-            setMeshStatus(bits.join(' · '));
+            const line = bits.join(' · ');
+            setMeshStatus(line);
+            logEvent(line);
             if (e.stage === 'space-failed' && e.space) {
               const name = e.space.split('/')[1] ?? e.space;
               setSpaceFails((f) => [...f, `${name}: ${e.detail ?? 'unavailable'}`]);
@@ -446,13 +455,7 @@ export default function Forge() {
       {stage === 2 && (
         <div className="liquid-glass mt-4 rounded-3xl p-5 sm:p-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Forging mesh</p>
-          <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-3">
-            <IconCube size={16} className={`text-zinc-300 ${meshBusy ? 'animate-pulse' : ''}`} />
-            <span className="min-w-0 flex-1 truncate font-mono text-[11px] tabular-nums text-zinc-300">
-              {meshStatus ?? (meshBusy ? 'connecting…' : 'ready')}
-            </span>
-            <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-zinc-500">{preset.label}</span>
-          </div>
+          <ForgeProgress busy={meshBusy} status={meshStatus} events={eventLog} startedAt={meshStartedAt} presetLabel={preset.label} />
           {spaceFails.length > 0 && (
             <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5">
               <p className="font-mono text-[9.5px] uppercase tracking-wider text-zinc-500">space chain attempts</p>
@@ -568,8 +571,84 @@ function ForgeHeader(props: { keysOpen: boolean; onToggleKeys: () => void; groqR
   );
 }
 
-function Stepper({ stage }: { stage: 0 | 1 | 2 | 3 }) {
+/** Stage label from the latest pipeline event prefix. */
+function forgeStageLabel(status: string | null, busy: boolean): string {
+  if (!busy && status) return 'Forged.';
+  const head = (status ?? 'probe').split(' · ')[0];
+  if (head.startsWith('probe')) return 'Waking the space…';
+  if (head.startsWith('shape')) return 'Forging on the GPU…';
+  if (head.startsWith('export')) return 'Decimating + exporting STL…';
+  if (head.startsWith('local-export')) return 'Converting the cached mesh locally…';
+  if (head.startsWith('space-failed')) return 'Space failed — trying the next…';
+  if (head.startsWith('done')) return 'Forged.';
+  return busy ? 'Connecting…' : 'Ready';
+}
+
+/** Animated forging readout: rings + pulse, live T+ elapsed, event log. */
+function ForgeProgress({ busy, status, events, startedAt, presetLabel }: {
+  busy: boolean;
+  status: string | null;
+  events: Array<{ label: string; at: number }>;
+  startedAt: number | null;
+  presetLabel: string;
+}) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!busy) return;
+    const t = window.setInterval(() => setNow(Date.now()), 200);
+    return () => window.clearInterval(t);
+  }, [busy]);
+  const elapsed = busy && startedAt ? Math.max(0, (now - startedAt) / 1000) : 0;
   return (
+    <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-3.5">
+      <div className="flex items-center gap-3.5">
+        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center">
+          {busy && (
+            <>
+              <span className="forge-ring absolute inset-0 rounded-full border border-[#ff2d55]/60" style={{ animationDelay: '0s' }} />
+              <span className="forge-ring absolute inset-0 rounded-full border border-[#ff2d55]/40" style={{ animationDelay: '0.6s' }} />
+              <span className="forge-ring absolute inset-0 rounded-full border border-[#ff2d55]/25" style={{ animationDelay: '1.2s' }} />
+            </>
+          )}
+          <IconForge size={22} className={busy ? 'forge-pulse text-white' : 'text-zinc-400'} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-mono text-[12.5px] text-zinc-100">{forgeStageLabel(status, busy)}</p>
+          <p className="mt-0.5 truncate font-mono text-[10px] tabular-nums text-zinc-500">
+            {status ?? 'connecting to the space chain…'}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="font-mono text-[19px] font-bold tabular-nums text-white">T+{elapsed.toFixed(0)}s</p>
+          <p className="font-mono text-[8.5px] uppercase tracking-wider text-zinc-500">{presetLabel}</p>
+        </div>
+      </div>
+      <div className="relative mt-3 h-1 overflow-hidden rounded-full bg-white/10">
+        {busy ? (
+          <div className="forge-shimmer relative h-full w-full rounded-full bg-white/[0.06]" />
+        ) : (
+          <div className="h-full w-full rounded-full bg-emerald-400/50" />
+        )}
+      </div>
+      {events.length > 0 && (
+        <div className="mt-2.5 flex flex-col gap-0.5">
+          {events.slice(-5).map((e, i) => (
+            <p key={i} className="font-mono text-[9.5px] tabular-nums text-zinc-500">
+              [T+{Math.max(0, Math.round((e.at - (startedAt ?? e.at)) / 1000))}s] {e.label}
+            </p>
+          ))}
+        </div>
+      )}
+      {busy && (
+        <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.1em] text-zinc-600">
+          typical: 40–120s gpu once the space wakes · cold start adds ~60s
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Stepper({ stage }: { stage: 0 | 1 | 2 | 3 }) {  return (
     <div className="no-scrollbar flex items-center gap-1 overflow-x-auto rounded-xl border border-white/[0.08] bg-white/[0.03] p-1">
       {STAGES.map((label, i) => (
         <div key={label} className="flex min-w-0 flex-1 items-center gap-1">

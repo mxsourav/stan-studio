@@ -305,3 +305,35 @@ input[type="range"].stan-slider::-moz-range-thumb {
     transform: scale(1);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   3D FORGE — forging animation (expanding carbon rings + shimmer sweep)
+   ═══════════════════════════════════════════════════════════════════════ */
+@keyframes forge-ring {
+  0% { transform: scale(0.55); opacity: 0.9; }
+  70% { opacity: 0.25; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.forge-ring {
+  animation: forge-ring 1.8s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+@keyframes forge-pulse {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px rgba(255, 45, 85, 0.8)); }
+  50% { opacity: 0.55; filter: drop-shadow(0 0 14px rgba(255, 45, 85, 0.35)); }
+}
+.forge-pulse {
+  animation: forge-pulse 1.4s ease-in-out infinite;
+}
+@keyframes forge-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(320%); }
+}
+.forge-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 30%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 45, 85, 0.85), transparent);
+  animation: forge-shimmer 1.6s ease-in-out infinite;
+}
