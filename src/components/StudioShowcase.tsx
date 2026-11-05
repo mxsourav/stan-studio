@@ -159,7 +159,7 @@ export default function StudioShowcase({
         <div className="mt-auto flex items-center justify-between gap-1 sm:gap-2 pt-2 sm:pt-3">
           <span className="flex min-w-0 flex-wrap gap-1">
             {tool.specs.map((s) => (
-              <span key={s} className="rounded border border-white/[0.08] bg-white/[0.04] px-1 sm:px-1.5 py-0.5 font-mono text-[8px] sm:text-[9px] text-white/45">
+              <span key={s} className="rounded border border-white/[0.08] bg-white/[0.04] px-1 sm:px-1.5 py-0.5 font-mono text-[7.5px] sm:text-[9px] tracking-tight leading-none text-white/45 whitespace-nowrap">
                 {s}
               </span>
             ))}
@@ -171,7 +171,7 @@ export default function StudioShowcase({
   );
 
   return (
-    <section className="relative z-40 bg-[#070708] px-3 sm:px-6 pb-8 sm:pb-12 pt-12 sm:pt-14">
+    <section className="relative z-40 bg-[#070708] px-3 sm:px-6 pb-6 sm:pb-8 pt-12 sm:pt-14">
       {/* Apple-grade seamless multi-stop progressive scrim veil from 3D hero into studio showcase */}
       <div
         aria-hidden
@@ -217,7 +217,7 @@ export default function StudioShowcase({
       {/* Downward-facing Apple-grade seamless multi-stop progressive scrim veil from showcase into frosted glass stage */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-32 sm:-bottom-48 inset-x-0 h-32 sm:h-48 z-40"
+        className="pointer-events-none absolute -bottom-12 sm:-bottom-16 inset-x-0 h-12 sm:h-16 z-40"
         style={{
           background: `linear-gradient(
             to bottom,

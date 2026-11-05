@@ -363,6 +363,18 @@
         }
     `;
 
+        // --- Potato / Low-Power Device Detection ---
+    const isPotato = (
+        (typeof navigator !== 'undefined' && (
+            (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+            (navigator.deviceMemory && navigator.deviceMemory <= 4)
+        )) ||
+        (typeof window !== 'undefined' && (
+            window.innerWidth < 768 ||
+            /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        ))
+    );
+
     // --- Singleton Controller ---
     let state = {
         canvas: null,
@@ -400,7 +412,7 @@
         currentHoverStrength: 0.0,
         magnetStrength: 0.20,
         magnetRadius: 145.0,
-        particleSize: 1.35,
+        particleSize: isPotato ? 1.85 : 1.35,
         spreadScale: 1.05,
     };
 
@@ -546,7 +558,7 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'alphabetic';
             ctx.fillText('STΔN', stanRelX, stanBaselineY);
-        }, 0.0, stanRect.top - hbRect.top + pad, stanRect.height, null, 0.32);
+        }, 0.0, stanRect.top - hbRect.top + pad, stanRect.height, null, isPotato ? 0.16 : 0.32);
 
         // Pass 2: Studio Typography (100% isolated, zero STΔN contamination)
         const studioRelX = studioRect.left - hbRect.left + pad;
@@ -560,7 +572,7 @@
             ctx.textAlign = 'left';
             ctx.textBaseline = 'alphabetic';
             ctx.fillText('studio', studioRelX, studioBaselineY);
-        }, 1.5, studioRect.top - hbRect.top + pad, studioRect.height, null, 0.35);
+        }, 1.5, studioRect.top - hbRect.top + pad, studioRect.height, null, isPotato ? 0.18 : 0.35);
 
         // Pass 3: Crimson Period Dot
         // User directive: "red dont vanish" -> ZERO VANISHING!
@@ -573,7 +585,7 @@
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'alphabetic';
                 ctx.fillText('.', dotRelX, studioBaselineY);
-            }, 1.0, studioRect.top - hbRect.top + pad, studioRect.height, [1.0, 0.0, 0.18], 0.35);
+            }, 1.0, studioRect.top - hbRect.top + pad, studioRect.height, [1.0, 0.0, 0.18], isPotato ? 0.18 : 0.35);
         }
 
         // Pass 4: Circular Scroll Cue Button
@@ -600,7 +612,7 @@
             ctx.lineTo(ox + 12 * chevronScale, oy + 15 * chevronScale);
             ctx.lineTo(ox + 17 * chevronScale, oy + 10 * chevronScale);
             ctx.stroke();
-        }, 2.0, cueRect.top - hbRect.top + pad, cueRect.height, null, 0.22);
+        }, 2.0, cueRect.top - hbRect.top + pad, cueRect.height, null, isPotato ? 0.12 : 0.22);
 
         // Build Three.js BufferGeometry
         if (state.geometry) {
@@ -636,7 +648,7 @@
         state.width = window.innerWidth;
         state.height = window.innerHeight;
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const dpr = isPotato ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.5);
         state.dpr = dpr;
 
         // Dedicated WebGL Renderer on overlay canvas
@@ -723,6 +735,17 @@
      */
     function renderLoop() {
         state.rafId = requestAnimationFrame(renderLoop);
+
+        // Potato performance guard: pause when tab hidden or modal open
+        if (typeof document !== 'undefined' && document.hidden) {
+            state.rafId = null;
+            return;
+        }
+        if (typeof window !== 'undefined' && window.__stanModalOpen) {
+            state.rafId = null;
+            return;
+        }
+
 
         const delta = state.clock.getDelta();
         const time = state.clock.getElapsedTime();
@@ -849,6 +872,10 @@
         }
 
         // 6. Render WebGL micro-particles when active or in transition (ZERO FLASH)
+        if (p >= 0.99 && rawScroll > maxScroll + 300) {
+            state.rafId = null;
+            return;
+        }
         if (state.renderer && state.scene && state.camera) {
             if (p > 0.001) {
                 state.renderer.render(state.scene, state.camera);
@@ -861,6 +888,26 @@
     /**
      * Public API
      */
+
+    function wakeDispersionLoop() {
+        if (!state.rafId && state.isInitialized && (!document.hidden) && (!window.__stanModalOpen)) {
+            renderLoop();
+        }
+    }
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) wakeDispersionLoop();
+    });
+    window.addEventListener('stan:modal-toggle', () => {
+        if (!window.__stanModalOpen) wakeDispersionLoop();
+    });
+    window.addEventListener('scroll', () => {
+        const maxScroll = Math.max(window.innerHeight * 1.6, 900);
+        const rawScroll = window.scrollY || window.pageYOffset || 0;
+        if (rawScroll <= maxScroll + 300) {
+            wakeDispersionLoop();
+        }
+    }, { passive: true });
+
     return {
         /**
          * Initializes hero dispersion system.

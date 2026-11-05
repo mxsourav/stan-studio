@@ -37,22 +37,37 @@ const S = {
 };
 
 /* ═══════════════════════════════════════════════════════════════════
+   POTATO / LOW-POWER SYSTEM DETECTION
+   ═══════════════════════════════════════════════════════════════════ */
+const isPotato = (
+    (typeof navigator !== 'undefined' && (
+        (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+        (navigator.deviceMemory && navigator.deviceMemory <= 4)
+    )) ||
+    (typeof window !== 'undefined' && (
+        window.innerWidth < 768 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    ))
+);
+
+/* ═══════════════════════════════════════════════════════════════════
    RENDERER & STUDIO SETUP
    ═══════════════════════════════════════════════════════════════════ */
 const canvas = document.getElementById('webgl-canvas');
 const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: true,
+    antialias: !isPotato,
     powerPreference: 'high-performance',
 });
 renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const stageDpr = isPotato ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.5);
+renderer.setPixelRatio(stageDpr);
 renderer.setClearColor(0xffffff, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.06;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = isPotato ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
 
 /* ═══════════════════════════════════════════════════════════════════
    SCENE & STUDIO PMREM ENVIRONMENT
@@ -109,8 +124,9 @@ const keyLight = new THREE.DirectionalLight(0xfff0dc, 3.9);
 keyLight.position.set(-6.2, 10.5, 5.0);
 keyLight.target = keyLightTarget;
 keyLight.castShadow = true;
-keyLight.shadow.mapSize.width = 2048;
-keyLight.shadow.mapSize.height = 2048;
+const shadowRes = isPotato ? 512 : 1024;
+keyLight.shadow.mapSize.width = shadowRes;
+keyLight.shadow.mapSize.height = shadowRes;
 keyLight.shadow.camera.near = 1.0;
 keyLight.shadow.camera.far = 24.0;
 keyLight.shadow.camera.left = -5.0;
@@ -981,6 +997,7 @@ window.addEventListener('mousemove', handleMouseParallax, { passive: true });
 
 /* ═══════════════════════════════════════════════════════════════════
    MAIN RENDER LOOP (60FPS DETERMINISTIC, REAL FORWARD ROTATION)
+   Zero-allocation scratch vectors for GC-free potato execution
    ═══════════════════════════════════════════════════════════════════ */
 const _camPos = new THREE.Vector3();
 const _lookTarget = new THREE.Vector3();
@@ -988,10 +1005,42 @@ const _p0Local = new THREE.Vector3();
 const _p1Local = new THREE.Vector3();
 const _p2Local = new THREE.Vector3();
 const _p3Local = new THREE.Vector3();
+const _tLocalPeel = new THREE.Vector3();
+const _pAncLocal = new THREE.Vector3();
+const _pAncWorld = new THREE.Vector3();
+const _p0World = new THREE.Vector3();
+const _p1World = new THREE.Vector3();
+const _p2World = new THREE.Vector3();
+const _p3World = new THREE.Vector3();
+const _spoolCenter = new THREE.Vector3();
+const _cylAxis = new THREE.Vector3();
+const _tempQuat = new THREE.Quaternion();
+
 let prevRadius = S.maxWindR;
 let lastStrandP = -1;
+let isLoopRunning = false;
 
 function render() {
+    isLoopRunning = true;
+
+    // Performance Culling: pause when tab hidden or modal open
+    if (typeof document !== 'undefined' && document.hidden) {
+        isLoopRunning = false;
+        return;
+    }
+    if (typeof window !== 'undefined' && window.__stanModalOpen) {
+        isLoopRunning = false;
+        return;
+    }
+
+    const runway = getHeroRunway();
+    const scrollY = window.pageYOffset || window.scrollY || 0;
+    // When scrolled deep past hero & showcase into footer, sleep render loop to save battery
+    if (runway > 0 && scrollY > runway + 1200) {
+        isLoopRunning = false;
+        return;
+    }
+
     requestAnimationFrame(render);
 
     if (isTransitioning) {
@@ -1024,7 +1073,6 @@ function render() {
     mouseX += (targetMouseX - mouseX) * 0.05;
     mouseY += (targetMouseY - mouseY) * 0.05;
 
-    const runway = getHeroRunway();
     const excessScroll = Math.max(0, window.pageYOffset - runway);
 
     const pct = Math.round(p * 100);
@@ -1057,9 +1105,10 @@ function render() {
     const wp = Math.pow(p, 0.70);
     const currentR = THREE.MathUtils.lerp(S.maxWindR, S.minWindR, wp);
 
-    if (Math.abs(currentR - prevRadius) > 0.003) {
+    const radiusThreshold = isPotato ? 0.008 : 0.003;
+    if (Math.abs(currentR - prevRadius) > radiusThreshold) {
         woundCylGeo.dispose();
-        woundCylGeo = new THREE.CylinderGeometry(currentR, currentR, S.width - 0.02, 96, 1, true);
+        woundCylGeo = new THREE.CylinderGeometry(currentR, currentR, S.width - 0.02, isPotato ? 48 : 96, 1, true);
         woundMesh.geometry = woundCylGeo;
 
         sideCoilFrontGeo.dispose();
@@ -1147,41 +1196,42 @@ function render() {
     const tangentSign = isPhone ? 1.0 : -1.0;
     const cosPeel = Math.cos(peelAngle);
     const sinPeel = Math.sin(peelAngle);
-    const tLocalPeel = new THREE.Vector3(-sinPeel * tangentSign, 0, cosPeel * tangentSign);
+    _tLocalPeel.set(-sinPeel * tangentSign, 0, cosPeel * tangentSign);
 
     const anchorAngle = peelAngle - 0.28 * tangentSign;
-    const _pAncLocal = new THREE.Vector3(currentR * Math.cos(anchorAngle), traverseY, currentR * Math.sin(anchorAngle));
+    _pAncLocal.set(currentR * Math.cos(anchorAngle), traverseY, currentR * Math.sin(anchorAngle));
     _p0Local.set(currentR * cosPeel, traverseY, currentR * sinPeel);
-    _p1Local.copy(_p0Local).addScaledVector(tLocalPeel, 0.40);
-    _p2Local.copy(_p0Local).addScaledVector(tLocalPeel, 0.85);
-    const _p3Local = _p0Local.clone().addScaledVector(tLocalPeel, 1.45);
+    _p1Local.copy(_p0Local).addScaledVector(_tLocalPeel, 0.40);
+    _p2Local.copy(_p0Local).addScaledVector(_tLocalPeel, 0.85);
+    _p3Local.copy(_p0Local).addScaledVector(_tLocalPeel, 1.45);
 
     spoolAnchor.updateMatrixWorld(true);
     spoolPose.updateMatrix();
 
     const m = spoolPose.matrixWorld;
-    const pAncWorld = _pAncLocal.clone().applyMatrix4(m);
-    const p0World = _p0Local.clone().applyMatrix4(m);
-    const p1World = _p1Local.clone().applyMatrix4(m);
-    const p2World = _p2Local.clone().applyMatrix4(m);
-    const p3World = _p3Local.clone().applyMatrix4(m);
+    _pAncWorld.copy(_pAncLocal).applyMatrix4(m);
+    _p0World.copy(_p0Local).applyMatrix4(m);
+    _p1World.copy(_p1Local).applyMatrix4(m);
+    _p2World.copy(_p2Local).applyMatrix4(m);
+    _p3World.copy(_p3Local).applyMatrix4(m);
 
-    stage.worldToLocal(pAncWorld);
-    stage.worldToLocal(p0World);
-    stage.worldToLocal(p1World);
-    stage.worldToLocal(p2World);
-    stage.worldToLocal(p3World);
+    stage.worldToLocal(_pAncWorld);
+    stage.worldToLocal(_p0World);
+    stage.worldToLocal(_p1World);
+    stage.worldToLocal(_p2World);
+    stage.worldToLocal(_p3World);
 
-    strandPoints[0].copy(pAncWorld);
-    strandPoints[1].copy(p0World);
-    strandPoints[2].copy(p1World);
-    strandPoints[3].copy(p2World);
-    strandPoints[4].copy(p3World);
+    strandPoints[0].copy(_pAncWorld);
+    strandPoints[1].copy(_p0World);
+    strandPoints[2].copy(_p1World);
+    strandPoints[3].copy(_p2World);
+    strandPoints[4].copy(_p3World);
 
-    if (Math.abs(p - lastStrandP) > 0.0006 || lastStrandP < 0) {
+    const strandThreshold = isPotato ? 0.0025 : 0.0006;
+    if (Math.abs(p - lastStrandP) > strandThreshold || lastStrandP < 0) {
         strandGeo.dispose();
         strandCurve = new THREE.CatmullRomCurve3(strandPoints, false, 'centripetal', 0.5);
-        strandGeo = new THREE.TubeGeometry(strandCurve, TUBE_SEGS, S.strandR, RADIAL_SEGS, false);
+        strandGeo = new THREE.TubeGeometry(strandCurve, isPotato ? 130 : TUBE_SEGS, S.strandR, isPotato ? 6 : RADIAL_SEGS, false);
         strandMesh.geometry = strandGeo;
         lastStrandP = p;
     }
@@ -1243,7 +1293,6 @@ function render() {
     camera.rotation.z += dutchTilt;
 
     /* 8. Studio Dynamic Key Light & Photorealistic Gaussian Contact Shadow Tracking */
-    const _spoolCenter = new THREE.Vector3();
     spoolPose.getWorldPosition(_spoolCenter);
 
     keyLightTarget.position.copy(_spoolCenter);
@@ -1259,8 +1308,9 @@ function render() {
         keyLight.intensity = 3.9;
     }
 
-    // Dynamic ground shadow orientation & scale tracking
-    const _cylAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(spoolPose.getWorldQuaternion(new THREE.Quaternion()));
+    // Dynamic ground shadow orientation & scale tracking without per-frame allocations
+    spoolPose.getWorldQuaternion(_tempQuat);
+    _cylAxis.set(0, 1, 0).applyQuaternion(_tempQuat);
     const shadowRotationAngle = Math.atan2(-_cylAxis.z, _cylAxis.x);
     contactShadowMesh.rotation.z = shadowRotationAngle;
 
@@ -1275,6 +1325,27 @@ function render() {
     renderer.render(scene, camera);
 }
 
+// Wake up render loop on visibility change or modal close
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !isLoopRunning) {
+        render();
+    }
+});
+window.addEventListener('stan:modal-toggle', () => {
+    if (!window.__stanModalOpen && !isLoopRunning) {
+        render();
+    }
+});
+window.addEventListener('scroll', () => {
+    if (!isLoopRunning && (!document.hidden) && (!window.__stanModalOpen)) {
+        const runway = getHeroRunway();
+        const scrollY = window.pageYOffset || window.scrollY || 0;
+        if (runway > 0 && scrollY <= runway + 1200) {
+            render();
+        }
+    }
+}, { passive: true });
+
 // Start render loop
 render();
 
@@ -1285,7 +1356,8 @@ const handleViewportResize = () => {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    const dpr = isPotato ? 1.0 : Math.min(window.devicePixelRatio || 1, 1.5);
+    renderer.setPixelRatio(dpr);
     handleScroll();
 };
 window.addEventListener('resize', handleViewportResize);
