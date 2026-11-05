@@ -132,19 +132,22 @@ export default function Forge() {
   const [keysOpen, setKeysOpen] = useState(false);
   const [groqKey, setGroqKey] = useState('');
   const [hfToken, setHfToken] = useState('');
+  const [nimKey, setNimKey] = useState('');
   const [keysSaved, setKeysSaved] = useState(false);
 
   useEffect(() => {
     setGroqKey(getForgeKey('groq'));
     setHfToken(getForgeKey('hf'));
+    setNimKey(getForgeKey('nim'));
   }, []);
 
   const preset = FORGE_PRESETS[presetId];
   const groqReady = Boolean(groqKey) || isMock;
   const hfReady = Boolean(hfToken) || isMock;
+  const nimReady = Boolean(nimKey) || isMock;
 
   const saveKeys = () => {
-    setForgeKeys({ groq: groqKey, hf: hfToken });
+    setForgeKeys({ groq: groqKey, hf: hfToken, nim: nimKey });
     setKeysSaved(true);
     window.setTimeout(() => setKeysSaved(false), 1600);
   };
@@ -228,6 +231,7 @@ export default function Forge() {
           imageBlob,
           caption: enhanced.caption,
           hfToken,
+          nimToken: nimKey,
           preset,
           onEvent: (e: ForgeEvent) => {
             const bits: string[] = [e.stage];
@@ -295,19 +299,23 @@ export default function Forge() {
         onToggleKeys={() => setKeysOpen((v) => !v)}
         groqReady={groqReady}
         hfReady={hfReady}
+        nimReady={nimReady}
       />
       {keysOpen && (
         <KeysDrawer
           groqKey={groqKey}
           hfToken={hfToken}
+          nimKey={nimKey}
           setGroqKey={setGroqKey}
           setHfToken={setHfToken}
+          setNimKey={setNimKey}
           saveKeys={saveKeys}
           keysSaved={keysSaved}
           clearKeys={() => {
             clearForgeKeys();
             setGroqKey('');
             setHfToken('');
+            setNimKey('');
           }}
         />
       )}
@@ -500,10 +508,14 @@ export default function Forge() {
             <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Print ready</p>
             <span
               className={`rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
-                result.source === 'cloud' ? 'border-emerald-300/25 bg-emerald-300/[0.08] text-emerald-200/90' : 'border-amber-300/25 bg-amber-300/[0.08] text-amber-200/90'
+                result.source === 'cloud'
+                  ? 'border-emerald-300/25 bg-emerald-300/[0.08] text-emerald-200/90'
+                  : result.source === 'nim'
+                    ? 'border-sky-300/25 bg-sky-300/[0.08] text-sky-200/90'
+                    : 'border-amber-300/25 bg-amber-300/[0.08] text-amber-200/90'
               }`}
             >
-              {result.source === 'cloud' ? 'cloud stl' : 'local fallback stl'}
+              {result.source === 'cloud' ? 'cloud stl' : result.source === 'nim' ? 'nim · trellis stl' : 'local fallback stl'}
             </span>
           </div>
           <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
@@ -547,14 +559,14 @@ export default function Forge() {
   );
 }
 
-function ForgeHeader(props: { keysOpen: boolean; onToggleKeys: () => void; groqReady: boolean; hfReady: boolean }) {
+function ForgeHeader(props: { keysOpen: boolean; onToggleKeys: () => void; groqReady: boolean; hfReady: boolean; nimReady: boolean }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">STΔN · 3D Forge</p>
         <h1 className="mt-1 text-[18px] font-semibold tracking-[-0.015em] text-zinc-100">Idea to printable idol</h1>
         <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-600">
-          groq {props.groqReady ? '✓' : '—'} · hf {props.hfReady ? '✓' : '—'}
+          groq {props.groqReady ? '✓' : '—'} · hf {props.hfReady ? '✓' : '—'} · nim {props.nimReady ? '✓' : '—'}
         </p>
       </div>
       <button
@@ -669,8 +681,10 @@ function Stepper({ stage }: { stage: 0 | 1 | 2 | 3 }) {  return (
 function KeysDrawer(props: {
   groqKey: string;
   hfToken: string;
+  nimKey: string;
   setGroqKey: (v: string) => void;
   setHfToken: (v: string) => void;
+  setNimKey: (v: string) => void;
   saveKeys: () => void;
   keysSaved: boolean;
   clearKeys: () => void;
@@ -695,6 +709,14 @@ function KeysDrawer(props: {
           onChange={(e) => props.setHfToken(e.target.value)}
           placeholder="hf_… (huggingface.co settings → tokens)"
           aria-label="Hugging Face token"
+          className={fieldCls}
+        />
+        <input
+          type="password"
+          value={props.nimKey}
+          onChange={(e) => props.setNimKey(e.target.value)}
+          placeholder="nvapi-… (build.nvidia.com — quota backup, optional)"
+          aria-label="NVIDIA API key"
           className={fieldCls}
         />
       </div>

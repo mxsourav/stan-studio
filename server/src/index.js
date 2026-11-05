@@ -249,6 +249,39 @@ app.post('/api/forge/groq', orderLimiter, async (req, res) => {
   }
 });
 
+// 3D Forge — NVIDIA NIM relay (quota backup): ZeroGPU quota dies → the chain
+// falls back to NIM's hosted TRELLIS (separate NVIDIA credit pool). Binary
+// passthrough — the GLB response must survive as raw bytes, not text.
+app.post('/api/forge/nim', orderLimiter, async (req, res) => {
+  try {
+    const { apiKey, path } = req.body || {};
+    if (!apiKey || !/^nvapi-/.test(String(apiKey))) {
+      return res.status(400).json({ ok: false, error: 'missing NVIDIA apiKey (nvapi-…)' });
+    }
+    const invokePath = String(path || 'genai/microsoft/trellis').replace(/[^a-z0-9/._-]/gi, '');
+    const { apiKey: _k, path: _p, ...payload } = req.body || {};
+    const upstream = await fetch(`https://ai.api.nvidia.com/v1/${invokePath}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${String(apiKey).slice(0, 250)}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+    if (!upstream.ok || contentType.includes('application/json')) {
+      const text = await upstream.text();
+      return res.status(upstream.status).type(contentType).send(text);
+    }
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.status(upstream.status).type(contentType).send(buf);
+  } catch (e) {
+    console.error('[forge-nim] relay failed:', e);
+    res.status(502).json({ ok: false, error: 'NVIDIA relay failed' });
+  }
+});
+
 app.get('/api/admin/hub-requests', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const { data, error } = await supabase

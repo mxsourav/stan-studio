@@ -17,6 +17,8 @@ import { Client, handle_file } from '@gradio/client';
 import { glbBlobToStl } from './exportStl';
 import type { ForgePreset } from './presets';
 
+const NIM_PROXY = `${((import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '')) || ''}/api/forge/nim`;
+
 export class QuotaError extends Error {
   constructor() {
     super('ZeroGPU daily quota exhausted for this account');
@@ -55,7 +57,7 @@ export interface ForgeMeshResult {
   stlBlob: Blob;
   meshBlob: Blob; // cached raw mesh (glb/stl) — refinement 1
   triangles: number;
-  source: 'cloud' | 'local';
+  source: 'cloud' | 'local' | 'nim';
   space: string;
 }
 
@@ -202,9 +204,67 @@ export interface ForgeRunInput {
   imageBlob: Blob;
   caption: string;
   hfToken: string;
+  nimToken: string; // NVIDIA API key — quota backup via NIM-hosted TRELLIS
   preset: ForgePreset;
   onEvent: (e: ForgeEvent) => void;
   signal?: AbortSignal;
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(new Error('image read failed'));
+    r.readAsDataURL(blob);
+  });
+}
+
+/**
+ * NIM quota backup (approved): ZeroGPU dies → NVIDIA's hosted TRELLIS
+ * (ai.api.nvidia.com/v1/genai/microsoft/trellis) on the NVIDIA credit pool —
+ * a completely separate quota from Hugging Face. Image in (base64 data URL),
+ * GLB out (binary body) → local STL conversion.
+ */
+async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
+  const { imageBlob, nimToken, preset, onEvent, signal } = input;
+  if (!nimToken) throw new SpaceUnavailableError('no NVIDIA key set');
+  onEvent({ stage: 'probe', space: 'NVIDIA TRELLIS (NIM)' });
+  const dataUrl = await blobToDataUrl(imageBlob);
+  onEvent({ stage: 'shape', space: 'NVIDIA TRELLIS (NIM)' });
+  const steps = preset.id === 'production' ? { ss: 12, slat: 24 } : { ss: 8, slat: 12 };
+  const res = await fetch(NIM_PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({
+      apiKey: nimToken,
+      path: 'genai/microsoft/trellis',
+      image: dataUrl,
+      ss_cfg_scale: 7.5,
+      slat_cfg_scale: 2.5,
+      ss_sampling_steps: steps.ss,
+      slat_sampling_steps: steps.slat,
+      seed: Math.floor(Math.random() * 1_000_000),
+    }),
+  });
+  const buf = await res.arrayBuffer();
+  const isGlb = buf.byteLength > 4 && new Uint8Array(buf)[0] === 0x67 && new Uint8Array(buf)[1] === 0x6c && new Uint8Array(buf)[2] === 0x54 && new Uint8Array(buf)[3] === 0x46;
+  if (!res.ok || !isGlb) {
+    let detail = `NIM ${res.status}`;
+    try {
+      const parsed = JSON.parse(new TextDecoder().decode(buf));
+      detail = parsed.detail || parsed.error || parsed.message || parsed.title || detail;
+    } catch {
+      /* non-json body */
+    }
+    if (/credit|quota|exceed/i.test(detail)) throw new QuotaError();
+    throw new SpaceUnavailableError(detail);
+  }
+  const glbBlob = new Blob([buf], { type: 'model/gltf-binary' });
+  onEvent({ stage: 'export', space: 'NVIDIA TRELLIS (NIM)' });
+  const local = await glbBlobToStl(glbBlob, signal);
+  onEvent({ stage: 'done', space: 'NVIDIA TRELLIS (NIM)' });
+  return { stlBlob: local.stl, meshBlob: glbBlob, triangles: local.triangles, source: 'nim', space: 'NVIDIA TRELLIS (NIM)' };
 }
 
 /** Full chain: probe → shape (cache mesh) → export (cloud STL, local fallback). */
@@ -281,9 +341,27 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
     } catch (err) {
       const typed = classify(err);
       if (signal?.aborted) throw err;
-      if (typed instanceof QuotaError) throw typed; // account-global — chain cannot help
+      // quota is account-global — more HF spaces cannot help. NVIDIA's NIM
+      // pool is separate, so this is THE moment for the backup (approved).
+      if (typed instanceof QuotaError) {
+        try {
+          const nim = await runNimTrellis({ ...input, onEvent });
+          onEvent({ stage: 'done', space: 'NVIDIA TRELLIS (NIM)' });
+          return nim;
+        } catch (nimErr) {
+          throw nimErr instanceof QuotaError || nimErr instanceof SpaceUnavailableError ? nimErr : classify(nimErr);
+        }
+      }
       lastErr = typed;
       onEvent({ stage: 'space-failed', space: space.id, detail: typed.message });
+    }
+  }
+  // every space failed — one last shot on NVIDIA's pool before giving up
+  if (input.nimToken) {
+    try {
+      return await runNimTrellis({ ...input, onEvent });
+    } catch (nimErr) {
+      throw classify(nimErr);
     }
   }
   throw lastErr;
