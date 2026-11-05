@@ -8,6 +8,7 @@
  */
 
 import { supabase } from './supabase';
+import { getAdminPasskey } from './orderPipeline';
 
 export interface HubRequestPayload {
   ticket_id: string;
@@ -27,7 +28,6 @@ export interface HubSubmitResult {
 }
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') || '';
-const ADMIN_KEY = (import.meta.env.VITE_ADMIN_PASSKEY as string | undefined) || 'stan-admin-2026';
 
 /** Submits via the backend when configured, else directly into Supabase. */
 export async function submitHubRequest(p: HubRequestPayload): Promise<HubSubmitResult> {
@@ -92,7 +92,7 @@ export interface HubRequestRow {
 
 export async function adminFetchHubRequests(): Promise<HubRequestRow[]> {
   const res = await fetch(`${API_BASE}/api/admin/hub-requests`, {
-    headers: { 'x-admin-key': ADMIN_KEY },
+    headers: { 'x-admin-key': getAdminPasskey() },
   });
   if (!res.ok) throw new Error(`Admin API ${res.status}`);
   const data = await res.json();
@@ -103,7 +103,7 @@ export async function adminFetchHubRequests(): Promise<HubRequestRow[]> {
 export async function adminStlFileUrl(ticketId: string): Promise<string> {
   const res = await fetch(
     `${API_BASE}/api/admin/hub-requests/${encodeURIComponent(ticketId)}/file`,
-    { headers: { 'x-admin-key': ADMIN_KEY } },
+    { headers: { 'x-admin-key': getAdminPasskey() } },
   );
   if (!res.ok) throw new Error(`File URL failed (${res.status})`);
   const data = await res.json();

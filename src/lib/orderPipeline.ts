@@ -108,7 +108,30 @@ export interface AdminOrder {
   total_inr: number;
 }
 
-const ADMIN_KEY = (import.meta.env.VITE_ADMIN_PASSKEY as string | undefined) || 'stan-admin-2026';
+export function getAdminPasskey(): string {
+  if (typeof window === 'undefined') return '';
+  return (
+    sessionStorage.getItem('stan-admin-passkey') ||
+    (import.meta.env.DEV ? (import.meta.env.VITE_ADMIN_PASSKEY as string | undefined) || 'stan-admin-2026' : '')
+  );
+}
+
+export async function adminVerifyPasskey(key: string): Promise<boolean> {
+  if (!API_BASE) {
+    if (import.meta.env.DEV) {
+      return key === ((import.meta.env.VITE_ADMIN_PASSKEY as string | undefined) || 'stan-admin-2026');
+    }
+    return false;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/verify`, {
+      headers: { 'x-admin-key': key },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 export function adminApiConfigured(): boolean {
   return Boolean(API_BASE);
@@ -116,7 +139,7 @@ export function adminApiConfigured(): boolean {
 
 export async function adminFetchOrders(): Promise<AdminOrder[]> {
   const res = await fetch(`${API_BASE}/api/admin/orders`, {
-    headers: { 'x-admin-key': ADMIN_KEY },
+    headers: { 'x-admin-key': getAdminPasskey() },
   });
   if (!res.ok) throw new Error(`Admin API ${res.status}`);
   const data = await res.json();
@@ -126,7 +149,7 @@ export async function adminFetchOrders(): Promise<AdminOrder[]> {
 export async function adminUpdateStatus(orderId: string, status: string): Promise<void> {
   const res = await fetch(`${API_BASE}/api/admin/orders/${encodeURIComponent(orderId)}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': getAdminPasskey() },
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error(`Status update failed (${res.status})`);

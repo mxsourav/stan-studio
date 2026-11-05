@@ -1,18 +1,62 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import crypto from 'node:crypto';
 import { supabase, ADMIN_SECRET_KEY, PORT, ALLOWED_ORIGIN } from './supabase.js';
 import { syncInbox, sendMail, mailConfigured } from './mail.js';
 
 const app = express();
+
+// ─── Security headers & defensive middleware ───────────────────────────────
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+);
+
 app.use(express.json({ limit: '4mb' })); // recipes + SVG strings + webp preview
 app.use(
   cors({
     origin: (origin, cb) => {
-      if (!origin || ALLOWED_ORIGIN.length === 0 || ALLOWED_ORIGIN.includes(origin)) return cb(null, true);
+      if (!origin || ALLOWED_ORIGIN.includes(origin)) return cb(null, true);
       cb(new Error('Not allowed by CORS'));
     },
   }),
 );
+
+// ─── Rate Limiters ─────────────────────────────────────────────────────────
+const orderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 mins
+  max: 25,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Too many requests. Please wait a few minutes before trying again.' },
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Too many requests to admin endpoints.' },
+});
+
+const emailSyncLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Inbox sync throttled. Please wait a moment before syncing again.' },
+});
+
+const emailSendLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Email send rate limit reached for this hour.' },
+});
 
 const STATUSES = ['pending', 'confirmed', 'printing', 'shipped', 'cancelled'];
 
@@ -31,9 +75,20 @@ function generateOrderId() {
   return `STAN-${yy}${mm}${dd}-${rand}`;
 }
 
+// Constant-time admin passkey verification
 function requireAdmin(req, res) {
+  if (!ADMIN_SECRET_KEY) {
+    res.status(503).json({ ok: false, error: 'Admin access is not configured on this server.' });
+    return false;
+  }
   const key = req.get('x-admin-key');
-  if (!key || key !== ADMIN_SECRET_KEY) {
+  if (!key || typeof key !== 'string') {
+    res.status(401).json({ ok: false, error: 'Unauthorized — missing admin key' });
+    return false;
+  }
+  const keyBuf = Buffer.from(key);
+  const secretBuf = Buffer.from(ADMIN_SECRET_KEY);
+  if (keyBuf.length !== secretBuf.length || !crypto.timingSafeEqual(keyBuf, secretBuf)) {
     res.status(401).json({ ok: false, error: 'Unauthorized — invalid admin key' });
     return false;
   }
@@ -41,7 +96,7 @@ function requireAdmin(req, res) {
 }
 
 // ─── submit an order ─────────────────────────────────────────────────────────
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', orderLimiter, async (req, res) => {
   try {
     const b = req.body || {};
     const errors = [];
@@ -90,8 +145,14 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
+// ─── admin: auth verification ───────────────────────────────────────────────
+app.get('/api/admin/verify', adminLimiter, (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  res.json({ ok: true });
+});
+
 // ─── admin: list orders ──────────────────────────────────────────────────────
-app.get('/api/admin/orders', async (req, res) => {
+app.get('/api/admin/orders', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const { data, error } = await supabase
     .from('orders')
@@ -103,7 +164,7 @@ app.get('/api/admin/orders', async (req, res) => {
 });
 
 // ─── admin: update status / notes ────────────────────────────────────────────
-app.patch('/api/admin/orders/:orderId', async (req, res) => {
+app.patch('/api/admin/orders/:orderId', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const { orderId } = req.params;
   const patch = {};
@@ -130,7 +191,7 @@ app.patch('/api/admin/orders/:orderId', async (req, res) => {
 
 const HUB_KINDS = ['commission', 'sourcing'];
 
-app.post('/api/hub-requests', async (req, res) => {
+app.post('/api/hub-requests', orderLimiter, async (req, res) => {
   try {
     const b = req.body || {};
     const errors = [];
@@ -164,7 +225,7 @@ app.post('/api/hub-requests', async (req, res) => {
   }
 });
 
-app.get('/api/admin/hub-requests', async (req, res) => {
+app.get('/api/admin/hub-requests', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const { data, error } = await supabase
     .from('hub_requests')
@@ -175,7 +236,7 @@ app.get('/api/admin/hub-requests', async (req, res) => {
   res.json({ ok: true, requests: data });
 });
 
-app.get('/api/admin/hub-requests/:ticketId/file', async (req, res) => {
+app.get('/api/admin/hub-requests/:ticketId/file', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const { data: row, error } = await supabase
     .from('hub_requests')
@@ -204,7 +265,7 @@ export default app;
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Cached inbox list (light rows — no bodies; bodies load per message)
-app.get('/api/admin/emails', async (req, res) => {
+app.get('/api/admin/emails', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const { data, error } = await supabase
     .from('emails')
@@ -217,7 +278,7 @@ app.get('/api/admin/emails', async (req, res) => {
 
 // Fresh IMAP fetch from Titan; returns the parsed messages directly so the
 // panel renders instantly (the Supabase cache upsert happens inside sync).
-app.post('/api/admin/emails/sync', async (req, res) => {
+app.post('/api/admin/emails/sync', emailSyncLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
     const limit = Math.min(Number(req.body?.limit) || 30, 100);
@@ -230,7 +291,7 @@ app.post('/api/admin/emails/sync', async (req, res) => {
 });
 
 // Full message (bodies) for the reader pane
-app.get('/api/admin/emails/:messageId', async (req, res) => {
+app.get('/api/admin/emails/:messageId', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const { data, error } = await supabase
     .from('emails')
@@ -242,7 +303,7 @@ app.get('/api/admin/emails/:messageId', async (req, res) => {
   res.json({ ok: true, email: data });
 });
 
-app.post('/api/admin/emails/read', async (req, res) => {
+app.post('/api/admin/emails/read', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const messageId = req.body?.message_id;
   if (!messageId) return res.status(400).json({ ok: false, error: 'message_id is required' });
@@ -251,7 +312,7 @@ app.post('/api/admin/emails/read', async (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/admin/emails/send', async (req, res) => {
+app.post('/api/admin/emails/send', emailSendLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
     const result = await sendMail({

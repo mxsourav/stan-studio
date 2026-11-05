@@ -34,7 +34,7 @@ export async function syncInbox(limit = 30) {
     secure: true,
     auth: { user: MAIL.user, pass: MAIL.pass },
     logger: false,
-    tls: { rejectUnauthorized: false },
+    tls: { rejectUnauthorized: true },
   });
   try {
     await client.connect();

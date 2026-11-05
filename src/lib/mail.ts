@@ -5,8 +5,9 @@
  * because anon clients must never read email content.
  */
 
+import { getAdminPasskey } from './orderPipeline';
+
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') || '';
-const ADMIN_KEY = (import.meta.env.VITE_ADMIN_PASSKEY as string | undefined) || 'stan-admin-2026';
 
 export interface MailListItem {
   message_id: string;
@@ -22,7 +23,7 @@ export interface MailMessage extends MailListItem {
   body_text: string | null;
 }
 
-const headers = () => ({ 'x-admin-key': ADMIN_KEY });
+const headers = () => ({ 'x-admin-key': getAdminPasskey() });
 
 export function mailApiConfigured(): boolean {
   return Boolean(API_BASE);

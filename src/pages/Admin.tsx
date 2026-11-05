@@ -5,6 +5,7 @@ import {
   adminApiConfigured,
   adminFetchOrders,
   adminUpdateStatus,
+  adminVerifyPasskey,
   type AdminOrder,
 } from '../lib/orderPipeline';
 import {
@@ -31,8 +32,8 @@ import { mountShadowTool, type ToolBridge } from '../utils/shadowToolLoader';
  * the stored deterministic recipe.
  */
 
-const PASSKEY = (import.meta.env.VITE_ADMIN_PASSKEY as string | undefined) || 'stan-admin-2026';
 const SESSION_KEY = 'stan-admin-unlocked';
+const PASSKEY_KEY = 'stan-admin-passkey';
 
 const STATUS_OPTIONS = ['pending', 'confirmed', 'printing', 'shipped', 'cancelled'] as const;
 type Status = (typeof STATUS_OPTIONS)[number];
@@ -71,6 +72,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export default function Admin() {
   const [unlocked, setUnlocked] = useState<boolean>(() => sessionStorage.getItem(SESSION_KEY) === '1');
   const [passkey, setPasskey] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   if (!unlocked) {
@@ -84,31 +86,45 @@ export default function Admin() {
           </div>
           <form
             className="flex flex-col gap-3"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              if (passkey === PASSKEY) {
-                sessionStorage.setItem(SESSION_KEY, '1');
-                setUnlocked(true);
-              } else {
-                setAuthError('Wrong passkey');
+              const trimmed = passkey.trim();
+              if (!trimmed || isVerifying) return;
+              setIsVerifying(true);
+              setAuthError(null);
+              try {
+                const ok = await adminVerifyPasskey(trimmed);
+                if (ok) {
+                  sessionStorage.setItem(SESSION_KEY, '1');
+                  sessionStorage.setItem(PASSKEY_KEY, trimmed);
+                  setUnlocked(true);
+                } else {
+                  setAuthError('Wrong passkey or unauthorized');
+                }
+              } catch {
+                setAuthError('Failed to verify passkey');
+              } finally {
+                setIsVerifying(false);
               }
             }}
           >
             <input
               type="password"
               required
+              disabled={isVerifying}
               value={passkey}
               onChange={(e) => setPasskey(e.target.value)}
               placeholder="passkey"
               autoComplete="current-password"
-              className="rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-center font-mono text-[13px] tracking-widest text-white placeholder-white/25 focus:border-white/30 focus:outline-none"
+              className="rounded-xl border border-white/10 bg-white/[0.05] px-3.5 py-2.5 text-center font-mono text-[13px] tracking-widest text-white placeholder-white/25 focus:border-white/30 focus:outline-none disabled:opacity-50"
             />
             {authError && <p className="text-center text-[12px] text-red-300">{authError}</p>}
             <button
               type="submit"
-              className="rounded-2xl bg-white px-4 py-2.5 text-[13px] font-semibold text-black transition hover:bg-white/90"
+              disabled={isVerifying}
+              className="rounded-2xl bg-white px-4 py-2.5 text-[13px] font-semibold text-black transition hover:bg-white/90 disabled:opacity-50"
             >
-              Unlock
+              {isVerifying ? 'Verifying...' : 'Unlock'}
             </button>
             {!IS_ADMIN_HOST && (
               <Link to="/" className="text-center text-[12px] text-white/40 transition hover:text-white/70">
@@ -170,6 +186,7 @@ function AdminDashboard() {
             type="button"
             onClick={() => {
               sessionStorage.removeItem(SESSION_KEY);
+              sessionStorage.removeItem(PASSKEY_KEY);
               location.reload();
             }}
             className="rounded-xl border border-white/[0.12] bg-white/[0.06] px-3.5 py-1.5 font-medium text-white/85 transition hover:bg-white/[0.12]"
