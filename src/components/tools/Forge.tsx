@@ -4,8 +4,9 @@ import { IconCheckmark, IconCube, IconForge, IconLink, IconUpload } from '../ico
 import { clearForgeKeys, getForgeKey, setForgeKeys } from '../../lib/forge/keys';
 import { enhancePrompt, type EnhancedPrompt } from '../../lib/forge/groq';
 import { fetchImageBlob, genImageUrl } from '../../lib/forge/pollinations';
-import { forgeMesh, type ForgeEvent, type ForgeMeshResult } from '../../lib/forge/spaces';
+import { forgeMesh, type ForgeEngineId, type ForgeEvent, type ForgeMeshResult } from '../../lib/forge/spaces';
 import { FORGE_PRESETS } from '../../lib/forge/presets';
+import { enhanceStatueImage } from '../../lib/forge/imageEnhancer';
 import { rescaleStl } from '../../lib/forge/exportStl';
 import { autoProperOrientation, autoProperScale, putShelfFile, saveShelfItem, uid } from '../../lib/stlHub';
 import { readStlMesh } from '../../lib/stl';
@@ -111,6 +112,14 @@ export default function Forge() {
   const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
   const [idea, setIdea] = useState('');
   const [presetId, setPresetId] = useState<'draft' | 'production' | 'ultra' | 'master'>('master');
+  const [engineId, setEngineId] = useState<ForgeEngineId>('auto');
+  const [rawImageBlob, setRawImageBlob] = useState<Blob | null>(null);
+  const [rawImageUrl, setRawImageUrl] = useState<string | null>(null);
+  const [enhancedImageBlob, setEnhancedImageBlob] = useState<Blob | null>(null);
+  const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null);
+  const [sculptReliefActive, setSculptReliefActive] = useState(true);
+  const [trimmedMarginPct, setTrimmedMarginPct] = useState(0);
+  const [enhancingImage, setEnhancingImage] = useState(false);
   const [enhanced, setEnhanced] = useState<EnhancedPrompt | null>(null);
   const [enhBusy, setEnhBusy] = useState(false);
   const [enhErr, setEnhErr] = useState<string | null>(null);
@@ -200,9 +209,8 @@ export default function Forge() {
         url = genImageUrl(enhanced.imagePrompt, imageSeed);
         blob = await fetchImageBlob(url);
       }
-      if (epoch !== genEpochRef.current) return; // stale — the user already picked another image
-      setImageBlob(blob);
-      setImageObjectUrl(url);
+      if (epoch !== genEpochRef.current) return;
+      await processImage(blob);
     } catch (err) {
       if (epoch !== genEpochRef.current) return;
       setImgErr(err instanceof Error ? err.message : 'image generation failed');
@@ -211,25 +219,45 @@ export default function Forge() {
     }
   };
 
-  const onUploadOverride = async (file: File | undefined | null) => {
-    if (!file) return;
-    ++genEpochRef.current; // kill any in-flight generation — the user's image wins
-    setImageBlob(file);
-    setImageObjectUrl(URL.createObjectURL(file));
+  const processImage = async (fileOrBlob: Blob) => {
+    const epoch = genEpochRef.current;
+    setRawImageBlob(fileOrBlob);
+    const rawUrl = URL.createObjectURL(fileOrBlob);
+    setRawImageUrl(rawUrl);
+    setSculptReliefActive(true);
+    setImageBlob(fileOrBlob);
+    setImageObjectUrl(rawUrl);
     setImgErr(null);
     setImageBusy(false);
     setStage(1);
+    setEnhancingImage(true);
+
+    try {
+      const res = await enhanceStatueImage(fileOrBlob, { autoCrop: true, sculptRelief: true });
+      if (epoch !== genEpochRef.current) return;
+      setEnhancedImageBlob(res.blob);
+      setEnhancedImageUrl(res.url);
+      setTrimmedMarginPct(res.trimmedMarginPct);
+      setImageBlob(res.blob);
+      setImageObjectUrl(res.url);
+    } catch (err) {
+      console.warn('Sculpt relief preprocessor error:', err);
+    } finally {
+      if (epoch === genEpochRef.current) setEnhancingImage(false);
+    }
+  };
+
+  const onUploadOverride = async (file: File | undefined | null) => {
+    if (!file) return;
+    ++genEpochRef.current;
+    await processImage(file);
   };
 
   /** Direct upload from the IDEA stage — a real photo skips AI generation. */
   const onDirectUpload = async (file: File | undefined | null) => {
     if (!file) return;
     ++genEpochRef.current;
-    setImageBlob(file);
-    setImageObjectUrl(URL.createObjectURL(file));
-    setImgErr(null);
-    setImageBusy(false);
-    setStage(1);
+    await processImage(file);
   };
 
   // ── Stage 3: forge the mesh ──
@@ -262,6 +290,7 @@ export default function Forge() {
           hfToken,
           nimToken: nimKey,
           preset,
+          engine: engineId,
           onEvent: (e: ForgeEvent) => {
             const bits: string[] = [e.stage];
             if (e.space) bits.push(e.space.split('/')[1] ?? e.space);
@@ -398,7 +427,30 @@ export default function Forge() {
                 className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-3 font-mono text-[11px] leading-relaxed text-zinc-300 outline-none transition focus:border-white/30"
               />
               <p className="mt-1.5 font-mono text-[10px] tabular-nums text-zinc-500">caption: {enhanced.caption}</p>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Engine</span>
+                {[
+                  { id: 'auto' as const, label: 'Auto' },
+                  { id: 'hunyuan' as const, label: 'Hunyuan3D 2.1' },
+                  { id: 'hi3dgen' as const, label: 'Hi3DGen' },
+                  { id: 'triposg' as const, label: 'TripoSG' },
+                  { id: 'trellis' as const, label: 'TRELLIS' },
+                ].map((eng) => (
+                  <button
+                    key={eng.id}
+                    type="button"
+                    onClick={() => setEngineId(eng.id)}
+                    className={`rounded-xl border px-2.5 py-1 text-[11px] font-medium transition ${
+                      engineId === eng.id
+                        ? 'border-white/25 bg-white/[0.12] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                        : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-zinc-100'
+                    }`}
+                  >
+                    {eng.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Mode</span>
                 {(Object.keys(FORGE_PRESETS) as Array<'draft' | 'production' | 'ultra' | 'master'>).map((id) => (
                   <button
@@ -504,6 +556,128 @@ export default function Forge() {
             )}
           </div>
           {imgErr && <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 font-mono text-[10.5px] text-red-300">{imgErr}</p>}
+
+          {/* Sculpt Relief & Auto-Framing toggle */}
+          <div className="mt-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10.5px] font-semibold text-zinc-200">
+                    {sculptReliefActive ? '✦ Auto-Framing & Sculpt Relief Active' : 'Raw Untouched Image'}
+                  </span>
+                  {sculptReliefActive && trimmedMarginPct > 0 && (
+                    <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 font-mono text-[9px] text-emerald-300">
+                      +{trimmedMarginPct}% voxel density
+                    </span>
+                  )}
+                  {enhancingImage && (
+                    <span className="font-mono text-[9.5px] text-zinc-400 animate-pulse">optimizing…</span>
+                  )}
+                </div>
+                <p className="mt-1 text-[10.5px] leading-relaxed text-zinc-400">
+                  {sculptReliefActive
+                    ? 'Tight 95% bounding-box crop + micro-contrast crevice darkening to stop melted faces and fused fingers.'
+                    : 'Standard image without auto-framing or crevice enhancement.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSculptReliefActive(false);
+                    if (rawImageBlob && rawImageUrl) {
+                      setImageBlob(rawImageBlob);
+                      setImageObjectUrl(rawImageUrl);
+                    }
+                  }}
+                  className={`rounded-lg border px-2.5 py-1 font-mono text-[10px] transition ${
+                    !sculptReliefActive
+                      ? 'border-white/30 bg-white/10 text-white font-medium'
+                      : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Raw Image
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSculptReliefActive(true);
+                    if (enhancedImageBlob && enhancedImageUrl) {
+                      setImageBlob(enhancedImageBlob);
+                      setImageObjectUrl(enhancedImageUrl);
+                    }
+                  }}
+                  className={`rounded-lg border px-2.5 py-1 font-mono text-[10px] transition ${
+                    sculptReliefActive
+                      ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-200 font-medium'
+                      : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Sculpt Relief
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Mesh Engine & Detail Preset selectors */}
+          <div className="mt-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-2.5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Mesh Engine</span>
+              <div className="flex flex-wrap gap-1">
+                {[
+                  { id: 'auto' as const, label: 'Auto Failover' },
+                  { id: 'hunyuan' as const, label: 'Hunyuan3D 2.1 (Full Octree)' },
+                  { id: 'hi3dgen' as const, label: 'Hi3DGen (Normal Bridge)' },
+                  { id: 'triposg' as const, label: 'TripoSG (Dense SDF)' },
+                  { id: 'trellis' as const, label: 'TRELLIS' },
+                ].map((eng) => (
+                  <button
+                    key={eng.id}
+                    type="button"
+                    onClick={() => setEngineId(eng.id)}
+                    className={`rounded-lg border px-2.5 py-1 font-mono text-[10px] transition ${
+                      engineId === eng.id
+                        ? 'border-white/30 bg-white/[0.12] text-white font-medium'
+                        : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {eng.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Print Preset</span>
+              <div className="flex flex-wrap gap-1">
+                {(Object.keys(FORGE_PRESETS) as Array<'draft' | 'production' | 'ultra' | 'master'>).map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setPresetId(id)}
+                    title={FORGE_PRESETS[id].hint}
+                    className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition ${
+                      presetId === id
+                        ? 'border-white/30 bg-white/[0.12] text-white'
+                        : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {FORGE_PRESETS[id].label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2 font-mono text-[9.5px]">
+              <span className="text-zinc-400">
+                {preset.steps} steps · {preset.octree}³ octree · {preset.reduceFace ? `Decimate to ${preset.targetFace.toLocaleString('en-IN')} faces` : 'Zero decimation (raw marching cubes)'}
+              </span>
+              {!preset.reduceFace && (
+                <span className="text-emerald-300 font-semibold uppercase tracking-wider">
+                  ✦ Ultra-Detail Zero Decimation
+                </span>
+              )}
+            </div>
+          </div>
+
           <div className="mt-4 flex gap-2">
             <input
               ref={uploadRef}
@@ -539,7 +713,7 @@ export default function Forge() {
       {stage === 2 && (
         <div className="liquid-glass mt-4 rounded-3xl p-5 sm:p-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Forging mesh</p>
-          <ForgeProgress busy={meshBusy} status={meshStatus} events={eventLog} startedAt={meshStartedAt} presetLabel={preset.label} />
+          <ForgeProgress busy={meshBusy} status={meshStatus} events={eventLog} startedAt={meshStartedAt} presetLabel={`${preset.label}${engineId !== 'auto' ? ` · ${engineId.toUpperCase()}` : ''}`} />
           {spaceFails.length > 0 && (
             <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2.5">
               <p className="font-mono text-[9.5px] uppercase tracking-wider text-zinc-500">space chain attempts</p>
@@ -603,9 +777,13 @@ export default function Forge() {
               <p className="mt-1 font-mono text-[10.5px] tabular-nums text-zinc-400">
                 {stlInfo.triangles.toLocaleString('en-IN')} tris · {stlInfo.volumeCm3.toFixed(1)} cm³
               </p>
-              {stlInfo.triangles > 150000 && (
+              {!preset.reduceFace ? (
+                <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-emerald-300">
+                  ✦ Raw un-decimated isosurface · Zero decimation active
+                </p>
+              ) : stlInfo.triangles > 150000 ? (
                 <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-amber-200/80">heavy mesh — slicer may lag</p>
-              )}
+              ) : null}
               {scaleNote && (
                 <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-sky-200/80">{scaleNote}</p>
               )}

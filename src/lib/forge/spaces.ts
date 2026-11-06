@@ -1,17 +1,21 @@
 /**
  * 3D Forge — Stage 3: image → 3D mesh via Hugging Face Spaces (@gradio/client,
- * browser-direct, ZeroGPU). Verified live 2026-11-06:
- *   tencent/Hunyuan3D-2  → /shape_generation (shape-only, built-in rembg)
- *                        → /on_export_click (stl/obj/glb + target_face_num decimation)
- * Fallbacks: tencent/Hunyuan3D-2.1, JeffreyXiang/TRELLIS, trellis-community/TRELLIS.
- * (StabilityAI/TripoSR = Runtime error, dropped.)
+ * browser-direct, ZeroGPU) with NVIDIA NIM backup.
  *
- * Approved refinements baked in: the generated mesh Blob is CACHED the moment
- * /shape_generation returns — if the cloud export fails/times out, the local
- * Three.js exporter converts the cached mesh so spent ZeroGPU quota is never
- * lost. ZeroGPU quota is account-global, so a quota error aborts the chain
- * (switching spaces cannot help; multi-account rotation is an HF ToS
- * violation and is deliberately NOT implemented).
+ * Supported & verified live engines:
+ * 1. tencent/Hunyuan3D-2.1: Full octree marching cubes (up to 448³),
+ *    zero decimation (reduce_face: false), standard generation & decoding modes.
+ * 2. Stable-X/Hi3DGen: Normal-bridged high-detail engine (estimates 2D normal
+ *    map first to lock in sharp facial features, eyelids, lips, fingers, and relief).
+ * 3. tencent/Hunyuan3D-2: Hunyuan3D-2 full octree fallback.
+ * 4. VAST-AI/TripoSG: High-density rectified flow transformer SDF generator.
+ * 5. trellis-community/TRELLIS: Structured latent generator via /generate_and_extract_glb.
+ * 6. NVIDIA NIM TRELLIS: Separate NVIDIA quota pool backup.
+ *
+ * Quota & Safety Rules:
+ * - Mesh Blobs are cached immediately when shape/3D generation completes.
+ * - If cloud export fails/times out, local Three.js conversion recovers the mesh.
+ * - Account-global ZeroGPU quota exhaustion triggers the separate NVIDIA NIM pool.
  */
 import { Client, handle_file } from '@gradio/client';
 import { glbBlobToStl } from './exportStl';
@@ -32,17 +36,22 @@ export class SpaceUnavailableError extends Error {
   }
 }
 
+export type ForgeEngineId = 'auto' | 'hunyuan' | 'hi3dgen' | 'triposg' | 'trellis';
+
 export interface SpaceDef {
   id: string;
   subdomain: string;
-  kind: 'hunyuan' | 'trellis';
+  kind: 'hunyuan' | 'hi3dgen' | 'triposg' | 'trellis';
+  label: string;
+  engine: ForgeEngineId;
 }
 
 export const SPACE_CHAIN: SpaceDef[] = [
-  { id: 'tencent/Hunyuan3D-2', subdomain: 'tencent-hunyuan3d-2', kind: 'hunyuan' },
-  { id: 'tencent/Hunyuan3D-2.1', subdomain: 'tencent-hunyuan3d-2-1', kind: 'hunyuan' },
-  { id: 'JeffreyXiang/TRELLIS', subdomain: 'jeffreyxiang-trellis', kind: 'trellis' },
-  { id: 'trellis-community/TRELLIS', subdomain: 'trellis-community-trellis', kind: 'trellis' },
+  { id: 'tencent/Hunyuan3D-2.1', subdomain: 'tencent-hunyuan3d-2-1', kind: 'hunyuan', label: 'Hunyuan3D 2.1 (Full Octree)', engine: 'hunyuan' },
+  { id: 'Stable-X/Hi3DGen', subdomain: 'stable-x-hi3dgen', kind: 'hi3dgen', label: 'Hi3DGen (Normal-Bridged Relief)', engine: 'hi3dgen' },
+  { id: 'tencent/Hunyuan3D-2', subdomain: 'tencent-hunyuan3d-2', kind: 'hunyuan', label: 'Hunyuan3D 2.0 (Full Octree)', engine: 'hunyuan' },
+  { id: 'VAST-AI/TripoSG', subdomain: 'vast-ai-triposg', kind: 'triposg', label: 'TripoSG (Dense Transformer SDF)', engine: 'triposg' },
+  { id: 'trellis-community/TRELLIS', subdomain: 'trellis-community-trellis', kind: 'trellis', label: 'TRELLIS (Sparse Latent)', engine: 'trellis' },
 ];
 
 export interface ForgeEvent {
@@ -55,7 +64,7 @@ export interface ForgeEvent {
 
 export interface ForgeMeshResult {
   stlBlob: Blob;
-  meshBlob: Blob; // cached raw mesh (glb/stl) — refinement 1
+  meshBlob: Blob; // cached raw mesh (glb/stl)
   triangles: number;
   source: 'cloud' | 'local' | 'nim';
   space: string;
@@ -73,30 +82,31 @@ interface SpaceSchema {
 const probeCache = new Map<string, { schema: SpaceSchema | null; at: number }>();
 const clients = new Map<string, Client>();
 const PROBE_TTL = 5 * 60 * 1000;
-const NULL_TTL = 15 * 1000; // failed probes retry soon — spaces wake lazily
+const NULL_TTL = 15 * 1000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchSchemaJson(sub: string): Promise<unknown | null> {
-  // ZeroGPU spaces sleep aggressively: HF's space host answers 404/503 WITHOUT
-  // CORS headers while waking, which a browser fetch sees as a network error.
-  // Retry both paths — the first hit usually wakes the space for the rest.
-  for (const path of ['/gradio_api/info', '/info']) {
-    for (let attempt = 0; attempt < 3; attempt++) {
+  // Test both /info and /gradio_api/info — different gradio versions expose either
+  for (const path of ['/info', '/gradio_api/info']) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const res = await fetch(`https://${sub}.hf.space${path}`);
-        if (res.ok) return (await res.json()) as unknown;
+        const res = await fetch(`https://${sub}.hf.space${path}`, { signal: AbortSignal.timeout(6000) });
+        if (res.ok) {
+          const text = await res.text();
+          if (text.startsWith('{')) return JSON.parse(text) as unknown;
+        }
+        if (res.status === 404) break; // endpoint does not exist on this path, test next path
       } catch {
-        /* sleeping or cold — retry */
+        /* cold or waking — retry */
       }
-      await sleep(4000 * (attempt + 1));
+      await sleep(1500 * (attempt + 1));
     }
   }
   return null;
 }
 
-/** Runtime schema probe — survives gradio-version drift across spaces.
- *  Null results are cached only briefly (spaces wake lazily). */
+/** Runtime schema probe — survives gradio-version drift across spaces. */
 export async function probeSchema(sub: string): Promise<SpaceSchema | null> {
   const cached = probeCache.get(sub);
   const ttl = cached?.schema ? PROBE_TTL : NULL_TTL;
@@ -124,16 +134,13 @@ export async function probeSchema(sub: string): Promise<SpaceSchema | null> {
 async function getClient(space: SpaceDef, hfToken: string): Promise<Client> {
   const existing = clients.get(space.id);
   if (existing) return existing;
-  // `token` (hf_token is the deprecated alias)
   const options = hfToken ? { token: hfToken as `hf_${string}` } : undefined;
   const client = await Client.connect(space.id, options);
   clients.set(space.id, client);
   return client;
 }
 
-/** Named-params payload: explicit overrides win, schema defaults fill gaps.
- *  STRICT — overrides for params the schema doesn't declare are DROPPED
- *  (Hunyuan3D-2.1 rejects unknown kwargs like `caption`). */
+/** Strict payload builder: overrides win, schema defaults fill gaps, undeclared keys dropped. */
 function buildPayload(params: ParamSpec[] | undefined, overrides: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const p of params ?? []) {
@@ -184,17 +191,19 @@ async function runJob(
 
 function findFileData(data: unknown[]): { url: string; path: string; raw: unknown } | null {
   for (const item of data) {
-    // gradio File components return update wrappers: { value: FileData, __type__: 'update' }
     const d = (item as Record<string, unknown>)?.['value'] as Record<string, unknown> | undefined;
     const top = item as Record<string, unknown> | null;
-    const file = (d && (typeof d['url'] === 'string' || typeof d['path'] === 'string')) ? d
-      : (top && (typeof top['url'] === 'string' || typeof top['path'] === 'string')) ? top
-      : null;
+    const file =
+      d && (typeof d['url'] === 'string' || typeof d['path'] === 'string')
+        ? d
+        : top && (typeof top['url'] === 'string' || typeof top['path'] === 'string')
+          ? top
+          : null;
     if (file) {
       return {
         url: (file['url'] as string) ?? '',
         path: (file['path'] as string) ?? '',
-        raw: d ?? top, // the plain FileData dict — what downstream endpoints expect
+        raw: d ?? top,
       };
     }
   }
@@ -202,7 +211,7 @@ function findFileData(data: unknown[]): { url: string; path: string; raw: unknow
 }
 
 async function downloadFile(file: { url: string; path: string }, signal?: AbortSignal): Promise<Blob> {
-  const url = file.url || `https://tencent-hunyuan3d-2.hf.space/gradio_api/file=${file.path}`;
+  const url = file.url || `https://tencent-hunyuan3d-2-1.hf.space/gradio_api/file=${file.path}`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`mesh download failed (${res.status})`);
   return await res.blob();
@@ -212,8 +221,9 @@ export interface ForgeRunInput {
   imageBlob: Blob;
   caption: string;
   hfToken: string;
-  nimToken: string; // NVIDIA API key — quota backup via NIM-hosted TRELLIS
+  nimToken: string;
   preset: ForgePreset;
+  engine?: ForgeEngineId;
   onEvent: (e: ForgeEvent) => void;
   signal?: AbortSignal;
 }
@@ -227,23 +237,19 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-/**
- * NIM quota backup: NVIDIA's hosted TRELLIS
- * (ai.api.nvidia.com/v1/genai/microsoft/trellis) on the NVIDIA credit pool —
- * a completely separate quota from Hugging Face. Documented contract:
- * payload {image | prompt, ss/slat cfg + steps, seed, no_texture, output_format}
- * → JSON {artifacts: [{base64 (glb|stl bytes), finishReason, seed}]}.
- * NOTE: the TRIAL tier only accepts NVIDIA's 4 example images
- * (image: "data:image/png;example_id,0-3") — your own images need the
- * production tier. The error is surfaced verbatim in that case.
- */
+/** NIM quota backup via NVIDIA's hosted TRELLIS. */
 async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
   const { imageBlob, nimToken, preset, onEvent, signal } = input;
   if (!nimToken) throw new SpaceUnavailableError('no NVIDIA key set');
   onEvent({ stage: 'probe', space: 'NVIDIA TRELLIS (NIM)' });
   const dataUrl = await blobToDataUrl(imageBlob);
   onEvent({ stage: 'shape', space: 'NVIDIA TRELLIS (NIM)' });
-  const steps = preset.id === 'master' || preset.id === 'ultra' ? { ss: 35, slat: 35 } : preset.id === 'production' ? { ss: 25, slat: 25 } : { ss: 12, slat: 16 };
+  const steps =
+    preset.id === 'master' || preset.id === 'ultra'
+      ? { ss: 35, slat: 35 }
+      : preset.id === 'production'
+        ? { ss: 25, slat: 25 }
+        : { ss: 12, slat: 16 };
   const res = await fetch(NIM_PROXY, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -257,20 +263,20 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
       ss_sampling_steps: steps.ss,
       slat_sampling_steps: steps.slat,
       seed: Math.floor(Math.random() * 1_000_000),
-      no_texture: true, // shape only — the studio hand-paints
-      output_format: 'stl', // direct STL from NVIDIA
+      no_texture: true,
+      output_format: 'stl',
     }),
   });
   const buf = await res.arrayBuffer();
-  let parsed: { artifacts?: Array<{ base64?: string; finishReason?: string; seed?: number }>; detail?: string; title?: string; error?: string; message?: string } | null = null;
+  let parsed: { artifacts?: Array<{ base64?: string; finishReason?: string; seed?: number }>; detail?: string; error?: string } | null = null;
   try {
     parsed = JSON.parse(new TextDecoder().decode(buf));
   } catch {
-    /* binary body — not expected from this endpoint */
+    /* binary body */
   }
   const artifact = parsed?.artifacts?.[0];
   if (!res.ok || !artifact?.base64) {
-    let detail = parsed?.detail || parsed?.error || parsed?.title || parsed?.message || `NIM ${res.status}`;
+    let detail = parsed?.detail || parsed?.error || `NIM ${res.status}`;
     if (/example_id|preview/i.test(detail)) {
       detail += ' — NVIDIA trial tier accepts only its example images; a production NIM key is required for your own photos.';
     }
@@ -284,7 +290,6 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  // output_format 'stl' → bytes are a binary STL; read the real tri count
   const isStl = !(bytes[0] === 0x67 && bytes[1] === 0x6c && bytes[2] === 0x54 && bytes[3] === 0x46);
   let triangles = preset.targetFace;
   if (isStl && bytes.length >= 84) {
@@ -304,55 +309,74 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
   return { stlBlob, meshBlob, triangles: tri, source: 'nim', space: 'NVIDIA TRELLIS (NIM)' };
 }
 
-/** Full chain: probe → shape (cache mesh) → export (cloud STL, local fallback). */
+/**
+ * Full multi-engine chain:
+ * probes selected engine or auto-fallback chain → generates raw mesh → converts/exports binary STL.
+ */
 export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> {
-  const { imageBlob, caption, hfToken, preset, onEvent, signal } = input;
+  const { imageBlob, caption, hfToken, preset, engine = 'auto', onEvent, signal } = input;
+
+  // Filter or prioritize space chain based on user's selected engine
+  const targetChain =
+    engine === 'auto'
+      ? SPACE_CHAIN
+      : [
+          ...SPACE_CHAIN.filter((s) => s.engine === engine),
+          ...SPACE_CHAIN.filter((s) => s.engine !== engine),
+        ];
+
   let lastErr: Error = new Error('no space available');
-  for (const space of SPACE_CHAIN) {
+
+  for (const space of targetChain) {
     try {
       onEvent({ stage: 'probe', space: space.id });
-      // connect FIRST — Client.connect handles space wake with its own retry
-      // loop (probe fetches alone give up on a sleeping space)
       const client = await getClient(space, hfToken);
       const schema = await probeSchema(space.subdomain);
-      const required = space.kind === 'hunyuan' ? ['/shape_generation', '/on_export_click'] : ['/image_to_3d', '/extract_glb'];
-      const missing = schema ? required.filter((e) => !schema.endpoints[e]) : required;
-      if (!schema || missing.length > 0) {
-        throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
-      }
 
-      onEvent({ stage: 'shape', space: space.id, queue: null, eta: null });
-      const shapeParams = schema.endpoints[space.kind === 'hunyuan' ? '/shape_generation' : '/image_to_3d'];
-      const shapeOverrides =
-        space.kind === 'hunyuan'
-          ? {
-              image: handle_file(imageBlob),
-              caption,
-              steps: preset.steps,
-              octree_resolution: preset.octree,
-              check_box_rembg: true,
-              randomize_seed: true,
-              guidance_scale: preset.guidance ?? 8.0,
-              num_chunks: 250000,
-            }
-          : {
-              image: handle_file(imageBlob),
-              seed: 0,
-              ss_sampling_steps: preset.steps,
-              slat_sampling_steps: preset.steps,
-              ss_guidance_scale: preset.guidance ?? 7.5,
-              slat_guidance_scale: 3.0,
-            };
-      const shapeData = await runJob(client, space.kind === 'hunyuan' ? '/shape_generation' : '/image_to_3d', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
+      if (space.kind === 'hunyuan') {
+        const required = ['/shape_generation', '/on_export_click'];
+        const missing = schema ? required.filter((e) => !schema.endpoints[e]) : required;
+        if (!schema || missing.length > 0) {
+          throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
+        }
 
-      // REFINEMENT 1 — cache the mesh blob IMMEDIATELY (quota never wasted)
-      const meshFile = findFileData(shapeData);
-      if (!meshFile) throw new SpaceUnavailableError('no mesh file in shape output');
-      const meshBlob = await downloadFile(meshFile, signal);
-      onEvent({ stage: 'export', space: space.id });
+        // Apply high-detail decoding and standard generation modes if present
+        if (schema.endpoints['/on_gen_mode_change']) {
+          try {
+            await runJob(client, '/on_gen_mode_change', { value: 'Standard' }, onEvent, space.id, signal);
+          } catch {
+            /* mode change optional */
+          }
+        }
+        if (schema.endpoints['/on_decode_mode_change']) {
+          try {
+            await runJob(client, '/on_decode_mode_change', { value: 'Standard' }, onEvent, space.id, signal);
+          } catch {
+            /* mode change optional */
+          }
+        }
 
-      try {
-        if (space.kind === 'hunyuan') {
+        onEvent({ stage: 'shape', space: space.id, queue: null, eta: null, detail: `Octree ${preset.octree}³ · ${preset.steps} steps` });
+        const shapeParams = schema.endpoints['/shape_generation'];
+        const shapeOverrides = {
+          image: handle_file(imageBlob),
+          caption,
+          steps: preset.steps,
+          octree_resolution: preset.octree,
+          check_box_rembg: true,
+          randomize_seed: true,
+          guidance_scale: preset.guidance ?? 8.5,
+          num_chunks: preset.numChunks ?? 500000,
+        };
+        const shapeData = await runJob(client, '/shape_generation', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
+
+        // Cache mesh blob immediately (quota never wasted)
+        const meshFile = findFileData(shapeData);
+        if (!meshFile) throw new SpaceUnavailableError('no mesh file in shape output');
+        const meshBlob = await downloadFile(meshFile, signal);
+        onEvent({ stage: 'export', space: space.id, detail: preset.reduceFace ? 'Decimating…' : 'Zero decimation: un-decimated isosurface export' });
+
+        try {
           const exportParams = schema.endpoints['/on_export_click'];
           const exportOverrides = {
             file_out: meshFile.raw,
@@ -366,30 +390,140 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           const stlFile = findFileData(exportData);
           if (!stlFile) throw new SpaceUnavailableError('no STL file in export output');
           const stlBlob = await downloadFile(stlFile, signal);
-          // read the REAL triangle count from the binary STL header (bytes 80–84)
           const head = new Uint8Array(await stlBlob.slice(0, 84).arrayBuffer());
           const tris = head.length >= 84 ? new DataView(head.buffer).getUint32(80, true) : preset.targetFace;
           onEvent({ stage: 'done', space: space.id });
           return { stlBlob, meshBlob, triangles: tris, source: 'cloud', space: space.id };
+        } catch (exportErr) {
+          if (signal?.aborted) throw exportErr;
+          if (exportErr instanceof QuotaError) throw exportErr;
+          onEvent({ stage: 'local-export', space: space.id, detail: exportErr instanceof Error ? exportErr.message : String(exportErr) });
+          const local = await glbBlobToStl(meshBlob, signal);
+          onEvent({ stage: 'done', space: space.id });
+          return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
         }
-        // TRELLIS: GLB only — local conversion from the cached mesh
-        const local = await glbBlobToStl(meshBlob, signal);
-        onEvent({ stage: 'done', space: space.id });
-        return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
-      } catch (exportErr) {
-        if (signal?.aborted) throw exportErr;
-        if (exportErr instanceof QuotaError) throw exportErr;
-        // cloud export failed — convert the CACHED mesh locally (refinement 1)
-        onEvent({ stage: 'local-export', space: space.id, detail: exportErr instanceof Error ? exportErr.message : String(exportErr) });
+      }
+
+      if (space.kind === 'hi3dgen') {
+        const required = ['/generate_3d'];
+        const missing = schema ? required.filter((e) => !schema.endpoints[e]) : required;
+        if (!schema || missing.length > 0) {
+          throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
+        }
+
+        // Step 1: Normal-bridged surface preprocessor
+        let prepImage = handle_file(imageBlob);
+        if (schema.endpoints['/preprocess_image']) {
+          onEvent({ stage: 'shape', space: space.id, detail: 'Normal bridging & surface segmentation' });
+          try {
+            const prepData = await runJob(client, '/preprocess_image', { image: prepImage }, onEvent, space.id, signal);
+            const prepFile = findFileData(prepData);
+            if (prepFile) prepImage = prepFile.raw as unknown as typeof prepImage;
+          } catch {
+            /* proceed with original image if preprocess fails */
+          }
+        }
+
+        // Step 2: High-resolution 3D generation from normal bridge
+        onEvent({ stage: 'shape', space: space.id, detail: `Normal-bridged 3D synthesis (${preset.steps} steps)` });
+        const genParams = schema.endpoints['/generate_3d'];
+        const genOverrides = {
+          image: prepImage,
+          seed: Math.floor(Math.random() * 1000000),
+          ss_guidance_strength: preset.guidance ? Math.min(preset.guidance / 2, 4.0) : 3.0,
+          ss_sampling_steps: preset.steps,
+          slat_guidance_strength: 3.0,
+          slat_sampling_steps: preset.id === 'master' || preset.id === 'ultra' ? 12 : 6,
+        };
+        const genData = await runJob(client, '/generate_3d', buildPayload(genParams, genOverrides), onEvent, space.id, signal);
+        const meshFile = findFileData(genData);
+        if (!meshFile) throw new SpaceUnavailableError('no 3D mesh in Hi3DGen output');
+        const meshBlob = await downloadFile(meshFile, signal);
+
+        onEvent({ stage: 'local-export', space: space.id, detail: 'Converting watertight binary STL' });
         const local = await glbBlobToStl(meshBlob, signal);
         onEvent({ stage: 'done', space: space.id });
         return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
       }
+
+      if (space.kind === 'triposg') {
+        const required = ['/image_to_3d'];
+        const missing = schema ? required.filter((e) => !schema.endpoints[e]) : required;
+        if (!schema || missing.length > 0) {
+          throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
+        }
+
+        onEvent({ stage: 'shape', space: space.id, detail: `Rectified flow SDF synthesis (${preset.steps} steps)` });
+        const tripoParams = schema.endpoints['/image_to_3d'];
+        const tripoOverrides = {
+          image: handle_file(imageBlob),
+          seed: Math.floor(Math.random() * 1000000),
+          num_inference_steps: preset.steps,
+          guidance_scale: preset.guidance ?? 7.5,
+          simplify: preset.reduceFace,
+          target_face_num: preset.targetFace,
+        };
+        const tripoData = await runJob(client, '/image_to_3d', buildPayload(tripoParams, tripoOverrides), onEvent, space.id, signal);
+        const meshFile = findFileData(tripoData);
+        if (!meshFile) throw new SpaceUnavailableError('no mesh file in TripoSG output');
+        const meshBlob = await downloadFile(meshFile, signal);
+
+        onEvent({ stage: 'local-export', space: space.id, detail: 'Converting watertight binary STL' });
+        const local = await glbBlobToStl(meshBlob, signal);
+        onEvent({ stage: 'done', space: space.id });
+        return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
+      }
+
+      if (space.kind === 'trellis') {
+        if (schema && schema.endpoints['/generate_and_extract_glb']) {
+          onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS structured latent (${preset.steps} steps)` });
+          const trellisParams = schema.endpoints['/generate_and_extract_glb'];
+          const trellisOverrides = {
+            image: handle_file(imageBlob),
+            multiimages: [],
+            seed: Math.floor(Math.random() * 1000000),
+            ss_guidance_strength: 7.5,
+            ss_sampling_steps: preset.steps >= 40 ? 25 : 12,
+            slat_guidance_strength: 3.0,
+            slat_sampling_steps: preset.steps >= 40 ? 25 : 12,
+            mesh_simplify: preset.reduceFace ? 0.95 : 0.99,
+            texture_size: 1024,
+          };
+          const trellisData = await runJob(client, '/generate_and_extract_glb', buildPayload(trellisParams, trellisOverrides), onEvent, space.id, signal);
+          const meshFile = findFileData(trellisData);
+          if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS output');
+          const meshBlob = await downloadFile(meshFile, signal);
+          const local = await glbBlobToStl(meshBlob, signal);
+          onEvent({ stage: 'done', space: space.id });
+          return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
+        }
+
+        // Legacy trellis fallback
+        if (schema && schema.endpoints['/image_to_3d']) {
+          onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS shape generation` });
+          const shapeParams = schema.endpoints['/image_to_3d'];
+          const shapeOverrides = {
+            image: handle_file(imageBlob),
+            seed: 0,
+            ss_sampling_steps: preset.steps >= 40 ? 25 : 12,
+            slat_sampling_steps: preset.steps >= 40 ? 25 : 12,
+            ss_guidance_scale: 7.5,
+            slat_guidance_scale: 3.0,
+          };
+          const shapeData = await runJob(client, '/image_to_3d', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
+          const meshFile = findFileData(shapeData);
+          if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS output');
+          const meshBlob = await downloadFile(meshFile, signal);
+          const local = await glbBlobToStl(meshBlob, signal);
+          onEvent({ stage: 'done', space: space.id });
+          return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
+        }
+
+        throw new SpaceUnavailableError('TRELLIS endpoints missing in schema');
+      }
     } catch (err) {
       const typed = classify(err);
       if (signal?.aborted) throw err;
-      // quota is account-global — more HF spaces cannot help. NVIDIA's NIM
-      // pool is separate, so this is THE moment for the backup (approved).
       if (typed instanceof QuotaError) {
         try {
           const nim = await runNimTrellis({ ...input, onEvent });
@@ -403,7 +537,8 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
       onEvent({ stage: 'space-failed', space: space.id, detail: typed.message });
     }
   }
-  // every space failed — one last shot on NVIDIA's pool before giving up
+
+  // Backup on NVIDIA NIM pool
   if (input.nimToken) {
     try {
       return await runNimTrellis({ ...input, onEvent });
@@ -411,5 +546,6 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
       throw classify(nimErr);
     }
   }
+
   throw lastErr;
 }

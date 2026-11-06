@@ -1,7 +1,13 @@
 /**
- * 3D Forge — generation presets (approved refinement 2).
- * Draft saves ZeroGPU seconds for shape exploration; Production spends them
- * on crisp statue detail. Cloud-side decimation target differs accordingly.
+ * 3D Forge — Generation presets for high-resolution 3D printing.
+ *
+ * Designed for intricate statues and deity models (e.g. Shiva Nataraja,
+ * Hanumanji):
+ * - Draft: Fast low-step preview for pose validation.
+ * - Production: Crisp statue detail with balanced decimation.
+ * - Ultra HD: High-density 384³ octree with zero decimation.
+ * - Studio Master: Extreme commercial-grade fidelity with un-decimated raw
+ *   isosurface marching cubes, 448³ octree, deep facial contours & filigree.
  */
 export interface ForgePreset {
   id: 'draft' | 'production' | 'ultra' | 'master';
@@ -11,6 +17,7 @@ export interface ForgePreset {
   targetFace: number;
   reduceFace: boolean;
   guidance?: number;
+  numChunks?: number;
   hint: string;
 }
 
@@ -23,36 +30,40 @@ export const FORGE_PRESETS: Record<'draft' | 'production' | 'ultra' | 'master', 
     targetFace: 80000,
     reduceFace: true,
     guidance: 5.0,
-    hint: 'fast preview on ZeroGPU — quick test',
+    numChunks: 100000,
+    hint: 'fast preview on ZeroGPU — quick test (~20s)',
   },
   production: {
     id: 'production',
     label: 'Production',
     steps: 35,
     octree: 256,
-    targetFace: 250000,
+    targetFace: 300000,
     reduceFace: true,
-    guidance: 7.0,
-    hint: 'crisp statue detail & fine features (~45s)',
+    guidance: 7.5,
+    numChunks: 250000,
+    hint: 'crisp statue detail & clean geometry (~45s)',
   },
   ultra: {
     id: 'ultra',
     label: 'Ultra HD',
     steps: 45,
-    octree: 320,
-    targetFace: 500000,
-    reduceFace: false,
-    guidance: 7.5,
-    hint: 'high geometric fidelity & deep relief (~1 min)',
+    octree: 384,
+    targetFace: 600000,
+    reduceFace: false, // ZERO DECIMATION: keeps raw marching cubes geometry
+    guidance: 8.5,
+    numChunks: 500000,
+    hint: 'high geometric density: 384³ octree, zero decimation, fine jewelry (~1 min)',
   },
   master: {
     id: 'master',
     label: 'Studio Master',
     steps: 50,
-    octree: 384,
-    targetFace: 800000,
-    reduceFace: false,
-    guidance: 8.5,
-    hint: 'extreme micro-carving detail: un-decimated raw geometry, jewelry, filigree & facial contours (1–2+ min)',
+    octree: 448, // maximum dense octree on ZeroGPU
+    targetFace: 1000000,
+    reduceFace: false, // ZERO DECIMATION: completely stops facial/finger polygon crushing
+    guidance: 9.0,
+    numChunks: 1000000,
+    hint: 'commercial-grade print fidelity: un-decimated raw isosurface, 448³ octree, deep facial contours & filigree (2–3+ min)',
   },
 };
