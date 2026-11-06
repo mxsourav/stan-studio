@@ -411,6 +411,111 @@ function ItemEditor({ item, onSetParams }: { item: ShelfItem; onSetParams: (next
   );
 }
 
+/** Range slider that responds to mouse wheel scrolling when hovered. */
+function WheelSlider({
+  min,
+  max,
+  step = 1,
+  value,
+  onChange,
+  onStep,
+  className = '',
+  ariaLabel,
+}: {
+  min: number;
+  max: number;
+  step?: number;
+  value: number;
+  onChange: (val: number) => void;
+  onStep?: (delta: number) => void;
+  className?: string;
+  ariaLabel: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const mult = e.shiftKey ? 5 : 1;
+      const dir = e.deltaY < 0 ? 1 : -1;
+      const stepVal = (step || 1) * mult;
+      if (onStep) {
+        onStep(dir * stepVal);
+      } else {
+        const next = Math.min(max, Math.max(min, value + dir * stepVal));
+        onChange(next);
+      }
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [min, max, step, value, onChange, onStep]);
+
+  return (
+    <input
+      ref={ref}
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      aria-label={ariaLabel}
+      className={className}
+    />
+  );
+}
+
+/** Number/text input that responds to mouse wheel scrolling when hovered. */
+function WheelInput({
+  inputMode = 'decimal',
+  ariaLabel,
+  value,
+  onChange,
+  onBlur,
+  onKeyDown,
+  onStep,
+  className = '',
+}: {
+  inputMode?: 'decimal' | 'numeric';
+  ariaLabel: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onStep?: (delta: number) => void;
+  className?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !onStep) return;
+    const handler = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const mult = e.shiftKey ? 5 : 1;
+      const dir = e.deltaY < 0 ? 1 : -1;
+      onStep(dir * mult);
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [onStep]);
+
+  return (
+    <input
+      ref={ref}
+      inputMode={inputMode}
+      aria-label={ariaLabel}
+      value={value}
+      onChange={onChange}
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
+      className={className}
+    />
+  );
+}
+
 // ─── Mode 1: Private Shelf workspace ─────────────────────────────────────────
 
 function ShelfWorkspace({
@@ -443,6 +548,7 @@ function ShelfWorkspace({
   const [liveScale, setLiveScale] = useState<Scale3 | null>(null); // typing preview — null = committed item.scale
   const [dimDraft, setDimDraft] = useState({ x: '', y: '', z: '' });
   const [pctDraft, setPctDraft] = useState('');
+  const [rotDraft, setRotDraft] = useState({ x: '0', y: '0', z: '0' });
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
   const handleFile = useCallback(
@@ -565,9 +671,26 @@ function ShelfWorkspace({
     const s = normalizeScale(selected);
     setDimDraft({ x: String(bb.x), y: String(bb.y), z: String(bb.z) });
     setPctDraft(String(Math.round(Math.cbrt(s.x * s.y * s.z) * 100)));
+    const initialInst = next.find((i) => i.id === (selectedInstanceId ?? next[0]?.id)) ?? next[0];
+    setRotDraft({
+      x: String(initialInst?.rotX ?? 0),
+      y: String(initialInst?.rotY ?? 0),
+      z: String(initialInst?.rotZ ?? 0),
+    });
     if (paramsScrollRef.current) paramsScrollRef.current.scrollTop = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.id]);
+
+  // Keep rotation draft synced unless the user is actively focused on a degree input
+  useEffect(() => {
+    if (!selectedInstance) return;
+    const active = document.activeElement?.getAttribute('aria-label');
+    setRotDraft((cur) => ({
+      x: active === 'X Pitch in degrees' ? cur.x : String(selectedInstance.rotX ?? 0),
+      y: active === 'Y Yaw in degrees' ? cur.y : String(selectedInstance.rotY ?? 0),
+      z: active === 'Z Roll in degrees' ? cur.z : String(selectedInstance.rotZ ?? 0),
+    }));
+  }, [selectedInstance?.id, selectedInstance?.rotX, selectedInstance?.rotY, selectedInstance?.rotZ]);
 
   const bbox = selected?.geom ? effectiveGeom({ geom: selected.geom, scale: liveScale ?? normalizeScale(selected) }).bbox : null;
   /** Effective factors right now — live typing preview wins over the committed item.scale. */
@@ -961,6 +1084,23 @@ function ShelfWorkspace({
     persistLayout(selected, next);
   };
 
+  const handleRotChange = (axis: 'x' | 'y' | 'z', val: string) => {
+    setRotDraft((d) => ({ ...d, [axis]: val }));
+    if (val.trim() === '' || val === '-') return;
+    const num = Number(val);
+    if (Number.isFinite(num)) {
+      setAxisAngle(axis, num);
+    }
+  };
+
+  const handleRotBlur = (axis: 'x' | 'y' | 'z') => {
+    const curAngle = axis === 'x' ? (selectedInstance?.rotX ?? 0) : axis === 'y' ? (selectedInstance?.rotY ?? 0) : (selectedInstance?.rotZ ?? 0);
+    const num = Number(rotDraft[axis]);
+    const safe = Number.isFinite(num) ? ((Math.round(num) % 360) + 360) % 360 : curAngle;
+    setAxisAngle(axis, safe);
+    setRotDraft((d) => ({ ...d, [axis]: String(safe) }));
+  };
+
   const resetUpright = () => {
     if (!selected || !bbox) return;
     const next = layout.map((i) => ({ ...i, rotX: 0, rotY: 0, rotZ: 0 }));
@@ -1146,15 +1286,16 @@ function ShelfWorkspace({
                           <button
                             type="button"
                             aria-label={`Decrease ${axis.toUpperCase()}`}
-                            onClick={() => stepDim(axis, -1)}
+                            title="Decrease by 1 mm (Shift: 5 mm)"
+                            onClick={(e) => stepDim(axis, e.shiftKey ? -5 : -1)}
                             className="h-8 w-8 shrink-0 rounded-lg border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.97]"
                           >
                             −
                           </button>
                           <div className="flex h-8 min-w-0 flex-1 items-center rounded-lg border border-white/10 bg-white/[0.04] px-2.5 transition focus-within:border-white/30">
-                            <input
+                            <WheelInput
                               inputMode="decimal"
-                              aria-label={`${axis.toUpperCase()} size in mm`}
+                              ariaLabel={`${axis.toUpperCase()} size in mm`}
                               value={dimDraft[axis]}
                               onChange={(e) => {
                                 const v = e.target.value;
@@ -1168,7 +1309,10 @@ function ShelfWorkspace({
                               onBlur={() => setDimDraft((d) => ({ ...d, [axis]: String(bbox?.[axis] ?? d[axis]) }))}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                if (e.key === 'ArrowUp') { e.preventDefault(); stepDim(axis, e.shiftKey ? 5 : 1); }
+                                if (e.key === 'ArrowDown') { e.preventDefault(); stepDim(axis, e.shiftKey ? -5 : -1); }
                               }}
+                              onStep={(delta) => stepDim(axis, delta)}
                               className="w-full bg-transparent font-mono text-[12px] tabular-nums text-zinc-100 outline-none"
                             />
                             <span className="shrink-0 font-mono text-[9.5px] uppercase tracking-wider text-zinc-500">mm</span>
@@ -1176,7 +1320,8 @@ function ShelfWorkspace({
                           <button
                             type="button"
                             aria-label={`Increase ${axis.toUpperCase()}`}
-                            onClick={() => stepDim(axis, 1)}
+                            title="Increase by 1 mm (Shift: 5 mm)"
+                            onClick={(e) => stepDim(axis, e.shiftKey ? 5 : 1)}
                             className="h-8 w-8 shrink-0 rounded-lg border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.97]"
                           >
                             +
@@ -1190,15 +1335,16 @@ function ShelfWorkspace({
                     <button
                       type="button"
                       aria-label="Decrease scale percent"
-                      onClick={() => stepPct(-5)}
+                      title="Decrease by 5% (Shift: 10%)"
+                      onClick={(e) => stepPct(e.shiftKey ? -10 : -5)}
                       className="h-8 w-8 shrink-0 rounded-lg border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.97]"
                     >
                       −
                     </button>
                     <div className="flex h-8 w-[92px] shrink-0 items-center rounded-lg border border-white/10 bg-white/[0.04] px-2.5 transition focus-within:border-white/30">
-                      <input
+                      <WheelInput
                         inputMode="decimal"
-                        aria-label="Scale percent"
+                        ariaLabel="Scale percent"
                         value={pctDraft}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -1212,7 +1358,10 @@ function ShelfWorkspace({
                         onBlur={() => setPctDraft(String(pctNow))}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                          if (e.key === 'ArrowUp') { e.preventDefault(); stepPct(e.shiftKey ? 10 : 5); }
+                          if (e.key === 'ArrowDown') { e.preventDefault(); stepPct(e.shiftKey ? -10 : -5); }
                         }}
+                        onStep={(delta) => stepPct(delta * 5)}
                         className="w-full bg-transparent font-mono text-[12px] tabular-nums text-zinc-100 outline-none"
                       />
                       <span className="shrink-0 font-mono text-[9.5px] uppercase tracking-wider text-zinc-500">%</span>
@@ -1220,21 +1369,20 @@ function ShelfWorkspace({
                     <button
                       type="button"
                       aria-label="Increase scale percent"
-                      onClick={() => stepPct(5)}
+                      title="Increase by 5% (Shift: 10%)"
+                      onClick={(e) => stepPct(e.shiftKey ? 10 : 5)}
                       className="h-8 w-8 shrink-0 rounded-lg border border-white/10 bg-white/[0.05] font-mono text-[13px] text-zinc-100 transition hover:bg-white/[0.1] active:scale-[0.97]"
                     >
                       +
                     </button>
-                    <input
-                      type="range"
+                    <WheelSlider
                       min={25}
                       max={Math.max(400, Math.ceil(pctNow / 100) * 100)}
                       value={Math.max(25, Math.min(pctNow, Math.max(400, Math.ceil(pctNow / 100) * 100)))}
                       step={5}
-                      aria-label="Scale percent slider"
-                      onMouseDown={(e) => applyPct((e.target as HTMLInputElement).value)}
-                      onTouchStart={(e) => applyPct((e.target as HTMLInputElement).value)}
-                      onChange={(e) => applyPct(e.target.value, true)}
+                      ariaLabel="Scale percent slider"
+                      onChange={(val) => applyPct(String(val), true)}
+                      onStep={(delta) => stepPct(delta)}
                       className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-white"
                     />
                   </div>
@@ -1349,9 +1497,44 @@ function ShelfWorkspace({
                         <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.7)]" />
                         X · Pitch
                       </span>
-                      <span className="font-mono text-[10px] font-semibold tabular-nums text-rose-200">
-                        {selectedInstance.rotX ?? 0}°
-                      </span>
+                      {/* Plus/minus stepper + direct angle input */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label="Decrease X Pitch by 1°"
+                          title="Decrease 1° (Shift: 5°)"
+                          onClick={(e) => rotateAxisBy('x', e.shiftKey ? -5 : -1)}
+                          className="h-6 w-6 rounded border border-white/10 bg-white/[0.04] font-mono text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95 flex items-center justify-center"
+                        >
+                          −
+                        </button>
+                        <div className="flex h-6 items-center rounded border border-rose-500/30 bg-black/40 px-1.5 focus-within:border-rose-400">
+                          <WheelInput
+                            inputMode="numeric"
+                            ariaLabel="X Pitch in degrees"
+                            value={rotDraft.x}
+                            onChange={(e) => handleRotChange('x', e.target.value)}
+                            onBlur={() => handleRotBlur('x')}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                              if (e.key === 'ArrowUp') { e.preventDefault(); rotateAxisBy('x', e.shiftKey ? 5 : 1); }
+                              if (e.key === 'ArrowDown') { e.preventDefault(); rotateAxisBy('x', e.shiftKey ? -5 : -1); }
+                            }}
+                            onStep={(delta) => rotateAxisBy('x', delta)}
+                            className="w-8 bg-transparent text-right font-mono text-[11px] font-semibold tabular-nums text-rose-200 outline-none"
+                          />
+                          <span className="ml-0.5 font-mono text-[10px] text-rose-300/70">°</span>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Increase X Pitch by 1°"
+                          title="Increase 1° (Shift: 5°)"
+                          onClick={(e) => rotateAxisBy('x', e.shiftKey ? 5 : 1)}
+                          className="h-6 w-6 rounded border border-white/10 bg-white/[0.04] font-mono text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95 flex items-center justify-center"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-2 flex items-center gap-1.5">
                       <button
@@ -1382,13 +1565,14 @@ function ShelfWorkspace({
                       >
                         +90°
                       </button>
-                      <input
-                        type="range"
+                      <WheelSlider
                         min={0}
                         max={360}
+                        step={1}
                         value={selectedInstance.rotX ?? 0}
-                        onChange={(e) => setAxisAngle('x', Number(e.target.value))}
-                        aria-label="X Pitch Angle"
+                        onChange={(v) => setAxisAngle('x', v)}
+                        onStep={(delta) => rotateAxisBy('x', delta)}
+                        ariaLabel="X Pitch Angle slider"
                         className="h-1 min-w-16 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-rose-500"
                       />
                     </div>
@@ -1401,9 +1585,44 @@ function ShelfWorkspace({
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
                         Y · Yaw
                       </span>
-                      <span className="font-mono text-[10px] font-semibold tabular-nums text-emerald-200">
-                        {selectedInstance.rotY}°
-                      </span>
+                      {/* Plus/minus stepper + direct angle input */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label="Decrease Y Yaw by 1°"
+                          title="Decrease 1° (Shift: 5°)"
+                          onClick={(e) => rotateAxisBy('y', e.shiftKey ? -5 : -1)}
+                          className="h-6 w-6 rounded border border-white/10 bg-white/[0.04] font-mono text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95 flex items-center justify-center"
+                        >
+                          −
+                        </button>
+                        <div className="flex h-6 items-center rounded border border-emerald-500/30 bg-black/40 px-1.5 focus-within:border-emerald-400">
+                          <WheelInput
+                            inputMode="numeric"
+                            ariaLabel="Y Yaw in degrees"
+                            value={rotDraft.y}
+                            onChange={(e) => handleRotChange('y', e.target.value)}
+                            onBlur={() => handleRotBlur('y')}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                              if (e.key === 'ArrowUp') { e.preventDefault(); rotateAxisBy('y', e.shiftKey ? 5 : 1); }
+                              if (e.key === 'ArrowDown') { e.preventDefault(); rotateAxisBy('y', e.shiftKey ? -5 : -1); }
+                            }}
+                            onStep={(delta) => rotateAxisBy('y', delta)}
+                            className="w-8 bg-transparent text-right font-mono text-[11px] font-semibold tabular-nums text-emerald-200 outline-none"
+                          />
+                          <span className="ml-0.5 font-mono text-[10px] text-emerald-300/70">°</span>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Increase Y Yaw by 1°"
+                          title="Increase 1° (Shift: 5°)"
+                          onClick={(e) => rotateAxisBy('y', e.shiftKey ? 5 : 1)}
+                          className="h-6 w-6 rounded border border-white/10 bg-white/[0.04] font-mono text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95 flex items-center justify-center"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-2 flex items-center gap-1.5">
                       <button
@@ -1434,13 +1653,14 @@ function ShelfWorkspace({
                       >
                         +90°
                       </button>
-                      <input
-                        type="range"
+                      <WheelSlider
                         min={0}
                         max={360}
+                        step={1}
                         value={selectedInstance.rotY}
-                        onChange={(e) => setAxisAngle('y', Number(e.target.value))}
-                        aria-label="Y Yaw Angle"
+                        onChange={(v) => setAxisAngle('y', v)}
+                        onStep={(delta) => rotateAxisBy('y', delta)}
+                        ariaLabel="Y Yaw Angle slider"
                         className="h-1 min-w-16 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-emerald-500"
                       />
                     </div>
@@ -1453,9 +1673,44 @@ function ShelfWorkspace({
                         <span className="h-1.5 w-1.5 rounded-full bg-sky-500 shadow-[0_0_6px_rgba(56,189,248,0.7)]" />
                         Z · Roll
                       </span>
-                      <span className="font-mono text-[10px] font-semibold tabular-nums text-sky-200">
-                        {selectedInstance.rotZ ?? 0}°
-                      </span>
+                      {/* Plus/minus stepper + direct angle input */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label="Decrease Z Roll by 1°"
+                          title="Decrease 1° (Shift: 5°)"
+                          onClick={(e) => rotateAxisBy('z', e.shiftKey ? -5 : -1)}
+                          className="h-6 w-6 rounded border border-white/10 bg-white/[0.04] font-mono text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95 flex items-center justify-center"
+                        >
+                          −
+                        </button>
+                        <div className="flex h-6 items-center rounded border border-sky-500/30 bg-black/40 px-1.5 focus-within:border-sky-400">
+                          <WheelInput
+                            inputMode="numeric"
+                            ariaLabel="Z Roll in degrees"
+                            value={rotDraft.z}
+                            onChange={(e) => handleRotChange('z', e.target.value)}
+                            onBlur={() => handleRotBlur('z')}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                              if (e.key === 'ArrowUp') { e.preventDefault(); rotateAxisBy('z', e.shiftKey ? 5 : 1); }
+                              if (e.key === 'ArrowDown') { e.preventDefault(); rotateAxisBy('z', e.shiftKey ? -5 : -1); }
+                            }}
+                            onStep={(delta) => rotateAxisBy('z', delta)}
+                            className="w-8 bg-transparent text-right font-mono text-[11px] font-semibold tabular-nums text-sky-200 outline-none"
+                          />
+                          <span className="ml-0.5 font-mono text-[10px] text-sky-300/70">°</span>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Increase Z Roll by 1°"
+                          title="Increase 1° (Shift: 5°)"
+                          onClick={(e) => rotateAxisBy('z', e.shiftKey ? 5 : 1)}
+                          className="h-6 w-6 rounded border border-white/10 bg-white/[0.04] font-mono text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95 flex items-center justify-center"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-2 flex items-center gap-1.5">
                       <button
@@ -1486,13 +1741,14 @@ function ShelfWorkspace({
                       >
                         +90°
                       </button>
-                      <input
-                        type="range"
+                      <WheelSlider
                         min={0}
                         max={360}
+                        step={1}
                         value={selectedInstance.rotZ ?? 0}
-                        onChange={(e) => setAxisAngle('z', Number(e.target.value))}
-                        aria-label="Z Roll Angle"
+                        onChange={(v) => setAxisAngle('z', v)}
+                        onStep={(delta) => rotateAxisBy('z', delta)}
+                        ariaLabel="Z Roll Angle slider"
                         className="h-1 min-w-16 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-sky-500"
                       />
                     </div>
