@@ -1,5 +1,5 @@
 // STΔN studio. Service Worker
-const CACHE_NAME = 'stan-studio-v1';
+const CACHE_NAME = 'stan-studio-v4';
 const PRECACHE_URLS = [
   '/',
   '/index.html',

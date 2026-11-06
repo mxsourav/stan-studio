@@ -17,6 +17,7 @@ import {
   SOURCING_CATEGORIES,
   addLogEntry,
   autoProperScale,
+  autoProperOrientation,
   buildAutoLayout,
   clampToPlate,
   colorMode,
@@ -455,6 +456,7 @@ function ShelfWorkspace({
         const id = uid();
         sessionMeshCache.set(id, { tris: mesh.tris, count: mesh.count });
         const initialScale = autoProperScale(mesh.bbox);
+        const autoRot = autoProperOrientation(mesh.bbox);
         const item: ShelfItem = {
           id,
           name: file.name.replace(/\.stl$/i, ''),
@@ -466,6 +468,15 @@ function ShelfWorkspace({
           thumb,
           scale: initialScale,
           orient: 'none', // lands upright naturally on its base
+          placement: [{
+            id: uid(),
+            plate: 0,
+            x: 0,
+            z: 0,
+            rotY: autoRot.rotY,
+            rotX: autoRot.rotX,
+            rotZ: autoRot.rotZ,
+          }],
           params: { material: 'PLA', infill: 15, colorMode: 'single', qty: 1 },
           history: [],
         };
@@ -534,14 +545,15 @@ function ShelfWorkspace({
     const bb = effectiveGeom(selected).bbox;
     const orient: Orient = selected.orient ?? 'none';
     const fp = flipFootprint(bb, orient);
+    const autoRot = autoProperOrientation(bb);
     let next: PlateInstance[];
     if (selected.orient === undefined) {
-      next = buildAutoLayout(selected.placement?.length || selected.params.qty, fp.w, fp.d);
+      next = buildAutoLayout(selected.placement?.length || selected.params.qty, fp.w, fp.d, autoRot);
       void saveShelfItem({ ...selected, orient, placement: next, updatedAt: Date.now() }).then(reload);
     } else {
       next = selected.placement?.length
         ? selected.placement.map((i) => ({ ...i, ...clampToPlate(i, bb, orient) }))
-        : buildAutoLayout(selected.params.qty, fp.w, fp.d);
+        : buildAutoLayout(selected.params.qty, fp.w, fp.d, autoRot);
     }
     setLayout(next);
     setActivePlate(0);
@@ -1612,7 +1624,11 @@ function ShelfWorkspace({
               <span aria-hidden className="mx-0.5 w-px shrink-0 bg-white/15" />
               {(
                 [
+                  ['Upright (0°)', resetUpright],
                   ['Lay Flat (F)', layFlat],
+                  ['Flip X 90°', () => rotateAxisBy('x', 90)],
+                  ['Flip Y 90°', () => rotateAxisBy('y', 90)],
+                  ['Flip Z 90°', () => rotateAxisBy('z', 90)],
                   ['Clone (D)', cloneInstance],
                   ['Copy', copyInstance],
                   ['Cut', cutInstance],

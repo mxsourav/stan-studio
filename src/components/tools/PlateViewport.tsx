@@ -99,7 +99,7 @@ function applyFilamentColors(geo: THREE.BufferGeometry, primary: string, seconda
 
 /** Bake scale + orientation into a geometry clone: scaled on the RAW axes
  *  first (so non-uniform scale follows the file's axes), then flipped, then
- *  re-seated — bottom at y=0, centered XZ. */
+ *  re-seated — centered in X, Y, Z so pivot is at geometric center. */
 function bakeFlip(base: THREE.BufferGeometry, flip: Orient, scale?: Scale3): THREE.BufferGeometry {
   const g = base.clone();
   const s = scale ?? { x: 1, y: 1, z: 1 };
@@ -108,7 +108,7 @@ function bakeFlip(base: THREE.BufferGeometry, flip: Orient, scale?: Scale3): THR
   if (flip === 'y') g.applyMatrix4(new THREE.Matrix4().makeRotationY(Math.PI / 2));
   g.computeBoundingBox();
   const bb = g.boundingBox;
-  if (bb) g.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+  if (bb) g.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, -(bb.min.z + bb.max.z) / 2);
   g.computeBoundingBox();
   return g;
 }
@@ -199,18 +199,25 @@ export default function PlateViewport({
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(FOV, 1, 1, 6000);
 
-      const hemi = new THREE.HemisphereLight(0xffffff, 0x14141a, 0.65);
-      const key = new THREE.DirectionalLight(0xffffff, 1.6);
-      key.position.set(180, 340, 160);
+      const hemi = new THREE.HemisphereLight(0xffffff, 0x181822, 0.45);
+      const key = new THREE.DirectionalLight(0xffffff, 1.4);
+      key.position.set(160, 320, 160);
       key.castShadow = true;
       key.shadow.mapSize.set(1024, 1024);
       key.shadow.camera.left = key.shadow.camera.bottom = -240;
       key.shadow.camera.right = key.shadow.camera.top = 240;
       key.shadow.camera.far = 1200;
       key.shadow.bias = -0.0004;
-      const fill = new THREE.DirectionalLight(0xcdd6ff, 0.35);
-      fill.position.set(-220, 140, -160);
-      scene.add(hemi, key, fill);
+
+      // Front sculpted-relief key light: brings out crisp micro-shadows in eyes, nose, lips, and filigree
+      const sculptLight = new THREE.DirectionalLight(0xfff5ea, 1.15);
+      sculptLight.position.set(30, 90, 240);
+
+      // Back-top rim light to separate crown and silhouette from background
+      const rim = new THREE.DirectionalLight(0xa5c4ff, 0.55);
+      rim.position.set(-160, 220, -180);
+
+      scene.add(hemi, key, sculptLight, rim);
 
       const plateTex = makePlateTexture();
       const sideMat = new THREE.MeshStandardMaterial({ color: 0x0b0b0f, roughness: 0.9 });
@@ -231,7 +238,7 @@ export default function PlateViewport({
       scene.add(instGroup);
       sceneRef.current = instGroup;
 
-      const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45, metalness: 0.03, vertexColors: true });
+      const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.38, metalness: 0.02, vertexColors: true });
       materialRef.current = material;
 
       // Item-level orientation — ALL instances share one baked geometry
@@ -314,7 +321,7 @@ export default function PlateViewport({
           return null;
         }
         modelRadiusRef.current = Math.hypot(bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z) / 2 || 1;
-        geo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+        geo.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, -(bb.min.z + bb.max.z) / 2);
         geo.computeBoundingBox();
         return geo;
       };
@@ -326,7 +333,7 @@ export default function PlateViewport({
         const bb = boxGeo.boundingBox;
         if (bb) {
           modelRadiusRef.current = Math.hypot(bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z) / 2 || 1;
-          boxGeo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+          boxGeo.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, -(bb.min.z + bb.max.z) / 2);
           boxGeo.computeBoundingBox();
         }
         return boxGeo;
@@ -463,12 +470,25 @@ export default function PlateViewport({
         if (dragModeRef.current === 'none' || gizmoBusyRef.current) return;
         if (dragModeRef.current === 'move') {
           if (propsRef.current.interaction === 'rotate') {
-            // Rotate tool — horizontal drag spins the grabbed instance
+            // Rotate tool — full 3-axis direct drag:
+            // Horizontal drag = Yaw (Y axis), Vertical drag = Pitch (X axis), Shift + drag = Roll (Z axis)
             const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
             lastX = e.clientX;
             lastY = e.clientY;
             const inst = propsRef.current.instances.find((i) => i.id === dragIdRef.current);
-            if (inst && dx !== 0) cbRef.current.onRotateInstance?.(inst.id, inst.rotY + dx * 0.4, inst.rotX, inst.rotZ);
+            if (inst && (dx !== 0 || dy !== 0)) {
+              if (e.shiftKey) {
+                cbRef.current.onRotateInstance?.(inst.id, inst.rotY, inst.rotX, (inst.rotZ ?? 0) + dx * 0.5);
+              } else {
+                cbRef.current.onRotateInstance?.(
+                  inst.id,
+                  inst.rotY + dx * 0.5,
+                  (inst.rotX ?? 0) - dy * 0.5,
+                  inst.rotZ,
+                );
+              }
+            }
             return;
           }
           setNdc(e);
@@ -485,11 +505,11 @@ export default function PlateViewport({
           }
           return;
         }
-        // orbit — dragging right turns plate right; dragging left turns plate left
+        // orbit — dragging left turns plate left; dragging right turns plate right
         const dx = e.clientX - lastX;
         const dy = e.clientY - lastY;
         lastX = e.clientX; lastY = e.clientY;
-        theta -= dx * 0.005;
+        theta += dx * 0.005;
         phi = Math.min(1.45, Math.max(0.12, phi - dy * 0.005));
         dirty = true;
       };
@@ -512,7 +532,7 @@ export default function PlateViewport({
       // ── On-model gizmo (Bambu-style): translate arrows / rotation ring /
       //    scale handles on the selected instance ──
       const tc = new TransformControls(camera, el);
-      tc.size = 1.15;
+      tc.size = 1.35;
       const gizmoHelper = tc.getHelper();
       // Kill the invisible translate PICK PLANES (XY/YZ/XZ/XYZE): they cover a
       // huge screen area around the model, swallow body-drag + orbit, and —
@@ -526,12 +546,23 @@ export default function PlateViewport({
       });
       // The stock pick targets are hair-thin (bone octahedrons, small tips) —
       // with the planes gone, real mice miss them constantly. Fatten every
-      // remaining picker mesh ×2.5 (Bambu-style generous grab volumes).
+      // remaining picker mesh ×2.2 (Bambu-style generous grab volumes).
+      // Also ensure depthTest is false and renderOrder is high so rotation rings
+      // are NEVER hidden or occluded inside the model body or under the plate.
       gizmoHelper.traverse((o) => {
         const m = o as THREE.Mesh;
         if (m.isMesh && m.visible && (m.parent as THREE.Object3D | null)?.name !== 'plane' && m.name !== 'XYZE' && m.name !== 'XY' && m.name !== 'XZ' && m.name !== 'YZ') {
-          m.scale.multiplyScalar(2.5);
+          m.scale.multiplyScalar(2.2);
         }
+        if (m.material) {
+          const mats = Array.isArray(m.material) ? m.material : [m.material];
+          mats.forEach((mat) => {
+            mat.depthTest = false;
+            mat.depthWrite = false;
+            mat.transparent = true;
+          });
+        }
+        m.renderOrder = 999;
       });
       scene.add(gizmoHelper);
       tc.addEventListener('dragging-changed', (e) => {
@@ -562,7 +593,6 @@ export default function PlateViewport({
           const or = cur.item.orient ?? 'none';
           const clamped = clampToPlate({ ...inst, x: mesh.position.x, z: mesh.position.z }, bb, or);
           mesh.position.x = clamped.x;
-          mesh.position.y = 0; // plate plane only — never let a drag lift the part
           mesh.position.z = clamped.z;
           cbRef.current.onMoveInstance(id, clamped.x, clamped.z);
         } else if (tc.mode === 'rotate' && inst) {

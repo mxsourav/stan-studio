@@ -7,7 +7,7 @@ import { fetchImageBlob, genImageUrl } from '../../lib/forge/pollinations';
 import { forgeMesh, type ForgeEvent, type ForgeMeshResult } from '../../lib/forge/spaces';
 import { FORGE_PRESETS } from '../../lib/forge/presets';
 import { rescaleStl } from '../../lib/forge/exportStl';
-import { putShelfFile, saveShelfItem, uid } from '../../lib/stlHub';
+import { autoProperOrientation, autoProperScale, putShelfFile, saveShelfItem, uid } from '../../lib/stlHub';
 import { readStlMesh } from '../../lib/stl';
 import { drawMeshOnCanvas, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
 
@@ -310,6 +310,8 @@ export default function Forge() {
     try {
       const name = idea.trim().replace(/\s+/g, ' ').slice(0, 48) || 'Forge idol';
       const id = uid();
+      const autoRot = autoProperOrientation(stlInfo.dims);
+      const initialScale = autoProperScale(stlInfo.dims);
       sessionMeshCache.set(id, { tris: stlMesh?.tris ?? new Float64Array(0), count: stlMesh?.count ?? 0 });
       if (result.stlBlob.size <= 30 * 1024 * 1024) await putShelfFile(id, result.stlBlob);
       await saveShelfItem({
@@ -321,7 +323,17 @@ export default function Forge() {
         fileName: `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.stl`,
         geom: { triangles: stlInfo.triangles, bbox: stlInfo.dims, volumeMm3: stlInfo.volumeCm3 * 1000, surfaceMm2: 0 },
         thumb: stlMesh ? renderStlThumb(stlMesh.tris, stlMesh.count) : '',
+        scale: initialScale,
         orient: 'none',
+        placement: [{
+          id: uid(),
+          plate: 0,
+          x: 0,
+          z: 0,
+          rotY: autoRot.rotY,
+          rotX: autoRot.rotX,
+          rotZ: autoRot.rotZ,
+        }],
         params: { material: 'PLA', infill: 15, colorMode: 'single', qty: 1, primaryColor: 'polar-white' },
         history: [],
       });

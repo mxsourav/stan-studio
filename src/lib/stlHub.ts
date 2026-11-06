@@ -160,6 +160,19 @@ export function autoProperScale(bbox: { x: number; y: number; z: number }): Scal
   return { x: 1, y: 1, z: 1 };
 }
 
+/**
+ * Auto-detect upright orientation: in 3D CAD/Blender/AI models, Z is frequently
+ * the height axis (Z-up). When brought into Three.js (Y-up), the model lies
+ * flat on its back (bbox.z > bbox.y). Rotating X by 270° (-90°) flips it
+ * upright so it stands naturally on its base.
+ */
+export function autoProperOrientation(bbox: { x: number; y: number; z: number }): { rotX: number; rotY: number; rotZ: number } {
+  if (bbox.z > bbox.y && bbox.z > bbox.x * 0.9) {
+    return { rotX: 270, rotY: 0, rotZ: 0 };
+  }
+  return { rotX: 0, rotY: 0, rotZ: 0 };
+}
+
 export interface PackGrid {
   cols: number;
   rows: number;
@@ -200,7 +213,12 @@ export function plateSlots(cols: number, rows: number, cellW: number, cellD: num
 }
 
 /** Full auto layout: qty instances packed plate-by-plate, centered grids. */
-export function buildAutoLayout(qty: number, footW: number, footD: number): PlateInstance[] {
+export function buildAutoLayout(
+  qty: number,
+  footW: number,
+  footD: number,
+  defaultRot?: { rotX?: number; rotY?: number; rotZ?: number },
+): PlateInstance[] {
   const { cols, rows, maxPerPlate } = packInstancesOnPlates(footW, footD);
   const cellW = footW + INSTANCE_GAP;
   const cellD = footD + INSTANCE_GAP;
@@ -212,7 +230,9 @@ export function buildAutoLayout(qty: number, footW: number, footD: number): Plat
       plate: Math.floor(i / maxPerPlate),
       x: slots[i % maxPerPlate].x,
       z: slots[i % maxPerPlate].z,
-      rotY: 0,
+      rotY: defaultRot?.rotY ?? 0,
+      rotX: defaultRot?.rotX ?? 0,
+      rotZ: defaultRot?.rotZ ?? 0,
     });
   }
   return out;
