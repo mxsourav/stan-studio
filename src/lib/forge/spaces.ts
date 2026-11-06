@@ -83,6 +83,21 @@ const NULL_TTL = 15 * 1000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Race a promise against the per-attempt deadline — ZeroGPU streams can hang
+ *  forever with zero events (deep queue / dead GPU) and would otherwise stall
+ *  the whole forge. */
+function withDeadline<T>(p: Promise<T>, deadlineAt: number, space: string): Promise<T> {
+  const remaining = deadlineAt - Date.now();
+  if (remaining <= 0) {
+    return Promise.reject(new SpaceUnavailableError(`no result within the deadline — ${space.split('/')[1] ?? space} queue too deep or stream hung`));
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, rej) => {
+    timer = setTimeout(() => rej(new SpaceUnavailableError(`no result after ${Math.round(remaining / 1000)}s — ${space.split('/')[1] ?? space} queue too deep or stream hung`)), remaining);
+  });
+  return Promise.race([p, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function fetchSchemaJson(sub: string): Promise<unknown | null> {
   for (const path of ['/gradio_api/info', '/info']) {
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -161,11 +176,21 @@ async function runJob(
   onEvent: (e: ForgeEvent) => void,
   space: string,
   signal?: AbortSignal,
+  deadlineAt?: number,
 ): Promise<unknown[]> {
   const job = client.submit(endpoint, payload);
   let final: unknown[] | null = null;
-  for await (const msg of job as AsyncIterable<Record<string, unknown>>) {
+  // manual pull loop so the deadline is enforced BETWEEN events — with these
+  // gradio versions the stream emits nothing until the final data event, so
+  // an unbounded for-await can hang forever on a deep queue
+  const iterator = (job as AsyncIterable<Record<string, unknown>>)[Symbol.asyncIterator]();
+  while (true) {
+    const next = deadlineAt !== undefined
+      ? await withDeadline(iterator.next(), deadlineAt, space)
+      : await iterator.next();
+    if (next.done) break;
     if (signal?.aborted) throw new Error('aborted');
+    const msg = next.value;
     const type = msg['type'];
     if (type === 'status') {
       const stage = msg['stage'] as string;
@@ -181,6 +206,7 @@ async function runJob(
       });
     } else if (type === 'data') {
       final = (msg['data'] as unknown[]) ?? [];
+      break;
     }
   }
   if (!final) {
@@ -189,7 +215,12 @@ async function runJob(
       final = directData;
     }
   }
-  if (!final) throw classify(new Error('space returned no data'));
+  if (!final) {
+    // server-side crash: this gradio generation closes the stream WITHOUT an
+    // error event (reproduced: corrupt image → zero events). Say what that
+    // actually means instead of a bare 'no data'.
+    throw new SpaceUnavailableError('job ended with no output — the space likely crashed on the payload (GPU OOM) or rejected the input');
+  }
   return final;
 }
 
@@ -256,7 +287,7 @@ export async function extractNormalBridge(
     const schema = await probeSchema(spaceDef.subdomain);
     if (!schema?.endpoints['/preprocess_image']) return null;
     onEvent({ stage: 'shape', space: spaceDef.id, detail: 'Pass 1: bridging RGB → surface normal map…' });
-    const prepData = await runJob(client, '/preprocess_image', { image: handle_file(imageBlob) }, onEvent, spaceDef.id, signal);
+    const prepData = await runJob(client, '/preprocess_image', { image: handle_file(imageBlob) }, onEvent, spaceDef.id, signal, Date.now() + 120_000);
     const prepFile = findFileData(prepData);
     if (!prepFile) return null;
     const normalBlob = await downloadFile(prepFile, spaceDef.subdomain, signal);
@@ -297,7 +328,7 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
   const { nimToken, preset, onEvent, signal } = input;
   if (!nimToken) throw new SpaceUnavailableError('no NVIDIA key set');
   onEvent({ stage: 'probe', space: 'NVIDIA TRELLIS (NIM)' });
-  const dataUrl = await blobToDataUrl(input.conditioningBlob ?? input.imageBlob);
+  const dataUrl = await blobToDataUrl(input.imageBlob);
   onEvent({ stage: 'shape', space: 'NVIDIA TRELLIS (NIM)' });
   const steps =
     preset.id === 'master' || preset.id === 'ultra'
@@ -369,8 +400,10 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
  * Runs with an independent ZeroGPU timeout budget.
  */
 export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> {
-  const { caption, hfToken, preset, engine = 'auto', onEvent, signal } = input;
-  // Conditioning input: the Pass 1 normal map when available, else the RGB image
+  const { imageBlob, caption, hfToken, preset, engine = 'auto', onEvent, signal } = input;
+  // Conditioning input: the Pass 1 normal map when available — used ONLY on
+  // Hi3DGen (its designed flow) and Hunyuan (proven safe live). The other
+  // spaces get the raw image; their preprocess/segmentation steps expect one.
   const genImage = input.conditioningBlob ?? input.imageBlob;
 
   const pool = SPACE_CHAIN.filter((s) => s.id !== input.excludeSpace);
@@ -380,8 +413,12 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
       : [...pool.filter((s) => s.engine === engine), ...pool.filter((s) => s.engine !== engine)];
 
   let lastErr: Error = new Error('no space available');
+  const failures: Array<{ space: string; detail: string }> = [];
 
   for (const space of targetChain) {
+    // per-space deadline — preset-scaled (draft 4min → master 12min); a hung
+    // stream must never stall the whole forge
+    const deadlineAt = Date.now() + (preset.id === 'draft' ? 240_000 : preset.id === 'production' ? 360_000 : 720_000);
     try {
       onEvent({ stage: 'probe', space: space.id });
       const client = await getClient(space, hfToken);
@@ -395,13 +432,13 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
         }
 
-        let inputImage = handle_file(genImage);
-        // A normal map arrives pre-segmented — the space's own background
-        // removal would mangle it, so skip /preprocess_image when conditioning
-        if (schema.endpoints['/preprocess_image'] && !input.conditioningBlob) {
+        // TRELLIS.2 gets the raw image — normal-map conditioning is only
+        // proven safe on Hi3DGen (designed for it) and Hunyuan (tested)
+        let inputImage = handle_file(imageBlob);
+        if (schema.endpoints['/preprocess_image']) {
           onEvent({ stage: 'shape', space: space.id, detail: 'Preprocessing reference image & silhouette…' });
           try {
-            const prepData = await runJob(client, '/preprocess_image', { input: inputImage }, onEvent, space.id, signal);
+            const prepData = await runJob(client, '/preprocess_image', { input: inputImage }, onEvent, space.id, signal, deadlineAt);
             const prepFile = findFileData(prepData);
             if (prepFile) inputImage = (prepFile.raw as unknown as typeof inputImage) ?? inputImage;
           } catch {
@@ -428,7 +465,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           tex_slat_sampling_steps: 12,
           tex_slat_rescale_t: 3,
         };
-        const shapeData = await runJob(client, '/image_to_3d', buildPayload(trellisParams, trellisOverrides), onEvent, space.id, signal);
+        const shapeData = await runJob(client, '/image_to_3d', buildPayload(trellisParams, trellisOverrides), onEvent, space.id, signal, deadlineAt);
 
         let meshBlob: Blob;
         if (schema.endpoints['/extract_glb']) {
@@ -438,7 +475,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
             decimation_target: preset.reduceFace ? 300000 : 600000,
             texture_size: 2048,
           };
-          const extractData = await runJob(client, '/extract_glb', buildPayload(extractParams, extractOverrides), onEvent, space.id, signal);
+          const extractData = await runJob(client, '/extract_glb', buildPayload(extractParams, extractOverrides), onEvent, space.id, signal, deadlineAt);
           const meshFile = findFileData(extractData) || findFileData(shapeData);
           if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS.2 output');
           meshBlob = await downloadFile(meshFile, space.subdomain, signal);
@@ -464,14 +501,14 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
 
         if (schema.endpoints['/on_gen_mode_change']) {
           try {
-            await runJob(client, '/on_gen_mode_change', { value: 'Standard' }, onEvent, space.id, signal);
+            await runJob(client, '/on_gen_mode_change', { value: 'Standard' }, onEvent, space.id, signal, deadlineAt);
           } catch {
             /* mode change optional */
           }
         }
         if (schema.endpoints['/on_decode_mode_change']) {
           try {
-            await runJob(client, '/on_decode_mode_change', { value: 'Standard' }, onEvent, space.id, signal);
+            await runJob(client, '/on_decode_mode_change', { value: 'Standard' }, onEvent, space.id, signal, deadlineAt);
           } catch {
             /* mode change optional */
           }
@@ -479,8 +516,9 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
 
         onEvent({ stage: 'shape', space: space.id, queue: null, eta: null, detail: `Octree ${preset.octree}³ · ${preset.steps} steps` });
         const shapeParams = schema.endpoints['/shape_generation'];
-        // rembg would chew on a normal map's solid background — only strip
-        // background when conditioning on the raw RGB image
+        // normal-map conditioning is proven safe on Hunyuan (tested live) —
+        // rembg would chew on the map's solid background, so only strip bg
+        // when conditioning on the raw RGB image
         const rembg = !input.conditioningBlob;
         let shapeData: unknown[];
         try {
@@ -492,9 +530,9 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
             check_box_rembg: rembg,
             randomize_seed: true,
             guidance_scale: preset.guidance ?? 8.5,
-            num_chunks: preset.numChunks ?? 500000,
+            num_chunks: Math.min(preset.numChunks ?? 500000, 200000),
           };
-          shapeData = await runJob(client, '/shape_generation', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
+          shapeData = await runJob(client, '/shape_generation', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal, deadlineAt);
         } catch (shapeErr) {
           // If 512³ octree OOMs/times out, immediately retry at 384³ fallback
           if (preset.octree > 384) {
@@ -507,9 +545,9 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
               check_box_rembg: rembg,
               randomize_seed: true,
               guidance_scale: preset.guidance ?? 8.5,
-              num_chunks: 500000,
+              num_chunks: 200000,
             };
-            shapeData = await runJob(client, '/shape_generation', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
+            shapeData = await runJob(client, '/shape_generation', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal, deadlineAt);
           } else {
             throw shapeErr;
           }
@@ -530,7 +568,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
             export_texture: false,
             target_face_num: preset.targetFace,
           };
-          const exportData = await runJob(client, '/on_export_click', buildPayload(exportParams, exportOverrides), onEvent, space.id, signal);
+          const exportData = await runJob(client, '/on_export_click', buildPayload(exportParams, exportOverrides), onEvent, space.id, signal, deadlineAt);
           const stlFile = findFileData(exportData);
           if (!stlFile) throw new SpaceUnavailableError('no STL file in export output');
           const stlBlob = await downloadFile(stlFile, space.subdomain, signal);
@@ -562,7 +600,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
         if (schema.endpoints['/preprocess_image'] && !input.conditioningBlob) {
           onEvent({ stage: 'shape', space: space.id, detail: 'Pass 1: Normal bridging & surface segmentation' });
           try {
-            const prepData = await runJob(client, '/preprocess_image', { image: prepImage }, onEvent, space.id, signal);
+            const prepData = await runJob(client, '/preprocess_image', { image: prepImage }, onEvent, space.id, signal, deadlineAt);
             const prepFile = findFileData(prepData);
             if (prepFile) prepImage = prepFile.raw as unknown as typeof prepImage;
           } catch {
@@ -580,7 +618,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           slat_guidance_strength: 3.0,
           slat_sampling_steps: preset.id === 'master' || preset.id === 'ultra' ? 12 : 6,
         };
-        const genData = await runJob(client, '/generate_3d', buildPayload(genParams, genOverrides), onEvent, space.id, signal);
+        const genData = await runJob(client, '/generate_3d', buildPayload(genParams, genOverrides), onEvent, space.id, signal, deadlineAt);
         const meshFile = findFileData(genData);
         if (!meshFile) throw new SpaceUnavailableError('no 3D mesh in Hi3DGen output');
         const meshBlob = await downloadFile(meshFile, space.subdomain, signal);
@@ -599,12 +637,11 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
         }
 
-        let inputImage = handle_file(genImage);
-        // A conditioned normal map is already segmented
-        if (schema.endpoints['/run_segmentation'] && !input.conditioningBlob) {
+        let inputImage = handle_file(imageBlob);
+        if (schema.endpoints['/run_segmentation']) {
           onEvent({ stage: 'shape', space: space.id, detail: 'TripoSG: Segmenting foreground object…' });
           try {
-            const segData = await runJob(client, '/run_segmentation', { image: inputImage }, onEvent, space.id, signal);
+            const segData = await runJob(client, '/run_segmentation', { image: inputImage }, onEvent, space.id, signal, deadlineAt);
             const segFile = findFileData(segData);
             if (segFile) inputImage = segFile.raw as unknown as typeof inputImage;
           } catch {
@@ -622,7 +659,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           simplify: preset.reduceFace,
           target_face_num: preset.targetFace,
         };
-        const tripoData = await runJob(client, '/image_to_3d', buildPayload(tripoParams, tripoOverrides), onEvent, space.id, signal);
+        const tripoData = await runJob(client, '/image_to_3d', buildPayload(tripoParams, tripoOverrides), onEvent, space.id, signal, deadlineAt);
         const meshFile = findFileData(tripoData);
         if (!meshFile) throw new SpaceUnavailableError('no mesh file in TripoSG output');
         const meshBlob = await downloadFile(meshFile, space.subdomain, signal);
@@ -639,7 +676,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS structured latent (${preset.steps} steps)` });
           const trellisParams = schema.endpoints['/generate_and_extract_glb'];
           const trellisOverrides = {
-            image: handle_file(genImage),
+            image: handle_file(imageBlob),
             multiimages: [],
             seed: Math.floor(Math.random() * 1000000),
             ss_guidance_strength: 7.5,
@@ -649,7 +686,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
             mesh_simplify: preset.reduceFace ? 0.95 : 0.99,
             texture_size: 1024,
           };
-          const trellisData = await runJob(client, '/generate_and_extract_glb', buildPayload(trellisParams, trellisOverrides), onEvent, space.id, signal);
+          const trellisData = await runJob(client, '/generate_and_extract_glb', buildPayload(trellisParams, trellisOverrides), onEvent, space.id, signal, deadlineAt);
           const meshFile = findFileData(trellisData);
           if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS output');
           const meshBlob = await downloadFile(meshFile, space.subdomain, signal);
@@ -662,14 +699,14 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS shape generation` });
           const shapeParams = schema.endpoints['/image_to_3d'];
           const shapeOverrides = {
-            image: handle_file(genImage),
+            image: handle_file(imageBlob),
             seed: 0,
             ss_sampling_steps: preset.steps >= 40 ? 25 : 12,
             slat_sampling_steps: preset.steps >= 40 ? 25 : 12,
             ss_guidance_scale: 7.5,
             slat_guidance_scale: 3.0,
           };
-          const shapeData = await runJob(client, '/image_to_3d', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
+          const shapeData = await runJob(client, '/image_to_3d', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal, deadlineAt);
           const meshFile = findFileData(shapeData);
           if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS output');
           const meshBlob = await downloadFile(meshFile, space.subdomain, signal);
@@ -711,5 +748,15 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
     }
   }
 
-  throw lastErr;
+  // Compose an honest verdict — the LAST space's error alone is misleading
+  // (Sparc3D's CPU-basic note says nothing about why Hunyuan died first)
+  const summary = failures
+    .slice(0, 6)
+    .map((f) => `${f.space.split('/')[1] ?? f.space}: ${f.detail}`)
+    .join(' · ');
+  throw new Error(
+    `every space failed — ${summary || lastErr.message}. ` +
+    `If this repeats, your Hugging Face quota may be exhausted for today or the token expired. ` +
+    `Add an NVIDIA key in Settings for the quota-backup engine.`,
+  );
 }
