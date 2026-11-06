@@ -16,6 +16,7 @@ import {
   MAX_FILE_MB,
   SOURCING_CATEGORIES,
   addLogEntry,
+  autoProperScale,
   buildAutoLayout,
   clampToPlate,
   colorMode,
@@ -453,6 +454,7 @@ function ShelfWorkspace({
         const thumb = renderStlThumb(mesh.tris, mesh.count);
         const id = uid();
         sessionMeshCache.set(id, { tris: mesh.tris, count: mesh.count });
+        const initialScale = autoProperScale(mesh.bbox);
         const item: ShelfItem = {
           id,
           name: file.name.replace(/\.stl$/i, ''),
@@ -462,7 +464,8 @@ function ShelfWorkspace({
           fileName: file.name,
           geom: { triangles: mesh.triangles, bbox: mesh.bbox, volumeMm3: mesh.volumeMm3, surfaceMm2: mesh.surfaceMm2 },
           thumb,
-          orient: layFlatFlip(mesh.bbox), // new uploads land lay-flat (largest face down)
+          scale: initialScale,
+          orient: 'none', // lands upright naturally on its base
           params: { material: 'PLA', infill: 15, colorMode: 'single', qty: 1 },
           history: [],
         };
@@ -529,7 +532,7 @@ function ShelfWorkspace({
       return;
     }
     const bb = effectiveGeom(selected).bbox;
-    const orient: Orient = selected.orient ?? layFlatFlip(bb);
+    const orient: Orient = selected.orient ?? 'none';
     const fp = flipFootprint(bb, orient);
     let next: PlateInstance[];
     if (selected.orient === undefined) {
@@ -558,7 +561,7 @@ function ShelfWorkspace({
   /** Effective factors right now — live typing preview wins over the committed item.scale. */
   const scale: Scale3 = liveScale ?? (selected ? normalizeScale(selected) : { x: 1, y: 1, z: 1 });
   // Item-level orientation — ALL instances share it (viewport derives the same way)
-  const orient: Orient = selected?.orient ?? (bbox ? layFlatFlip(bbox) : 'none');
+  const orient: Orient = selected?.orient ?? 'none';
   const plateIndices = [...new Set(layout.map((i) => i.plate))].sort((a, b) => a - b);
   const numPlates = plateIndices.length || 1;
   const plateCounts = plateIndices.map((p) => layout.filter((i) => i.plate === p).length);
@@ -745,11 +748,19 @@ function ShelfWorkspace({
     [items, selectedId, persistLayout],
   );
 
-  /** Live drag-rotate (Rotate tool) — degrees, wrapped 0–360. */
+  /** Live drag-rotate (Rotate tool) — 3-axis rotation, wrapped 0–360. */
   const handleRotate = useCallback(
-    (id: string, rotY: number) => {
+    (id: string, rotY: number, rotX?: number, rotZ?: number) => {
       setLayout((cur) => {
-        const next = cur.map((i) => (i.id === id ? { ...i, rotY: ((Math.round(rotY) % 360) + 360) % 360 } : i));
+        const next = cur.map((i) => {
+          if (i.id !== id) return i;
+          return {
+            ...i,
+            rotY: ((Math.round(rotY) % 360) + 360) % 360,
+            ...(rotX !== undefined ? { rotX: ((Math.round(rotX) % 360) + 360) % 360 } : {}),
+            ...(rotZ !== undefined ? { rotZ: ((Math.round(rotZ) % 360) + 360) % 360 } : {}),
+          };
+        });
         window.clearTimeout(persistTimer.current);
         const item = items.find((it) => it.id === selectedId);
         if (item) persistTimer.current = window.setTimeout(() => persistLayout(item, next), 600);
@@ -762,7 +773,7 @@ function ShelfWorkspace({
   /** Grow/shrink the layout to a target qty, filling free slots, opening plates. */
   const syncLayoutToQty = useCallback((item: ShelfItem, target: number, cur: PlateInstance[]): PlateInstance[] => {
     const bb = effectiveGeom(item).bbox;
-    const orient: Orient = item.orient ?? layFlatFlip(bb);
+    const orient: Orient = item.orient ?? 'none';
     const fp = flipFootprint(bb, orient);
     if (target <= cur.length) return cur.slice(0, Math.max(1, target));
     const { cols, rows } = packInstancesOnPlates(fp.w, fp.d);
@@ -911,13 +922,39 @@ function ShelfWorkspace({
     switchPlate(0);
   };
 
-  const rotateSelectedBy = (delta: number) => {
+  const rotateAxisBy = (axis: 'x' | 'y' | 'z', delta: number) => {
     if (!selected || !bbox || !selectedInstance) return;
-    const rotY = ((Math.round(selectedInstance.rotY + delta) % 360) + 360) % 360;
-    const updated = { ...selectedInstance, rotY };
+    const curVal = axis === 'x' ? (selectedInstance.rotX ?? 0) : axis === 'z' ? (selectedInstance.rotZ ?? 0) : selectedInstance.rotY;
+    const nextVal = ((Math.round(curVal + delta) % 360) + 360) % 360;
+    const updated: PlateInstance = {
+      ...selectedInstance,
+      ...(axis === 'x' ? { rotX: nextVal } : axis === 'z' ? { rotZ: nextVal } : { rotY: nextVal }),
+    };
     const safe = { ...updated, ...clampToPlate(updated, bbox, orient) };
-    setLayout((cur) => cur.map((i) => (i.id === safe.id ? safe : i)));
-    persistLayout(selected, layout.map((i) => (i.id === safe.id ? safe : i)));
+    const next = layout.map((i) => (i.id === safe.id ? safe : i));
+    setLayout(next);
+    persistLayout(selected, next);
+  };
+
+  const setAxisAngle = (axis: 'x' | 'y' | 'z', angle: number) => {
+    if (!selected || !bbox || !selectedInstance) return;
+    const nextVal = ((Math.round(angle) % 360) + 360) % 360;
+    const updated: PlateInstance = {
+      ...selectedInstance,
+      ...(axis === 'x' ? { rotX: nextVal } : axis === 'z' ? { rotZ: nextVal } : { rotY: nextVal }),
+    };
+    const safe = { ...updated, ...clampToPlate(updated, bbox, orient) };
+    const next = layout.map((i) => (i.id === safe.id ? safe : i));
+    setLayout(next);
+    persistLayout(selected, next);
+  };
+
+  const resetUpright = () => {
+    if (!selected || !bbox) return;
+    const next = layout.map((i) => ({ ...i, rotX: 0, rotY: 0, rotZ: 0 }));
+    setLayout(next);
+    persistLayout(selected, next, { orient: 'none' });
+    switchPlate(0);
   };
 
   const layFlat = () => {
@@ -1259,11 +1296,29 @@ function ShelfWorkspace({
                 )}
               </div>
 
-              {/* Orientation — item-level flip / lay flat / per-instance yaw */}
+              {/* Orientation — full 3-axis rotation (X pitch, Y yaw, Z roll) + quick presets */}
               {selectedInstance && bbox && (
-                <div>
-                  <SectionLabel>Orientation</SectionLabel>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <SectionLabel>Orientation &amp; Rotation</SectionLabel>
+                    <button
+                      type="button"
+                      onClick={resetUpright}
+                      title="Reset to upright 0° orientation"
+                      className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-zinc-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
+                    >
+                      Upright (0°)
+                    </button>
+                  </div>
+
+                  {/* Preset quick flips */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Chip
+                      active={orient === 'none' && !(selectedInstance.rotX ?? 0) && !(selectedInstance.rotY ?? 0) && !(selectedInstance.rotZ ?? 0)}
+                      onClick={resetUpright}
+                    >
+                      Upright
+                    </Chip>
                     <Chip active={false} onClick={layFlat}>
                       Lay Flat
                     </Chip>
@@ -1274,26 +1329,161 @@ function ShelfWorkspace({
                       Flip Y 90°
                     </Chip>
                   </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <Chip active={false} onClick={() => rotateSelectedBy(-45)}>
-                      −45°
-                    </Chip>
-                    <Chip active={false} onClick={() => rotateSelectedBy(45)}>
-                      +45°
-                    </Chip>
-                    <Chip active={false} onClick={() => rotateSelectedBy(90)}>
-                      +90°
-                    </Chip>
-                    <input
-                      type="range"
-                      min={0}
-                      max={360}
-                      value={selectedInstance.rotY}
-                      onChange={(e) => handleRotate(selectedInstance.id, Number(e.target.value))}
-                      aria-label="Rotate Z"
-                      className="h-1 min-w-16 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-white"
-                    />
-                    <span className="w-9 shrink-0 text-right font-mono text-[10px] tabular-nums text-zinc-400">{selectedInstance.rotY}°</span>
+
+                  {/* Axis X · Pitch (Red/Rose) */}
+                  <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.03] p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-rose-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.7)]" />
+                        X · Pitch
+                      </span>
+                      <span className="font-mono text-[10px] font-semibold tabular-nums text-rose-200">
+                        {selectedInstance.rotX ?? 0}°
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('x', -90)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        −90°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('x', -45)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        −45°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('x', 45)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        +45°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('x', 90)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        +90°
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={360}
+                        value={selectedInstance.rotX ?? 0}
+                        onChange={(e) => setAxisAngle('x', Number(e.target.value))}
+                        aria-label="X Pitch Angle"
+                        className="h-1 min-w-16 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-rose-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Axis Y · Yaw (Green/Emerald) */}
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]" />
+                        Y · Yaw
+                      </span>
+                      <span className="font-mono text-[10px] font-semibold tabular-nums text-emerald-200">
+                        {selectedInstance.rotY}°
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('y', -90)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        −90°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('y', -45)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        −45°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('y', 45)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        +45°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('y', 90)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        +90°
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={360}
+                        value={selectedInstance.rotY}
+                        onChange={(e) => setAxisAngle('y', Number(e.target.value))}
+                        aria-label="Y Yaw Angle"
+                        className="h-1 min-w-16 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Axis Z · Roll (Blue/Sky) */}
+                  <div className="rounded-xl border border-sky-500/20 bg-sky-500/[0.03] p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-sky-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-sky-500 shadow-[0_0_6px_rgba(56,189,248,0.7)]" />
+                        Z · Roll
+                      </span>
+                      <span className="font-mono text-[10px] font-semibold tabular-nums text-sky-200">
+                        {selectedInstance.rotZ ?? 0}°
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('z', -90)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        −90°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('z', -45)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        −45°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('z', 45)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        +45°
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => rotateAxisBy('z', 90)}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1 font-mono text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95"
+                      >
+                        +90°
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={360}
+                        value={selectedInstance.rotZ ?? 0}
+                        onChange={(e) => setAxisAngle('z', Number(e.target.value))}
+                        aria-label="Z Roll Angle"
+                        className="h-1 min-w-16 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-sky-500"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -1558,7 +1748,7 @@ function libToShelfItem(lib: LibraryItem): ShelfItem {
     libId: lib.id,
     geom: { triangles: 0, bbox: lib.dims, volumeMm3: lib.volumeCm3 * 1000, surfaceMm2: 0 },
     thumb: '',
-    orient: layFlatFlip(lib.dims), // largest library face on the plate
+    orient: 'none',
     params: { material: lib.recMaterial, infill: lib.recInfill, colorMode: 'single', qty: 1 },
     history: [],
   };

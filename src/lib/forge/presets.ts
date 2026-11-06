@@ -4,7 +4,7 @@
  * on crisp statue detail. Cloud-side decimation target differs accordingly.
  */
 export interface ForgePreset {
-  id: 'draft' | 'production';
+  id: 'draft' | 'production' | 'ultra';
   label: string;
   steps: number;
   octree: number;
@@ -13,7 +13,7 @@ export interface ForgePreset {
   hint: string;
 }
 
-export const FORGE_PRESETS: Record<'draft' | 'production', ForgePreset> = {
+export const FORGE_PRESETS: Record<'draft' | 'production' | 'ultra', ForgePreset> = {
   draft: {
     id: 'draft',
     label: 'Draft',
@@ -21,15 +21,24 @@ export const FORGE_PRESETS: Record<'draft' | 'production', ForgePreset> = {
     octree: 192,
     targetFace: 80000,
     reduceFace: true,
-    hint: 'fast + cheap on ZeroGPU — for picking the winner',
+    hint: 'fast preview on ZeroGPU — quick test',
   },
   production: {
     id: 'production',
     label: 'Production',
-    steps: 30,
+    steps: 35,
     octree: 256,
-    targetFace: 200000,
+    targetFace: 220000,
     reduceFace: true,
-    hint: 'max detail — the run you actually print',
+    hint: 'crisp statue detail & fine features',
+  },
+  ultra: {
+    id: 'ultra',
+    label: 'Ultra HD',
+    steps: 45,
+    octree: 320,
+    targetFace: 350000,
+    reduceFace: true,
+    hint: 'maximum geometric fidelity & sculpted relief',
   },
 };

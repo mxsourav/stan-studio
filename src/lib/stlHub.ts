@@ -78,6 +78,8 @@ export interface PlateInstance {
   x: number; // center X on the plate (mm, plate-centered coords)
   z: number; // center Z on the plate
   rotY: number; // individual yaw in degrees 0–360
+  rotX?: number; // individual pitch in degrees 0–360
+  rotZ?: number; // individual roll in degrees 0–360
 }
 
 /** Item-level orientation: Flip X 90° / Flip Y 90° applied to ALL instances. */
@@ -102,6 +104,60 @@ export function rotatedFootprint(w: number, d: number, rotY: number): { w: numbe
   const c = Math.abs(Math.cos(r));
   const s = Math.abs(Math.sin(r));
   return { w: w * c + d * s, d: w * s + d * c };
+}
+
+/** 3D AABB footprint of an instance including full X (pitch), Y (yaw), Z (roll) rotation. */
+export function instanceFootprint(
+  inst: PlateInstance,
+  bbox: { x: number; y: number; z: number },
+  orient: Orient | undefined,
+): { w: number; d: number } {
+  const fp = flipFootprint(bbox, orient);
+  const rx = ((inst.rotX ?? 0) * Math.PI) / 180;
+  const ry = ((inst.rotY ?? 0) * Math.PI) / 180;
+  const rz = ((inst.rotZ ?? 0) * Math.PI) / 180;
+  if (!inst.rotX && !inst.rotZ) {
+    return rotatedFootprint(fp.w, fp.d, inst.rotY);
+  }
+  const hx = fp.w / 2, hy = fp.h / 2, hz = fp.d / 2;
+  const cx = Math.cos(rx), sx = Math.sin(rx);
+  const cy = Math.cos(ry), sy = Math.sin(ry);
+  const cz = Math.cos(rz), sz = Math.sin(rz);
+  let minX = Infinity, maxX = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const vx of [-hx, hx]) {
+    for (const vy of [-hy, hy]) {
+      for (const vz of [-hz, hz]) {
+        const y1 = vy * cx - vz * sx;
+        const z1 = vy * sx + vz * cx;
+        const x2 = vx * cy + z1 * sy;
+        const z2 = -vx * sy + z1 * cy;
+        const x3 = x2 * cz - y1 * sz;
+        if (x3 < minX) minX = x3;
+        if (x3 > maxX) maxX = x3;
+        if (z2 < minZ) minZ = z2;
+        if (z2 > maxZ) maxZ = z2;
+      }
+    }
+  }
+  return { w: Math.max(1, maxX - minX), d: Math.max(1, maxZ - minZ) };
+}
+
+/** Auto-size imported models so they land properly sized on the 256×256 plate. */
+export function autoProperScale(bbox: { x: number; y: number; z: number }): Scale3 {
+  const maxDim = Math.max(bbox.x, bbox.y, bbox.z);
+  if (!Number.isFinite(maxDim) || maxDim <= 0) return { x: 1, y: 1, z: 1 };
+  if (maxDim > 200) {
+    const factor = Math.min(1, 140 / maxDim);
+    const r = Math.round(factor * 100) / 100;
+    return { x: r, y: r, z: r };
+  }
+  if (maxDim < 25) {
+    const factor = 100 / maxDim;
+    const r = Math.round(factor * 10) / 10;
+    return { x: r, y: r, z: r };
+  }
+  return { x: 1, y: 1, z: 1 };
 }
 
 export interface PackGrid {
@@ -170,11 +226,10 @@ export function instanceCollides(
   orient: Orient | undefined,
   clearance = 2,
 ): boolean {
-  const fp = flipFootprint(bbox, orient);
-  const a = rotatedFootprint(fp.w, fp.d, inst.rotY);
+  const a = instanceFootprint(inst, bbox, orient);
   for (const o of others) {
     if (o.plate !== inst.plate || o.id === inst.id) continue;
-    const b = rotatedFootprint(fp.w, fp.d, o.rotY);
+    const b = instanceFootprint(o, bbox, orient);
     const dx = Math.abs(inst.x - o.x);
     const dz = Math.abs(inst.z - o.z);
     if (dx < (a.w + b.w) / 2 + clearance && dz < (a.d + b.d) / 2 + clearance) return true;
@@ -188,8 +243,7 @@ export function clampToPlate(
   bbox: { x: number; y: number; z: number },
   orient: Orient | undefined,
 ): { x: number; z: number } {
-  const fp = flipFootprint(bbox, orient);
-  const a = rotatedFootprint(fp.w, fp.d, inst.rotY);
+  const a = instanceFootprint(inst, bbox, orient);
   const hw = Math.min(a.w / 2, PLATE_SIZE / 2);
   const hd = Math.min(a.d / 2, PLATE_SIZE / 2);
   return {

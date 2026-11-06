@@ -7,7 +7,7 @@ import { fetchImageBlob, genImageUrl } from '../../lib/forge/pollinations';
 import { forgeMesh, type ForgeEvent, type ForgeMeshResult } from '../../lib/forge/spaces';
 import { FORGE_PRESETS } from '../../lib/forge/presets';
 import { rescaleStl } from '../../lib/forge/exportStl';
-import { layFlatFlip, putShelfFile, saveShelfItem, uid } from '../../lib/stlHub';
+import { putShelfFile, saveShelfItem, uid } from '../../lib/stlHub';
 import { readStlMesh } from '../../lib/stl';
 import { drawMeshOnCanvas, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
 
@@ -110,7 +110,7 @@ export default function Forge() {
 
   const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
   const [idea, setIdea] = useState('');
-  const [presetId, setPresetId] = useState<'draft' | 'production'>('draft');
+  const [presetId, setPresetId] = useState<'draft' | 'production' | 'ultra'>('production');
   const [enhanced, setEnhanced] = useState<EnhancedPrompt | null>(null);
   const [enhBusy, setEnhBusy] = useState(false);
   const [enhErr, setEnhErr] = useState<string | null>(null);
@@ -321,7 +321,7 @@ export default function Forge() {
         fileName: `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.stl`,
         geom: { triangles: stlInfo.triangles, bbox: stlInfo.dims, volumeMm3: stlInfo.volumeCm3 * 1000, surfaceMm2: 0 },
         thumb: stlMesh ? renderStlThumb(stlMesh.tris, stlMesh.count) : '',
-        orient: layFlatFlip(stlInfo.dims),
+        orient: 'none',
         params: { material: 'PLA', infill: 15, colorMode: 'single', qty: 1, primaryColor: 'polar-white' },
         history: [],
       });
@@ -388,7 +388,7 @@ export default function Forge() {
               <p className="mt-1.5 font-mono text-[10px] tabular-nums text-zinc-500">caption: {enhanced.caption}</p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Mode</span>
-                {(Object.keys(FORGE_PRESETS) as Array<'draft' | 'production'>).map((id) => (
+                {(Object.keys(FORGE_PRESETS) as Array<'draft' | 'production' | 'ultra'>).map((id) => (
                   <button
                     key={id}
                     type="button"

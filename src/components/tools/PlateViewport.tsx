@@ -7,12 +7,10 @@ import {
   clampToPlate,
   effectiveGeom,
   filamentColor,
-  flipFootprint,
   getShelfFile,
-  layFlatFlip,
+  instanceFootprint,
   normalizeScale,
   PLATE_SIZE,
-  rotatedFootprint,
   saveShelfItem,
   type Orient,
   type PlateInstance,
@@ -110,6 +108,7 @@ function bakeFlip(base: THREE.BufferGeometry, flip: Orient, scale?: Scale3): THR
   g.computeBoundingBox();
   const bb = g.boundingBox;
   if (bb) g.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+  g.computeBoundingBox();
   return g;
 }
 
@@ -139,7 +138,7 @@ export default function PlateViewport({
   scaleOverride?: Scale3; // live typing preview — wins over item.scale
   onSelectInstance: (id: string | null) => void;
   onMoveInstance: (id: string, x: number, z: number) => void;
-  onRotateInstance?: (id: string, rotY: number) => void;
+  onRotateInstance?: (id: string, rotY: number, rotX?: number, rotZ?: number) => void;
   onGizmoScale?: (ratios: Scale3) => void; // gizmo scale-drag deltas → item factors
   onReady?: (api: PlateViewApi) => void;
   className?: string;
@@ -235,7 +234,7 @@ export default function PlateViewport({
       materialRef.current = material;
 
       // Item-level orientation — ALL instances share one baked geometry
-      const orient = item.orient ?? (item.geom ? layFlatFlip(item.geom.bbox) : 'none');
+      const orient = item.orient ?? 'none';
 
       // Selection footprint box (unit rect in XZ, scaled per instance)
       const selBox = new THREE.LineSegments(
@@ -292,7 +291,7 @@ export default function PlateViewport({
       // Base geometry builder (session cache → IndexedDB revival)
       const buildBase = (tris: Float64Array, count: number): THREE.BufferGeometry | null => {
         if (count <= 0) return null;
-        const cap = 150_000;
+        const cap = 450_000;
         const stride = Math.max(1, Math.ceil(count / cap));
         const n = Math.floor(count / stride);
         if (n <= 0) return null;
@@ -315,6 +314,19 @@ export default function PlateViewport({
         return geo;
       };
 
+      const buildBoxProxy = (b: { x: number; y: number; z: number }): THREE.BufferGeometry => {
+        const boxGeo = new THREE.BoxGeometry(Math.max(1, b.x), Math.max(1, b.y), Math.max(1, b.z));
+        boxGeo.computeVertexNormals();
+        boxGeo.computeBoundingBox();
+        const bb = boxGeo.boundingBox;
+        if (bb) {
+          modelRadiusRef.current = Math.hypot(bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z) / 2 || 1;
+          boxGeo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+          boxGeo.computeBoundingBox();
+        }
+        return boxGeo;
+      };
+
       const cached = sessionMeshCache.get(item.id);
       orientRef.current = orient;
       if (cached && cached.count > 0) {
@@ -328,7 +340,13 @@ export default function PlateViewport({
         void (async () => {
           try {
             const blob = await getShelfFile(item.id);
-            if (!blob || disposed) return;
+            if (!blob || disposed) {
+              if (item.geom?.bbox && !disposed) {
+                rawGeoRef.current = buildBoxProxy(item.geom.bbox);
+                setMeshEpoch((e) => e + 1);
+              }
+              return;
+            }
             const parsed = await readStlMesh(blob);
             if (disposed) return;
             sessionMeshCache.set(item.id, { tris: parsed.tris, count: parsed.count });
@@ -348,9 +366,15 @@ export default function PlateViewport({
               setMeshEpoch((e) => e + 1);
             }
           } catch {
-            /* best-effort — plate still renders */
+            if (item.geom?.bbox && !disposed) {
+              rawGeoRef.current = buildBoxProxy(item.geom.bbox);
+              setMeshEpoch((e) => e + 1);
+            }
           }
         })();
+      } else if (item.geom?.bbox) {
+        rawGeoRef.current = buildBoxProxy(item.geom.bbox);
+        setMeshEpoch((e) => e + 1);
       }
 
       // ── Pointer interaction: pick instances, drag-move, orbit empty space ──
@@ -396,12 +420,11 @@ export default function PlateViewport({
           if (p) {
             const cur = propsRef.current;
             const bb = cur.item.geom ? effectiveGeom({ geom: cur.item.geom, scale: cur.scaleOverride ?? normalizeScale(cur.item) }).bbox : { x: 10, y: 10, z: 10 };
-            const or = cur.item.orient ?? (cur.item.geom ? layFlatFlip(cur.item.geom.bbox) : 'none');
-            const fp = flipFootprint(bb, or);
+            const or = cur.item.orient ?? 'none';
             let best: { inst: PlateInstance; d: number } | null = null;
             for (const inst of cur.instances) {
               if (inst.plate !== cur.activePlate) continue;
-              const r = rotatedFootprint(fp.w, fp.d, inst.rotY);
+              const r = instanceFootprint(inst, bb, or);
               const reachX = r.w / 2 + 25;
               const reachZ = r.d / 2 + 25;
               const dx = Math.abs(p.x - inst.x);
@@ -440,7 +463,7 @@ export default function PlateViewport({
             lastX = e.clientX;
             lastY = e.clientY;
             const inst = propsRef.current.instances.find((i) => i.id === dragIdRef.current);
-            if (inst && dx !== 0) cbRef.current.onRotateInstance?.(inst.id, inst.rotY + dx * 0.4);
+            if (inst && dx !== 0) cbRef.current.onRotateInstance?.(inst.id, inst.rotY + dx * 0.4, inst.rotX, inst.rotZ);
             return;
           }
           setNdc(e);
@@ -457,11 +480,11 @@ export default function PlateViewport({
           }
           return;
         }
-        // orbit
+        // orbit — dragging right turns plate right; dragging left turns plate left
         const dx = e.clientX - lastX;
         const dy = e.clientY - lastY;
         lastX = e.clientX; lastY = e.clientY;
-        theta += dx * 0.005;
+        theta -= dx * 0.005;
         phi = Math.min(1.45, Math.max(0.12, phi - dy * 0.005));
         dirty = true;
       };
@@ -531,15 +554,20 @@ export default function PlateViewport({
         const inst = cur.instances.find((i) => i.id === id);
         if (tc.mode === 'translate' && inst) {
           const bb = cur.item.geom ? effectiveGeom({ geom: cur.item.geom, scale: cur.scaleOverride ?? normalizeScale(cur.item) }).bbox : { x: 10, y: 10, z: 10 };
-          const or = cur.item.orient ?? (cur.item.geom ? layFlatFlip(cur.item.geom.bbox) : 'none');
+          const or = cur.item.orient ?? 'none';
           const clamped = clampToPlate({ ...inst, x: mesh.position.x, z: mesh.position.z }, bb, or);
           mesh.position.x = clamped.x;
           mesh.position.y = 0; // plate plane only — never let a drag lift the part
           mesh.position.z = clamped.z;
           cbRef.current.onMoveInstance(id, clamped.x, clamped.z);
         } else if (tc.mode === 'rotate' && inst) {
-          const deg = Math.round((mesh.rotation.y * 180) / Math.PI);
-          cbRef.current.onRotateInstance?.(id, ((deg % 360) + 360) % 360);
+          const degX = Math.round((mesh.rotation.x * 180) / Math.PI);
+          const degY = Math.round((mesh.rotation.y * 180) / Math.PI);
+          const degZ = Math.round((mesh.rotation.z * 180) / Math.PI);
+          const rotX = ((degX % 360) + 360) % 360;
+          const rotY = ((degY % 360) + 360) % 360;
+          const rotZ = ((degZ % 360) + 360) % 360;
+          cbRef.current.onRotateInstance?.(id, rotY, rotX, rotZ);
         }
         // scale mode: the mesh.scale itself is the live preview — committed on drag end
         kick();
@@ -688,7 +716,7 @@ export default function PlateViewport({
 
     // Lazy (re)bake — orientation AND scale are item-level; a change re-bakes
     // the shared geometry (scale applies on the raw axes, then the flip).
-    const wantOrient: Orient = item.orient ?? (item.geom ? layFlatFlip(item.geom.bbox) : 'none');
+    const wantOrient: Orient = item.orient ?? 'none';
     const wantScale = scaleOverride ?? normalizeScale(item);
     orientRef.current = wantOrient;
     let baked = bakedRef.current;
@@ -726,8 +754,26 @@ export default function PlateViewport({
       // The baked geometry already carries the item scale — gizmo scale-drag
       // previews live in mesh.scale and is reset once committed
       mesh.scale.set(1, 1, 1);
-      mesh.position.set(inst.x, 0, inst.z);
-      mesh.rotation.y = (inst.rotY * Math.PI) / 180;
+      const rx = ((inst.rotX ?? 0) * Math.PI) / 180;
+      const ry = ((inst.rotY ?? 0) * Math.PI) / 180;
+      const rz = ((inst.rotZ ?? 0) * Math.PI) / 180;
+      mesh.rotation.set(rx, ry, rz);
+      let groundY = 0;
+      if (baseGeo.boundingBox) {
+        const { min, max } = baseGeo.boundingBox;
+        const euler = new THREE.Euler(rx, ry, rz, 'XYZ');
+        let minY = Infinity;
+        for (const cx of [min.x, max.x]) {
+          for (const cy of [min.y, max.y]) {
+            for (const cz of [min.z, max.z]) {
+              const v = new THREE.Vector3(cx, cy, cz).applyEuler(euler);
+              if (v.y < minY) minY = v.y;
+            }
+          }
+        }
+        if (Number.isFinite(minY)) groundY = -minY;
+      }
+      mesh.position.set(inst.x, groundY, inst.z);
     }
     // Remove meshes that vanished (deleted / other plate)
     for (const child of [...group.children]) {
@@ -738,8 +784,7 @@ export default function PlateViewport({
     const sel = instances.find((i) => i.id === selectedInstanceId && i.plate === activePlate);
     if (sel) {
       const bbox = effectiveGeom({ geom: item.geom, scale: scaleOverride ?? normalizeScale(item) }).bbox;
-      const fp = flipFootprint(bbox, orientRef.current);
-      const a = rotatedFootprint(fp.w, fp.d, sel.rotY);
+      const a = instanceFootprint(sel, bbox, orientRef.current);
       selBox.scale.set(Math.max(a.w + 3, 6), 1, Math.max(a.d + 3, 6));
       selBox.position.set(sel.x, 3, sel.z);
       selBox.userData.instanceId = sel.id;
@@ -763,11 +808,21 @@ export default function PlateViewport({
     if (mesh) {
       tc.attach(mesh);
       tc.setMode(interaction === 'move' ? 'translate' : interaction);
-      // Rotate = yaw only (single ring around the plate normal); move = plate
-      // plane only; scale = all three axes
-      tc.showX = interaction !== 'rotate';
-      tc.showY = interaction === 'rotate' || interaction === 'scale';
-      tc.showZ = interaction !== 'rotate';
+      // Rotate = full 3-axis rotation rings (X pitch, Y yaw, Z roll);
+      // Move = plate plane only (X and Z); Scale = all three axes
+      if (interaction === 'rotate') {
+        tc.showX = true;
+        tc.showY = true;
+        tc.showZ = true;
+      } else if (interaction === 'move') {
+        tc.showX = true;
+        tc.showY = false;
+        tc.showZ = true;
+      } else {
+        tc.showX = true;
+        tc.showY = true;
+        tc.showZ = true;
+      }
     } else {
       tc.detach();
     }
