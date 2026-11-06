@@ -8,7 +8,7 @@ import { extractNormalBridge, forgeMesh, type ForgeEngineId, type ForgeEvent, ty
 import { FORGE_PRESETS } from '../../lib/forge/presets';
 import { meshQualityReport, type QualityReport } from '../../lib/forge/meshQuality';
 import { refineMeshStl, type RefineMeshResult } from '../../lib/forge/refineMesh';
-import { enhanceStatueImage } from '../../lib/forge/imageEnhancer';
+import { enhanceStatueImage, sanitizeImageToPng } from '../../lib/forge/imageEnhancer';
 import { rescaleStl } from '../../lib/forge/exportStl';
 import { autoProperOrientation, autoProperScale, putShelfFile, saveShelfItem, uid } from '../../lib/stlHub';
 import { readStlMesh } from '../../lib/stl';
@@ -273,6 +273,9 @@ export default function Forge() {
   // ── Stage 3: forge the mesh (conditioned generation + surface refinement) ──
   const doForge = async () => {
     if (!imageBlob) return;
+    // canonical RGB PNG in, whatever the format out of the camera/generator —
+    // spaces crash silently on webp/heic uploads
+    const forgeImage = await sanitizeImageToPng(imageBlob);
     const caption = enhanced?.caption ?? (idea.trim().replace(/\s+/g, ' ').slice(0, 90) || 'idol statue from photo');
     const t0 = Date.now();
     setMeshStartedAt(t0);
@@ -297,7 +300,7 @@ export default function Forge() {
       } else if (normalBridgeOn) {
         logEvent('Pass 1: normal bridge conditioning (Hi3DGen)');
         setMeshStatus('Pass 1: normal bridge conditioning…');
-        conditioningBlob = await extractNormalBridge(imageBlob, hfToken, (e) => {
+        conditioningBlob = await extractNormalBridge(forgeImage, hfToken, (e) => {
           if (e.detail) {
             logEvent(e.detail);
             setMeshStatus(e.detail);
@@ -327,7 +330,7 @@ export default function Forge() {
         } else {
           logEvent(`Pass 2: synthesizing base geometry (${preset.label})`);
           out = await forgeMesh({
-            imageBlob,
+            imageBlob: forgeImage,
             caption,
             hfToken,
             nimToken: nimKey,
@@ -375,7 +378,7 @@ export default function Forge() {
         }
         logEvent(`Pass 3 complete: ${refined.triangles.toLocaleString('en-IN')} tris · manifold ${refined.manifold.closedPct}%`);
 
-        const quality = await meshQualityReport(refined.stlBlob, imageBlob);
+        const quality = await meshQualityReport(refined.stlBlob, forgeImage);
         const finalOut: ForgeMeshResult = { ...out, stlBlob: refined.stlBlob, triangles: refined.triangles };
         const finalInfo = await readStlMesh(refined.stlBlob);
         return { out: finalOut, info: finalInfo, refined, quality };

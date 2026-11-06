@@ -14,6 +14,7 @@
  */
 import { Client, handle_file } from '@gradio/client';
 import { glbBlobToStl } from './exportStl';
+import { sanitizeImageToPng } from './imageEnhancer';
 import type { ForgePreset } from './presets';
 
 const NIM_PROXY = `${((import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '')) || ''}/api/forge/nim`;
@@ -290,7 +291,9 @@ export async function extractNormalBridge(
     const prepData = await runJob(client, '/preprocess_image', { image: handle_file(imageBlob) }, onEvent, spaceDef.id, signal, Date.now() + 120_000);
     const prepFile = findFileData(prepData);
     if (!prepFile) return null;
-    const normalBlob = await downloadFile(prepFile, spaceDef.subdomain, signal);
+    // Hi3DGen returns a WEBP file (verified live) — spaces crash server-side
+    // on non-PNG uploads, so re-encode to a canonical RGB PNG
+    const normalBlob = await sanitizeImageToPng(await downloadFile(prepFile, spaceDef.subdomain, signal));
     onEvent({ stage: 'done', space: spaceDef.id, detail: 'Pass 1: surface normal map ready' });
     return normalBlob;
   } catch {
@@ -756,7 +759,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
     .join(' · ');
   throw new Error(
     `every space failed — ${summary || lastErr.message}. ` +
-    `If this repeats, your Hugging Face quota may be exhausted for today or the token expired. ` +
+    `This exact pattern — every space ending silently — also matches an exhausted Hugging Face GPU quota (the free tier resets 24h AFTER your first forge, not at midnight) or an expired token. ` +
     `Add an NVIDIA key in Settings for the quota-backup engine.`,
   );
 }

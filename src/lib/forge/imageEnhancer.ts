@@ -26,6 +26,40 @@ export interface EnhanceOptions {
   targetDimension?: number;
 }
 
+/**
+ * Canonical image sanitizer: decodes ANY browser-decodable image (png/jpg/
+ * webp/heic…) and re-encodes as a plain RGB PNG. Everything uploaded to a
+ * ZeroGPU space must pass through this — Hi3DGen's NiRNE "normal map" is
+ * actually a WEBP file, and spaces crash server-side on non-PNG uploads
+ * (silent stream close, no error event). Alpha is flattened onto white —
+ * generators want opaque input with a solid background anyway.
+ */
+export async function sanitizeImageToPng(blob: Blob): Promise<Blob> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return blob;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      if (!canvas.width || !canvas.height) return resolve(blob);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(blob);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob((out) => resolve(out && out.size > 0 ? out : blob), 'image/png');
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(blob);
+    };
+    img.src = url;
+  });
+}
+
 export interface EnhanceResult {
   blob: Blob;
   url: string;
