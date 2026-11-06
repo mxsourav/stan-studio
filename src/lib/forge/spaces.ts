@@ -2,20 +2,14 @@
  * 3D Forge — Stage 3: image → 3D mesh via Hugging Face Spaces (@gradio/client,
  * browser-direct, ZeroGPU) with NVIDIA NIM backup.
  *
- * Supported & verified live engines:
- * 1. tencent/Hunyuan3D-2.1: Full octree marching cubes (up to 448³),
- *    zero decimation (reduce_face: false), standard generation & decoding modes.
- * 2. Stable-X/Hi3DGen: Normal-bridged high-detail engine (estimates 2D normal
- *    map first to lock in sharp facial features, eyelids, lips, fingers, and relief).
- * 3. tencent/Hunyuan3D-2: Hunyuan3D-2 full octree fallback.
- * 4. VAST-AI/TripoSG: High-density rectified flow transformer SDF generator.
- * 5. trellis-community/TRELLIS: Structured latent generator via /generate_and_extract_glb.
- * 6. NVIDIA NIM TRELLIS: Separate NVIDIA quota pool backup.
- *
- * Quota & Safety Rules:
- * - Mesh Blobs are cached immediately when shape/3D generation completes.
- * - If cloud export fails/times out, local Three.js conversion recovers the mesh.
- * - Account-global ZeroGPU quota exhaustion triggers the separate NVIDIA NIM pool.
+ * 3-Pass Iterative Architecture:
+ * - PASS 1: Surface Normal & Micro-Depth Extraction (Cloud Call #1 on Stable-X/Hi3DGen
+ *   or Depth-Anything-V2) with dedicated isolated ZeroGPU timer.
+ * - PASS 2: Ultra-Dense Base Mesh Generation (Cloud Call #2 on microsoft/TRELLIS.2,
+ *   tencent/Hunyuan3D-2.1 with 512³ octree and zero decimation, Stable-X/Hi3DGen,
+ *   or VAST-AI/TripoSG).
+ * - PASS 3: Iterative Detail Stamp & Normal-Depth Vertex Displacement in Three.js
+ *   (see refineMesh.ts).
  */
 import { Client, handle_file } from '@gradio/client';
 import { glbBlobToStl } from './exportStl';
@@ -36,22 +30,24 @@ export class SpaceUnavailableError extends Error {
   }
 }
 
-export type ForgeEngineId = 'auto' | 'hunyuan' | 'hi3dgen' | 'triposg' | 'trellis';
+export type ForgeEngineId = 'auto' | 'trellis' | 'hi3dgen' | 'hunyuan' | 'triposg' | 'sparc';
 
 export interface SpaceDef {
   id: string;
   subdomain: string;
-  kind: 'hunyuan' | 'hi3dgen' | 'triposg' | 'trellis';
+  kind: 'hunyuan' | 'hi3dgen' | 'triposg' | 'trellis' | 'trellis2' | 'sparc';
   label: string;
   engine: ForgeEngineId;
 }
 
 export const SPACE_CHAIN: SpaceDef[] = [
-  { id: 'tencent/Hunyuan3D-2.1', subdomain: 'tencent-hunyuan3d-2-1', kind: 'hunyuan', label: 'Hunyuan3D 2.1 (Full Octree)', engine: 'hunyuan' },
+  { id: 'microsoft/TRELLIS.2', subdomain: 'microsoft-trellis-2', kind: 'trellis2', label: 'TRELLIS.2 (1024³ Dense O-Voxels)', engine: 'trellis' },
   { id: 'Stable-X/Hi3DGen', subdomain: 'stable-x-hi3dgen', kind: 'hi3dgen', label: 'Hi3DGen (Normal-Bridged Relief)', engine: 'hi3dgen' },
+  { id: 'tencent/Hunyuan3D-2.1', subdomain: 'tencent-hunyuan3d-2-1', kind: 'hunyuan', label: 'Hunyuan3D 2.1 (Full Octree)', engine: 'hunyuan' },
   { id: 'tencent/Hunyuan3D-2', subdomain: 'tencent-hunyuan3d-2', kind: 'hunyuan', label: 'Hunyuan3D 2.0 (Full Octree)', engine: 'hunyuan' },
   { id: 'VAST-AI/TripoSG', subdomain: 'vast-ai-triposg', kind: 'triposg', label: 'TripoSG (Dense Transformer SDF)', engine: 'triposg' },
   { id: 'trellis-community/TRELLIS', subdomain: 'trellis-community-trellis', kind: 'trellis', label: 'TRELLIS (Sparse Latent)', engine: 'trellis' },
+  { id: 'ilcve21/Sparc3D', subdomain: 'ilcve21-sparc3d', kind: 'sparc', label: 'Sparc3D (1536P Sparse)', engine: 'sparc' },
 ];
 
 export interface ForgeEvent {
@@ -87,7 +83,6 @@ const NULL_TTL = 15 * 1000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchSchemaJson(sub: string): Promise<unknown | null> {
-  // Test both /info and /gradio_api/info — different gradio versions expose either
   for (const path of ['/info', '/gradio_api/info']) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -96,7 +91,7 @@ async function fetchSchemaJson(sub: string): Promise<unknown | null> {
           const text = await res.text();
           if (text.startsWith('{')) return JSON.parse(text) as unknown;
         }
-        if (res.status === 404) break; // endpoint does not exist on this path, test next path
+        if (res.status === 404) break;
       } catch {
         /* cold or waking — retry */
       }
@@ -217,6 +212,71 @@ async function downloadFile(file: { url: string; path: string }, signal?: AbortS
   return await res.blob();
 }
 
+/**
+ * PASS 1: Surface Normal & Micro-Depth Extraction (Cloud Call #1).
+ * Runs as its own separate Gradio call with an isolated ZeroGPU budget.
+ */
+export async function extractSurfaceNormals(
+  imageBlob: Blob,
+  hfToken: string,
+  onEvent: (e: ForgeEvent) => void,
+  signal?: AbortSignal,
+): Promise<{ normalBlob: Blob | null; space: string }> {
+  // Candidate 1: Stable-X/Hi3DGen (/preprocess_image)
+  try {
+    const spaceDef: SpaceDef = {
+      id: 'Stable-X/Hi3DGen',
+      subdomain: 'stable-x-hi3dgen',
+      kind: 'hi3dgen',
+      label: 'Hi3DGen NiRNE Normal Bridge',
+      engine: 'hi3dgen',
+    };
+    onEvent({ stage: 'probe', space: spaceDef.id, detail: 'Pass 1: connecting to normal extractor…' });
+    const client = await getClient(spaceDef, hfToken);
+    const schema = await probeSchema(spaceDef.subdomain);
+    if (schema?.endpoints['/preprocess_image']) {
+      onEvent({ stage: 'shape', space: spaceDef.id, detail: 'Pass 1: extracting 2.5D surface normal map…' });
+      const prepData = await runJob(client, '/preprocess_image', { image: handle_file(imageBlob) }, onEvent, spaceDef.id, signal);
+      const prepFile = findFileData(prepData);
+      if (prepFile) {
+        const normalBlob = await downloadFile(prepFile, signal);
+        onEvent({ stage: 'done', space: spaceDef.id, detail: 'Pass 1: 2.5D normal map generated' });
+        return { normalBlob, space: spaceDef.id };
+      }
+    }
+  } catch {
+    onEvent({ stage: 'space-failed', space: 'Stable-X/Hi3DGen', detail: 'Normal pass fallback' });
+  }
+
+  // Candidate 2: depth-anything/Depth-Anything-V2 (/on_submit)
+  try {
+    const depthDef: SpaceDef = {
+      id: 'depth-anything/Depth-Anything-V2',
+      subdomain: 'depth-anything-depth-anything-v2',
+      kind: 'hi3dgen',
+      label: 'Depth-Anything-V2 Metric Depth',
+      engine: 'auto',
+    };
+    onEvent({ stage: 'probe', space: depthDef.id, detail: 'Pass 1: probing Depth-Anything-V2…' });
+    const client = await getClient(depthDef, hfToken);
+    const schema = await probeSchema(depthDef.subdomain);
+    if (schema?.endpoints['/on_submit']) {
+      onEvent({ stage: 'shape', space: depthDef.id, detail: 'Pass 1: extracting micro-depth field…' });
+      const depthData = await runJob(client, '/on_submit', { image: handle_file(imageBlob) }, onEvent, depthDef.id, signal);
+      const depthFile = findFileData(depthData);
+      if (depthFile) {
+        const normalBlob = await downloadFile(depthFile, signal);
+        onEvent({ stage: 'done', space: depthDef.id, detail: 'Pass 1: micro-depth field generated' });
+        return { normalBlob, space: depthDef.id };
+      }
+    }
+  } catch {
+    /* fallback to local relief */
+  }
+
+  return { normalBlob: null, space: 'local-relief' };
+}
+
 export interface ForgeRunInput {
   imageBlob: Blob;
   caption: string;
@@ -310,13 +370,12 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
 }
 
 /**
- * Full multi-engine chain:
- * probes selected engine or auto-fallback chain → generates raw mesh → converts/exports binary STL.
+ * PASS 2: Ultra-Dense Base Mesh Generation (Cloud Call #2).
+ * Runs with an independent ZeroGPU timeout budget.
  */
 export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> {
   const { imageBlob, caption, hfToken, preset, engine = 'auto', onEvent, signal } = input;
 
-  // Filter or prioritize space chain based on user's selected engine
   const targetChain =
     engine === 'auto'
       ? SPACE_CHAIN
@@ -333,6 +392,60 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
       const client = await getClient(space, hfToken);
       const schema = await probeSchema(space.subdomain);
 
+      // ── TRELLIS.2 (1024³ Dense O-Voxels) ──
+      if (space.kind === 'trellis2') {
+        const required = ['/image_to_3d'];
+        const missing = schema ? required.filter((e) => !schema.endpoints[e]) : required;
+        if (!schema || missing.length > 0) {
+          throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
+        }
+
+        onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS.2 (1024³ O-Voxels · ${preset.steps} steps)` });
+        const trellisParams = schema.endpoints['/image_to_3d'];
+        const trellisOverrides = {
+          image: handle_file(imageBlob),
+          seed: Math.floor(Math.random() * 1000000),
+          resolution: '1024',
+          ss_guidance_strength: 7.5,
+          ss_guidance_rescale: 0.7,
+          ss_sampling_steps: preset.steps >= 40 ? 25 : 12,
+          ss_rescale_t: 5,
+          shape_slat_guidance_strength: 7.5,
+          shape_slat_guidance_rescale: 0.5,
+          shape_slat_sampling_steps: preset.steps >= 40 ? 25 : 12,
+          shape_slat_rescale_t: 3,
+          tex_slat_guidance_strength: 1,
+          tex_slat_guidance_rescale: 0,
+          tex_slat_sampling_steps: 12,
+          tex_slat_rescale_t: 3,
+        };
+        const shapeData = await runJob(client, '/image_to_3d', buildPayload(trellisParams, trellisOverrides), onEvent, space.id, signal);
+
+        let meshBlob: Blob;
+        if (schema.endpoints['/extract_glb']) {
+          onEvent({ stage: 'export', space: space.id, detail: `Extracting GLB mesh (${preset.reduceFace ? '300k' : '600k'} decimation target)` });
+          const extractParams = schema.endpoints['/extract_glb'];
+          const extractOverrides = {
+            decimation_target: preset.reduceFace ? 300000 : 600000,
+            texture_size: 2048,
+          };
+          const extractData = await runJob(client, '/extract_glb', buildPayload(extractParams, extractOverrides), onEvent, space.id, signal);
+          const meshFile = findFileData(extractData) || findFileData(shapeData);
+          if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS.2 output');
+          meshBlob = await downloadFile(meshFile, signal);
+        } else {
+          const meshFile = findFileData(shapeData);
+          if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS.2 output');
+          meshBlob = await downloadFile(meshFile, signal);
+        }
+
+        onEvent({ stage: 'local-export', space: space.id, detail: 'Converting watertight binary STL' });
+        const local = await glbBlobToStl(meshBlob, signal);
+        onEvent({ stage: 'done', space: space.id });
+        return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
+      }
+
+      // ── Hunyuan3D-2 / 2.1 (Full Octree Marching Cubes) ──
       if (space.kind === 'hunyuan') {
         const required = ['/shape_generation', '/on_export_click'];
         const missing = schema ? required.filter((e) => !schema.endpoints[e]) : required;
@@ -340,7 +453,6 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
         }
 
-        // Apply high-detail decoding and standard generation modes if present
         if (schema.endpoints['/on_gen_mode_change']) {
           try {
             await runJob(client, '/on_gen_mode_change', { value: 'Standard' }, onEvent, space.id, signal);
@@ -358,19 +470,39 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
 
         onEvent({ stage: 'shape', space: space.id, queue: null, eta: null, detail: `Octree ${preset.octree}³ · ${preset.steps} steps` });
         const shapeParams = schema.endpoints['/shape_generation'];
-        const shapeOverrides = {
-          image: handle_file(imageBlob),
-          caption,
-          steps: preset.steps,
-          octree_resolution: preset.octree,
-          check_box_rembg: true,
-          randomize_seed: true,
-          guidance_scale: preset.guidance ?? 8.5,
-          num_chunks: preset.numChunks ?? 500000,
-        };
-        const shapeData = await runJob(client, '/shape_generation', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
+        let shapeData: unknown[];
+        try {
+          const shapeOverrides = {
+            image: handle_file(imageBlob),
+            caption,
+            steps: preset.steps,
+            octree_resolution: preset.octree,
+            check_box_rembg: true,
+            randomize_seed: true,
+            guidance_scale: preset.guidance ?? 8.5,
+            num_chunks: preset.numChunks ?? 500000,
+          };
+          shapeData = await runJob(client, '/shape_generation', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
+        } catch (shapeErr) {
+          // If 512³ octree OOMs/times out, immediately retry at 384³ fallback
+          if (preset.octree > 384) {
+            onEvent({ stage: 'shape', space: space.id, detail: 'Octree 512³ fallback → retrying at 384³' });
+            const shapeOverrides = {
+              image: handle_file(imageBlob),
+              caption,
+              steps: preset.steps,
+              octree_resolution: 384,
+              check_box_rembg: true,
+              randomize_seed: true,
+              guidance_scale: preset.guidance ?? 8.5,
+              num_chunks: 500000,
+            };
+            shapeData = await runJob(client, '/shape_generation', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
+          } else {
+            throw shapeErr;
+          }
+        }
 
-        // Cache mesh blob immediately (quota never wasted)
         const meshFile = findFileData(shapeData);
         if (!meshFile) throw new SpaceUnavailableError('no mesh file in shape output');
         const meshBlob = await downloadFile(meshFile, signal);
@@ -404,6 +536,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
         }
       }
 
+      // ── Hi3DGen (Normal-Bridged Facial & Relief Specialist) ──
       if (space.kind === 'hi3dgen') {
         const required = ['/generate_3d'];
         const missing = schema ? required.filter((e) => !schema.endpoints[e]) : required;
@@ -411,10 +544,9 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
         }
 
-        // Step 1: Normal-bridged surface preprocessor
         let prepImage = handle_file(imageBlob);
         if (schema.endpoints['/preprocess_image']) {
-          onEvent({ stage: 'shape', space: space.id, detail: 'Normal bridging & surface segmentation' });
+          onEvent({ stage: 'shape', space: space.id, detail: 'Pass 1: Normal bridging & surface segmentation' });
           try {
             const prepData = await runJob(client, '/preprocess_image', { image: prepImage }, onEvent, space.id, signal);
             const prepFile = findFileData(prepData);
@@ -424,8 +556,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           }
         }
 
-        // Step 2: High-resolution 3D generation from normal bridge
-        onEvent({ stage: 'shape', space: space.id, detail: `Normal-bridged 3D synthesis (${preset.steps} steps)` });
+        onEvent({ stage: 'shape', space: space.id, detail: `Pass 2: Normal-bridged 3D synthesis (${preset.steps} steps)` });
         const genParams = schema.endpoints['/generate_3d'];
         const genOverrides = {
           image: prepImage,
@@ -446,6 +577,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
         return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
       }
 
+      // ── TripoSG (Rectified Flow SDF Mesh Generator) ──
       if (space.kind === 'triposg') {
         const required = ['/image_to_3d'];
         const missing = schema ? required.filter((e) => !schema.endpoints[e]) : required;
@@ -474,6 +606,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
         return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
       }
 
+      // ── Legacy Trellis Community Fallback ──
       if (space.kind === 'trellis') {
         if (schema && schema.endpoints['/generate_and_extract_glb']) {
           onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS structured latent (${preset.steps} steps)` });
@@ -498,7 +631,6 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
         }
 
-        // Legacy trellis fallback
         if (schema && schema.endpoints['/image_to_3d']) {
           onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS shape generation` });
           const shapeParams = schema.endpoints['/image_to_3d'];
@@ -520,6 +652,11 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
         }
 
         throw new SpaceUnavailableError('TRELLIS endpoints missing in schema');
+      }
+
+      // ── Sparc3D Fallback ──
+      if (space.kind === 'sparc') {
+        throw new SpaceUnavailableError('Sparc3D running on CPU-basic; please use TRELLIS.2 or Hunyuan3D 2.1');
       }
     } catch (err) {
       const typed = classify(err);

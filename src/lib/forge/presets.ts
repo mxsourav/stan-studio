@@ -59,11 +59,11 @@ export const FORGE_PRESETS: Record<'draft' | 'production' | 'ultra' | 'master', 
     id: 'master',
     label: 'Studio Master',
     steps: 50,
-    octree: 448, // maximum dense octree on ZeroGPU
+    octree: 512, // maximum 512³ octree resolution
     targetFace: 1000000,
-    reduceFace: false, // ZERO DECIMATION: completely stops facial/finger polygon crushing
+    reduceFace: false, // ZERO DECIMATION: stops facial & finger polygon crushing
     guidance: 9.0,
     numChunks: 1000000,
-    hint: 'commercial-grade print fidelity: un-decimated raw isosurface, 448³ octree, deep facial contours & filigree (2–3+ min)',
+    hint: 'commercial-grade print fidelity: un-decimated raw isosurface, 512³ octree, deep facial contours & filigree (2–3+ min)',
   },
 };
