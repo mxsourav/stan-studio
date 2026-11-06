@@ -218,7 +218,7 @@ export default function Forge() {
     setImageObjectUrl(URL.createObjectURL(file));
     setImgErr(null);
     setImageBusy(false);
-    setStage(2);
+    setStage(1);
   };
 
   /** Direct upload from the IDEA stage — a real photo skips AI generation. */
@@ -229,7 +229,7 @@ export default function Forge() {
     setImageObjectUrl(URL.createObjectURL(file));
     setImgErr(null);
     setImageBusy(false);
-    setStage(2);
+    setStage(1);
   };
 
   // ── Stage 3: forge the mesh ──
@@ -305,7 +305,7 @@ export default function Forge() {
 
   // ── Stage 4: hand off to the hub shelf ──
   const sendToHub = async () => {
-    if (!result || !stlInfo || !enhanced) return;
+    if (!result || !stlInfo) return;
     setHubBusy(true);
     try {
       const name = idea.trim().replace(/\s+/g, ' ').slice(0, 48) || 'Forge idol';
@@ -410,6 +410,7 @@ export default function Forge() {
               <button
                 type="button"
                 onClick={() => {
+                  ++genEpochRef.current;
                   setImageSeed(Math.floor(Math.random() * 999999));
                   setStage(1);
                   void doGenerateImage();
@@ -452,7 +453,7 @@ export default function Forge() {
             className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wider text-zinc-200 transition hover:bg-white/[0.1] active:scale-[0.99]"
           >
             <IconUpload size={13} />
-            Forge from my own image
+            Start from my own image
           </button>
           {enhErr && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2 font-mono text-[10.5px] text-amber-200/90">{enhErr}</p>}
           {!groqReady && !enhErr && (
@@ -471,6 +472,7 @@ export default function Forge() {
             <button
               type="button"
               onClick={() => {
+                ++genEpochRef.current;
                 setImageSeed((s) => s + 1);
                 void doGenerateImage();
               }}
