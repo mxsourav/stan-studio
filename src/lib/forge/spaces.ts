@@ -41,9 +41,9 @@ export interface SpaceDef {
 }
 
 export const SPACE_CHAIN: SpaceDef[] = [
-  { id: 'microsoft/TRELLIS.2', subdomain: 'microsoft-trellis-2', kind: 'trellis2', label: 'TRELLIS.2 (1024³ Dense O-Voxels)', engine: 'trellis' },
-  { id: 'Stable-X/Hi3DGen', subdomain: 'stable-x-hi3dgen', kind: 'hi3dgen', label: 'Hi3DGen (Normal-Bridged Relief)', engine: 'hi3dgen' },
   { id: 'tencent/Hunyuan3D-2.1', subdomain: 'tencent-hunyuan3d-2-1', kind: 'hunyuan', label: 'Hunyuan3D 2.1 (Full Octree)', engine: 'hunyuan' },
+  { id: 'Stable-X/Hi3DGen', subdomain: 'stable-x-hi3dgen', kind: 'hi3dgen', label: 'Hi3DGen (Normal-Bridged Relief)', engine: 'hi3dgen' },
+  { id: 'microsoft/TRELLIS.2', subdomain: 'microsoft-trellis-2', kind: 'trellis2', label: 'TRELLIS.2 (1024³ Dense O-Voxels)', engine: 'trellis' },
   { id: 'tencent/Hunyuan3D-2', subdomain: 'tencent-hunyuan3d-2', kind: 'hunyuan', label: 'Hunyuan3D 2.0 (Full Octree)', engine: 'hunyuan' },
   { id: 'VAST-AI/TripoSG', subdomain: 'vast-ai-triposg', kind: 'triposg', label: 'TripoSG (Dense Transformer SDF)', engine: 'triposg' },
   { id: 'trellis-community/TRELLIS', subdomain: 'trellis-community-trellis', kind: 'trellis', label: 'TRELLIS (Sparse Latent)', engine: 'trellis' },
@@ -83,19 +83,21 @@ const NULL_TTL = 15 * 1000;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchSchemaJson(sub: string): Promise<unknown | null> {
-  for (const path of ['/info', '/gradio_api/info']) {
+  for (const path of ['/gradio_api/info', '/info']) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const res = await fetch(`https://${sub}.hf.space${path}`, { signal: AbortSignal.timeout(6000) });
+        const res = await fetch(`https://${sub}.hf.space${path}`, { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const text = await res.text();
           if (text.startsWith('{')) return JSON.parse(text) as unknown;
+          // If HTML page returned, this path is not JSON, try next path immediately
+          break;
         }
         if (res.status === 404) break;
       } catch {
         /* cold or waking — retry */
       }
-      await sleep(1500 * (attempt + 1));
+      await sleep(800 * (attempt + 1));
     }
   }
   return null;
@@ -180,33 +182,49 @@ async function runJob(
       final = (msg['data'] as unknown[]) ?? [];
     }
   }
+  if (!final) {
+    const directData = (job as unknown as { data?: unknown[] })?.data;
+    if (Array.isArray(directData) && directData.length > 0) {
+      final = directData;
+    }
+  }
   if (!final) throw classify(new Error('space returned no data'));
   return final;
 }
 
 function findFileData(data: unknown[]): { url: string; path: string; raw: unknown } | null {
-  for (const item of data) {
-    const d = (item as Record<string, unknown>)?.['value'] as Record<string, unknown> | undefined;
-    const top = item as Record<string, unknown> | null;
-    const file =
-      d && (typeof d['url'] === 'string' || typeof d['path'] === 'string')
-        ? d
-        : top && (typeof top['url'] === 'string' || typeof top['path'] === 'string')
-          ? top
-          : null;
-    if (file) {
-      return {
-        url: (file['url'] as string) ?? '',
-        path: (file['path'] as string) ?? '',
-        raw: d ?? top,
-      };
+  const queue: unknown[] = [...data];
+  while (queue.length > 0) {
+    const item = queue.shift();
+    if (!item || typeof item !== 'object') continue;
+
+    const record = item as Record<string, unknown>;
+    const url = typeof record['url'] === 'string' ? record['url'] : '';
+    const path = typeof record['path'] === 'string' ? record['path'] : '';
+
+    if (path || url) {
+      return { url, path, raw: record };
+    }
+
+    if (record['value'] && typeof record['value'] === 'object') {
+      queue.push(record['value']);
+    }
+
+    for (const v of Object.values(record)) {
+      if (v && typeof v === 'object' && v !== record['value']) {
+        queue.push(v);
+      }
     }
   }
   return null;
 }
 
-async function downloadFile(file: { url: string; path: string }, signal?: AbortSignal): Promise<Blob> {
-  const url = file.url || `https://tencent-hunyuan3d-2-1.hf.space/gradio_api/file=${file.path}`;
+async function downloadFile(file: { url: string; path: string }, subdomain: string, signal?: AbortSignal): Promise<Blob> {
+  let url = file.url;
+  if (!url || url.startsWith('/')) {
+    const p = file.url ? file.url : `/gradio_api/file=${file.path}`;
+    url = `https://${subdomain}.hf.space${p.startsWith('/') ? '' : '/'}${p}`;
+  }
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`mesh download failed (${res.status})`);
   return await res.blob();
@@ -239,7 +257,7 @@ export async function extractSurfaceNormals(
       const prepData = await runJob(client, '/preprocess_image', { image: handle_file(imageBlob) }, onEvent, spaceDef.id, signal);
       const prepFile = findFileData(prepData);
       if (prepFile) {
-        const normalBlob = await downloadFile(prepFile, signal);
+        const normalBlob = await downloadFile(prepFile, spaceDef.subdomain, signal);
         onEvent({ stage: 'done', space: spaceDef.id, detail: 'Pass 1: 2.5D normal map generated' });
         return { normalBlob, space: spaceDef.id };
       }
@@ -265,7 +283,7 @@ export async function extractSurfaceNormals(
       const depthData = await runJob(client, '/on_submit', { image: handle_file(imageBlob) }, onEvent, depthDef.id, signal);
       const depthFile = findFileData(depthData);
       if (depthFile) {
-        const normalBlob = await downloadFile(depthFile, signal);
+        const normalBlob = await downloadFile(depthFile, depthDef.subdomain, signal);
         onEvent({ stage: 'done', space: depthDef.id, detail: 'Pass 1: micro-depth field generated' });
         return { normalBlob, space: depthDef.id };
       }
@@ -400,10 +418,22 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
         }
 
+        let inputImage = handle_file(imageBlob);
+        if (schema.endpoints['/preprocess_image']) {
+          onEvent({ stage: 'shape', space: space.id, detail: 'Preprocessing reference image & silhouette…' });
+          try {
+            const prepData = await runJob(client, '/preprocess_image', { input: inputImage }, onEvent, space.id, signal);
+            const prepFile = findFileData(prepData);
+            if (prepFile) inputImage = (prepFile.raw as unknown as typeof inputImage) ?? inputImage;
+          } catch {
+            /* proceed with inputImage */
+          }
+        }
+
         onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS.2 (1024³ O-Voxels · ${preset.steps} steps)` });
         const trellisParams = schema.endpoints['/image_to_3d'];
         const trellisOverrides = {
-          image: handle_file(imageBlob),
+          image: inputImage,
           seed: Math.floor(Math.random() * 1000000),
           resolution: '1024',
           ss_guidance_strength: 7.5,
@@ -432,11 +462,11 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           const extractData = await runJob(client, '/extract_glb', buildPayload(extractParams, extractOverrides), onEvent, space.id, signal);
           const meshFile = findFileData(extractData) || findFileData(shapeData);
           if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS.2 output');
-          meshBlob = await downloadFile(meshFile, signal);
+          meshBlob = await downloadFile(meshFile, space.subdomain, signal);
         } else {
           const meshFile = findFileData(shapeData);
           if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS.2 output');
-          meshBlob = await downloadFile(meshFile, signal);
+          meshBlob = await downloadFile(meshFile, space.subdomain, signal);
         }
 
         onEvent({ stage: 'local-export', space: space.id, detail: 'Converting watertight binary STL' });
@@ -505,7 +535,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
 
         const meshFile = findFileData(shapeData);
         if (!meshFile) throw new SpaceUnavailableError('no mesh file in shape output');
-        const meshBlob = await downloadFile(meshFile, signal);
+        const meshBlob = await downloadFile(meshFile, space.subdomain, signal);
         onEvent({ stage: 'export', space: space.id, detail: preset.reduceFace ? 'Decimating…' : 'Zero decimation: un-decimated isosurface export' });
 
         try {
@@ -521,7 +551,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           const exportData = await runJob(client, '/on_export_click', buildPayload(exportParams, exportOverrides), onEvent, space.id, signal);
           const stlFile = findFileData(exportData);
           if (!stlFile) throw new SpaceUnavailableError('no STL file in export output');
-          const stlBlob = await downloadFile(stlFile, signal);
+          const stlBlob = await downloadFile(stlFile, space.subdomain, signal);
           const head = new Uint8Array(await stlBlob.slice(0, 84).arrayBuffer());
           const tris = head.length >= 84 ? new DataView(head.buffer).getUint32(80, true) : preset.targetFace;
           onEvent({ stage: 'done', space: space.id });
@@ -569,7 +599,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
         const genData = await runJob(client, '/generate_3d', buildPayload(genParams, genOverrides), onEvent, space.id, signal);
         const meshFile = findFileData(genData);
         if (!meshFile) throw new SpaceUnavailableError('no 3D mesh in Hi3DGen output');
-        const meshBlob = await downloadFile(meshFile, signal);
+        const meshBlob = await downloadFile(meshFile, space.subdomain, signal);
 
         onEvent({ stage: 'local-export', space: space.id, detail: 'Converting watertight binary STL' });
         const local = await glbBlobToStl(meshBlob, signal);
@@ -585,10 +615,22 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
         }
 
+        let inputImage = handle_file(imageBlob);
+        if (schema.endpoints['/run_segmentation']) {
+          onEvent({ stage: 'shape', space: space.id, detail: 'TripoSG: Segmenting foreground object…' });
+          try {
+            const segData = await runJob(client, '/run_segmentation', { image: inputImage }, onEvent, space.id, signal);
+            const segFile = findFileData(segData);
+            if (segFile) inputImage = segFile.raw as unknown as typeof inputImage;
+          } catch {
+            /* proceed with inputImage */
+          }
+        }
+
         onEvent({ stage: 'shape', space: space.id, detail: `Rectified flow SDF synthesis (${preset.steps} steps)` });
         const tripoParams = schema.endpoints['/image_to_3d'];
         const tripoOverrides = {
-          image: handle_file(imageBlob),
+          image: inputImage,
           seed: Math.floor(Math.random() * 1000000),
           num_inference_steps: preset.steps,
           guidance_scale: preset.guidance ?? 7.5,
@@ -598,7 +640,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
         const tripoData = await runJob(client, '/image_to_3d', buildPayload(tripoParams, tripoOverrides), onEvent, space.id, signal);
         const meshFile = findFileData(tripoData);
         if (!meshFile) throw new SpaceUnavailableError('no mesh file in TripoSG output');
-        const meshBlob = await downloadFile(meshFile, signal);
+        const meshBlob = await downloadFile(meshFile, space.subdomain, signal);
 
         onEvent({ stage: 'local-export', space: space.id, detail: 'Converting watertight binary STL' });
         const local = await glbBlobToStl(meshBlob, signal);
@@ -625,7 +667,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           const trellisData = await runJob(client, '/generate_and_extract_glb', buildPayload(trellisParams, trellisOverrides), onEvent, space.id, signal);
           const meshFile = findFileData(trellisData);
           if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS output');
-          const meshBlob = await downloadFile(meshFile, signal);
+          const meshBlob = await downloadFile(meshFile, space.subdomain, signal);
           const local = await glbBlobToStl(meshBlob, signal);
           onEvent({ stage: 'done', space: space.id });
           return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
@@ -645,7 +687,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           const shapeData = await runJob(client, '/image_to_3d', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
           const meshFile = findFileData(shapeData);
           if (!meshFile) throw new SpaceUnavailableError('no mesh file in TRELLIS output');
-          const meshBlob = await downloadFile(meshFile, signal);
+          const meshBlob = await downloadFile(meshFile, space.subdomain, signal);
           const local = await glbBlobToStl(meshBlob, signal);
           onEvent({ stage: 'done', space: space.id });
           return { stlBlob: local.stl, meshBlob, triangles: local.triangles, source: 'local', space: space.id };
