@@ -6,9 +6,14 @@ import { enhancePrompt, type EnhancedPrompt } from '../../lib/forge/groq';
 import { fetchImageBlob, genImageUrl } from '../../lib/forge/pollinations';
 import { forgeMesh, type ForgeEvent, type ForgeMeshResult } from '../../lib/forge/spaces';
 import { FORGE_PRESETS } from '../../lib/forge/presets';
+import { rescaleStl } from '../../lib/forge/exportStl';
 import { layFlatFlip, putShelfFile, saveShelfItem, uid } from '../../lib/stlHub';
 import { readStlMesh } from '../../lib/stl';
 import { drawMeshOnCanvas, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
+
+/** Auto-normalize every forged idol to this height (mm) — AI mesh units are
+ *  arbitrary (a 1.97 mm Ganesha is as useless as a 4 m one). */
+const AUTO_PRINT_MM = 120;
 
 /**
  * 3D Forge — idea → statue view → forged mesh → print-ready STL.
@@ -132,6 +137,7 @@ export default function Forge() {
   const [stlMesh, setStlMesh] = useState<{ tris: Float64Array; count: number } | null>(null);
   const [hubBusy, setHubBusy] = useState(false);
   const [hubDone, setHubDone] = useState(false);
+  const [scaleNote, setScaleNote] = useState<string | null>(null);
 
   const [keysOpen, setKeysOpen] = useState(false);
   const [groqKey, setGroqKey] = useState('');
@@ -273,7 +279,18 @@ export default function Forge() {
         });
       }
       setResult(out);
-      const info = await readStlMesh(out.stlBlob);
+      let info = await readStlMesh(out.stlBlob);
+      // Auto-scale to a printable idol size — AI generators emit arbitrary
+      // units (a 1.97 mm Ganesha is as useless as a 4 m one)
+      const maxDim = Math.max(info.bbox.x, info.bbox.y, info.bbox.z);
+      if (maxDim > 0 && Math.abs(maxDim - AUTO_PRINT_MM) / AUTO_PRINT_MM > 0.02) {
+        const { stl: scaled, factor } = await rescaleStl(out.stlBlob, AUTO_PRINT_MM);
+        out = { ...out, stlBlob: scaled };
+        info = await readStlMesh(scaled);
+        setScaleNote(`auto-scaled ×${factor >= 1 ? factor.toFixed(1) : factor.toFixed(3)} → ${AUTO_PRINT_MM} mm tall`);
+      } else {
+        setScaleNote(null);
+      }
       setStlInfo({ triangles: info.triangles, dims: info.bbox, volumeCm3: info.volumeMm3 / 1000 });
       setStlMesh({ tris: info.tris, count: info.count });
       setMeshStatus(null);
@@ -574,6 +591,9 @@ export default function Forge() {
               </p>
               {stlInfo.triangles > 150000 && (
                 <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-amber-200/80">heavy mesh — slicer may lag</p>
+              )}
+              {scaleNote && (
+                <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-sky-200/80">{scaleNote}</p>
               )}
               <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-600">via {result.space}</p>
             </div>
