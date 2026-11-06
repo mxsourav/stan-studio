@@ -162,21 +162,24 @@ export default function Forge() {
   const [groqKey, setGroqKey] = useState('');
   const [hfToken, setHfToken] = useState('');
   const [nimKey, setNimKey] = useState('');
+  const [tripoKey, setTripoKey] = useState('');
   const [keysSaved, setKeysSaved] = useState(false);
 
   useEffect(() => {
     setGroqKey(getForgeKey('groq'));
     setHfToken(getForgeKey('hf'));
     setNimKey(getForgeKey('nim'));
+    setTripoKey(getForgeKey('tripo'));
   }, []);
 
   const preset = FORGE_PRESETS[presetId];
   const groqReady = Boolean(groqKey) || isMock;
   const hfReady = Boolean(hfToken) || isMock;
   const nimReady = Boolean(nimKey) || isMock;
+  const tripoReady = Boolean(tripoKey) || isMock;
 
   const saveKeys = () => {
-    setForgeKeys({ groq: groqKey, hf: hfToken, nim: nimKey });
+    setForgeKeys({ groq: groqKey, hf: hfToken, nim: nimKey, tripo: tripoKey });
     setKeysSaved(true);
     window.setTimeout(() => setKeysSaved(false), 1600);
   };
@@ -334,6 +337,7 @@ export default function Forge() {
             caption,
             hfToken,
             nimToken: nimKey,
+            tripoKey,
             preset,
             engine: engineId,
             conditioningBlob,
@@ -481,15 +485,18 @@ export default function Forge() {
         groqReady={groqReady}
         hfReady={hfReady}
         nimReady={nimReady}
+        tripoReady={tripoReady}
       />
       {keysOpen && (
         <KeysDrawer
           groqKey={groqKey}
           hfToken={hfToken}
           nimKey={nimKey}
+          tripoKey={tripoKey}
           setGroqKey={setGroqKey}
           setHfToken={setHfToken}
           setNimKey={setNimKey}
+          setTripoKey={setTripoKey}
           saveKeys={saveKeys}
           keysSaved={keysSaved}
           clearKeys={() => {
@@ -497,6 +504,7 @@ export default function Forge() {
             setGroqKey('');
             setHfToken('');
             setNimKey('');
+            setTripoKey('');
           }}
         />
       )}
@@ -891,10 +899,12 @@ export default function Forge() {
                   ? 'border-emerald-300/25 bg-emerald-300/[0.08] text-emerald-200/90'
                   : result.source === 'nim'
                     ? 'border-sky-300/25 bg-sky-300/[0.08] text-sky-200/90'
-                    : 'border-amber-300/25 bg-amber-300/[0.08] text-amber-200/90'
+                    : result.source === 'tripo'
+                      ? 'border-violet-300/25 bg-violet-300/[0.08] text-violet-200/90'
+                      : 'border-amber-300/25 bg-amber-300/[0.08] text-amber-200/90'
               }`}
             >
-              {result.source === 'cloud' ? 'cloud stl' : result.source === 'nim' ? 'nim · trellis stl' : 'local fallback stl'}
+              {result.source === 'cloud' ? 'cloud stl' : result.source === 'nim' ? 'nim · trellis stl' : result.source === 'tripo' ? 'tripo stl' : 'local fallback stl'}
             </span>
           </div>
           <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
@@ -1027,14 +1037,14 @@ export default function Forge() {
   );
 }
 
-function ForgeHeader(props: { keysOpen: boolean; onToggleKeys: () => void; groqReady: boolean; hfReady: boolean; nimReady: boolean }) {
+function ForgeHeader(props: { keysOpen: boolean; onToggleKeys: () => void; groqReady: boolean; hfReady: boolean; nimReady: boolean; tripoReady: boolean }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-zinc-500">STΔN · 3D Forge</p>
         <h1 className="mt-1 text-[18px] font-semibold tracking-[-0.015em] text-zinc-100">Idea to printable idol</h1>
         <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-600">
-          groq {props.groqReady ? '✓' : '—'} · hf {props.hfReady ? '✓' : '—'} · nim {props.nimReady ? '✓' : '—'}
+          groq {props.groqReady ? '✓' : '—'} · hf {props.hfReady ? '✓' : '—'} · nim {props.nimReady ? '✓' : '—'} · tripo {props.tripoReady ? '✓' : '—'}
         </p>
       </div>
       <button
@@ -1154,9 +1164,11 @@ function KeysDrawer(props: {
   groqKey: string;
   hfToken: string;
   nimKey: string;
+  tripoKey: string;
   setGroqKey: (v: string) => void;
   setHfToken: (v: string) => void;
   setNimKey: (v: string) => void;
+  setTripoKey: (v: string) => void;
   saveKeys: () => void;
   keysSaved: boolean;
   clearKeys: () => void;
@@ -1189,6 +1201,14 @@ function KeysDrawer(props: {
           onChange={(e) => props.setNimKey(e.target.value)}
           placeholder="nvapi-… (build.nvidia.com — quota backup, optional)"
           aria-label="NVIDIA API key"
+          className={fieldCls}
+        />
+        <input
+          type="password"
+          value={props.tripoKey}
+          onChange={(e) => props.setTripoKey(e.target.value)}
+          placeholder="tsk_… (platform.tripo3d.ai — own-image backup engine)"
+          aria-label="Tripo API key"
           className={fieldCls}
         />
       </div>

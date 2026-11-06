@@ -18,6 +18,8 @@ import { sanitizeImageToPng } from './imageEnhancer';
 import type { ForgePreset } from './presets';
 
 const NIM_PROXY = `${((import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '')) || ''}/api/forge/nim`;
+const TRIPO_PROXY = `${((import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '')) || ''}/api/forge/tripo`;
+const TRIPO_MODEL = 'v3.1-20260211'; // newest hosted image-to-model (H3.1-class)
 
 export class QuotaError extends Error {
   constructor() {
@@ -64,7 +66,7 @@ export interface ForgeMeshResult {
   stlBlob: Blob;
   meshBlob: Blob; // cached raw mesh (glb/stl)
   triangles: number;
-  source: 'cloud' | 'local' | 'nim';
+  source: 'cloud' | 'local' | 'nim' | 'tripo';
   space: string;
 }
 
@@ -311,6 +313,8 @@ export interface ForgeRunInput {
   engine?: ForgeEngineId;
   /** Pass 1 normal map — fed to the generator as input instead of the RGB image. */
   conditioningBlob?: Blob | null;
+  /** Tripo V3 key — the own-image backup engine (NIM trial only takes examples). */
+  tripoKey?: string;
   /** Space to skip (quality-guard retry lands on the next chain entry). */
   excludeSpace?: string;
   onEvent: (e: ForgeEvent) => void;
@@ -324,6 +328,70 @@ function blobToDataUrl(blob: Blob): Promise<string> {
     r.onerror = () => reject(new Error('image read failed'));
     r.readAsDataURL(blob);
   });
+}
+
+/** Tripo V3 quota backup — the backup engine that ACCEPTS the operator's own
+ *  images (NVIDIA's trial tier only takes example photos). Upload → task →
+ *  poll → GLB → local STL. */
+async function runTripo(input: ForgeRunInput): Promise<ForgeMeshResult> {
+  const { imageBlob, tripoKey, preset, onEvent, signal } = input;
+  if (!tripoKey) throw new SpaceUnavailableError('no Tripo key set');
+  onEvent({ stage: 'probe', space: 'Tripo V3' });
+  const png = await sanitizeImageToPng(imageBlob);
+  const dataUrl = await blobToDataUrl(png);
+  onEvent({ stage: 'shape', space: 'Tripo V3', detail: 'uploading reference image…' });
+  const upRes = await fetch(TRIPO_PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({ apiKey: tripoKey, action: 'upload', imageBase64: dataUrl, mime: 'image/png' }),
+  });
+  const upJson = JSON.parse(new TextDecoder().decode(await upRes.arrayBuffer())) as { code?: number; data?: { file_token?: string }; message?: string };
+  const fileToken = upJson?.data?.file_token;
+  if (!upRes.ok || !fileToken) throw new SpaceUnavailableError(upJson?.message || `Tripo upload failed (${upRes.status})`);
+  onEvent({ stage: 'shape', space: 'Tripo V3', detail: `image-to-3D task queued (${TRIPO_MODEL.split('-')[0]} engine)` });
+  const createRes = await fetch(TRIPO_PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal,
+    body: JSON.stringify({ apiKey: tripoKey, action: 'create', model: TRIPO_MODEL, input: fileToken }),
+  });
+  const createJson = JSON.parse(new TextDecoder().decode(await createRes.arrayBuffer())) as { code?: number; data?: { task_id?: string }; message?: string };
+  const taskId = createJson?.data?.task_id;
+  if (!createRes.ok || !taskId) throw new SpaceUnavailableError(createJson?.message || `Tripo task create failed (${createRes.status})`);
+  const deadlineAt = Date.now() + (preset.id === 'draft' ? 240_000 : 480_000);
+  while (Date.now() < deadlineAt) {
+    if (signal?.aborted) throw new Error('aborted');
+    await sleep(5000);
+    const pollRes = await fetch(TRIPO_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+      body: JSON.stringify({ apiKey: tripoKey, action: 'poll', taskId }),
+    });
+    const pollJson = JSON.parse(new TextDecoder().decode(await pollRes.arrayBuffer())) as { code?: number; data?: { status?: string; progress?: number; output?: { model_url?: string } }; message?: string };
+    const st = pollJson?.data?.status;
+    if (pollJson?.code === 0 && st === 'success' && pollJson.data?.output?.model_url) {
+      onEvent({ stage: 'export', space: 'Tripo V3' });
+      const dlRes = await fetch(TRIPO_PROXY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal,
+        body: JSON.stringify({ apiKey: tripoKey, action: 'download', url: pollJson.data.output.model_url }),
+      });
+      if (!dlRes.ok) throw new SpaceUnavailableError(`Tripo model download failed (${dlRes.status})`);
+      const glb = new Blob([await dlRes.arrayBuffer()], { type: 'model/gltf-binary' });
+      const local = await glbBlobToStl(glb, signal);
+      onEvent({ stage: 'done', space: 'Tripo V3' });
+      return { stlBlob: local.stl, meshBlob: glb, triangles: local.triangles, source: 'tripo', space: 'Tripo V3 (own-image backup)' };
+    }
+    if (st === 'failed' || st === 'cancelled') {
+      // insufficient credits lands here — surface the platform's own words
+      throw new SpaceUnavailableError(pollJson?.message || `Tripo task ${st}`);
+    }
+    onEvent({ stage: 'shape', space: 'Tripo V3', queue: null, eta: null, detail: `Tripo ${st ?? 'queued'}${pollJson?.data?.progress != null ? ` ${pollJson.data.progress}%` : ''}`.trim() });
+  }
+  throw new SpaceUnavailableError('no result within the deadline — Tripo queue too deep');
 }
 
 /** NIM quota backup via NVIDIA's hosted TRELLIS. */
@@ -729,6 +797,14 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
       const typed = classify(err);
       if (signal?.aborted) throw err;
       if (typed instanceof QuotaError) {
+        // quota died mid-chain — Tripo takes over (own images ✓), NIM second
+        try {
+          const tripo = await runTripo({ ...input, onEvent });
+          onEvent({ stage: 'done', space: 'Tripo V3' });
+          return tripo;
+        } catch (tripoErr) {
+          onEvent({ stage: 'space-failed', space: 'Tripo V3', detail: tripoErr instanceof Error ? tripoErr.message : String(tripoErr) });
+        }
         try {
           const nim = await runNimTrellis({ ...input, onEvent });
           onEvent({ stage: 'done', space: 'NVIDIA TRELLIS (NIM)' });
@@ -742,7 +818,14 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
     }
   }
 
-  // Backup on NVIDIA NIM pool
+  // Backup engines: Tripo (own images ✓) first, NVIDIA NIM second
+  if (input.tripoKey) {
+    try {
+      return await runTripo({ ...input, onEvent });
+    } catch (tripoErr) {
+      onEvent({ stage: 'space-failed', space: 'Tripo V3', detail: tripoErr instanceof Error ? tripoErr.message : String(tripoErr) });
+    }
+  }
   if (input.nimToken) {
     try {
       return await runNimTrellis({ ...input, onEvent });

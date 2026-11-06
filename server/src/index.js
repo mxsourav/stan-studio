@@ -282,6 +282,67 @@ app.post('/api/forge/nim', orderLimiter, async (req, res) => {
   }
 });
 
+// Tripo V3 relay — accepts the operator's OWN images (unlike NVIDIA's trial
+// tier). One endpoint, four actions; the key rides in the body (BYOK) and is
+// never stored server-side.
+app.post('/api/forge/tripo', orderLimiter, async (req, res) => {
+  try {
+    const { apiKey, action } = req.body || {};
+    if (!apiKey || !/^tsk_/.test(String(apiKey))) {
+      return res.status(400).json({ ok: false, error: 'missing Tripo apiKey (tsk_…)' });
+    }
+    const auth = { Authorization: `Bearer ${String(apiKey).slice(0, 250)}` };
+    const base = 'https://openapi.tripo3d.ai/v3';
+    if (action === 'upload') {
+      const { imageBase64, mime } = req.body;
+      if (!imageBase64) return res.status(400).json({ ok: false, error: 'missing imageBase64' });
+      const bin = Buffer.from(String(imageBase64).replace(/^data:[^;]+;base64,/, ''), 'base64');
+      const form = new FormData();
+      form.append('file', new Blob([bin], { type: mime || 'image/png' }), 'forge-image.png');
+      const upstream = await fetch(`${base}/files`, { method: 'POST', headers: auth, body: form });
+      const text = await upstream.text();
+      return res.status(upstream.status).type('application/json').send(text);
+    }
+    if (action === 'create') {
+      const { model, input } = req.body;
+      const upstream = await fetch(`${base}/generation/image-to-model`, {
+        method: 'POST',
+        headers: { ...auth, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, input }),
+      });
+      const text = await upstream.text();
+      return res.status(upstream.status).type('application/json').send(text);
+    }
+    if (action === 'poll') {
+      const { taskId } = req.body;
+      if (!taskId || !/^[a-zA-Z0-9-]{6,80}$/.test(String(taskId))) {
+        return res.status(400).json({ ok: false, error: 'bad taskId' });
+      }
+      const upstream = await fetch(`${base}/tasks/${encodeURIComponent(String(taskId))}`, { headers: auth });
+      const text = await upstream.text();
+      return res.status(upstream.status).type('application/json').send(text);
+    }
+    if (action === 'download') {
+      const { url } = req.body;
+      if (!url || !/^https:\/\/(cdn|openapi)\.tripo3d\.ai\//.test(String(url))) {
+        return res.status(400).json({ ok: false, error: 'non-Tripo url rejected' });
+      }
+      const upstream = await fetch(String(url), { headers: auth });
+      const contentType = upstream.headers.get('content-type') || 'model/gltf-binary';
+      if (!upstream.ok) {
+        const text = await upstream.text();
+        return res.status(upstream.status).type('application/json').send(text);
+      }
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      return res.status(upstream.status).type(contentType).send(buf);
+    }
+    return res.status(400).json({ ok: false, error: 'unknown action' });
+  } catch (e) {
+    console.error('[forge-tripo] relay failed:', e);
+    res.status(502).json({ ok: false, error: 'Tripo relay failed' });
+  }
+});
+
 app.get('/api/admin/hub-requests', adminLimiter, async (req, res) => {
   if (!requireAdmin(req, res)) return;
   const { data, error } = await supabase

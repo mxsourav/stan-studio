@@ -8,6 +8,7 @@ const STORE_KEYS = {
   groq: 'stan:forge:groq-key',
   hf: 'stan:forge:hf-token',
   nim: 'stan:forge:nim-key',
+  tripo: 'stan:forge:tripo-key',
   gemini: 'stan:forge:gemini-key',
 } as const;
 
@@ -46,5 +47,5 @@ export function clearForgeKeys(): void {
 
 /** convenience — read all forge keys at once */
 export function getForgeKeys(): Record<ForgeKeyName, string> {
-  return { groq: getForgeKey('groq'), hf: getForgeKey('hf'), nim: getForgeKey('nim'), gemini: getForgeKey('gemini') };
+  return { groq: getForgeKey('groq'), hf: getForgeKey('hf'), nim: getForgeKey('nim'), tripo: getForgeKey('tripo'), gemini: getForgeKey('gemini') };
 }
