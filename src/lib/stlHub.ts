@@ -161,15 +161,13 @@ export function autoProperScale(bbox: { x: number; y: number; z: number }): Scal
 }
 
 /**
- * Auto-detect upright orientation: in 3D CAD/Blender/AI models, Z is frequently
- * the height axis (Z-up). When brought into Three.js (Y-up), the model lies
- * flat on its back (bbox.z > bbox.y). Rotating X by 270° (-90°) flips it
- * upright so it stands naturally on its base.
+ * RETIRED heuristic — parse-time Y-up normalization in stl.ts already lands
+ * Z-up models upright (statues stand, plates lie flat), so the old rotX-270
+ * guess now mis-rotates wide/low idols (e.g. Nataraja's ring: z-depth > y
+ * height would lie the statue forward). Kept as a no-op for call-site
+ * compatibility.
  */
-export function autoProperOrientation(bbox: { x: number; y: number; z: number }): { rotX: number; rotY: number; rotZ: number } {
-  if (bbox.z > bbox.y && bbox.z > bbox.x * 0.9) {
-    return { rotX: 270, rotY: 0, rotZ: 0 };
-  }
+export function autoProperOrientation(_bbox: { x: number; y: number; z: number }): { rotX: number; rotY: number; rotZ: number } {
   return { rotX: 0, rotY: 0, rotZ: 0 };
 }
 

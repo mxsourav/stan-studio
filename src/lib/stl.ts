@@ -74,52 +74,28 @@ function parseAscii(text: string, fileName: string): { fileName: string; triangl
 
 /**
  * Y-up normalization (slicer convention): STL files are Z-up, the scene is
- * Y-up. Remap so the SMALLEST bbox axis becomes the vertical (Y) axis and the
- * two larger axes form the build-plate plane (X = largest, Z = middle), so a
- * flat part like 100 × 58.4 × 8.2 lands lying on its 100 × 58.4 face. An
- * odd axis permutation flips triangle winding — restore it by swapping two
- * vertices per triangle, or every face shades inverted.
+ * Y-up. Constant swap file-Z → scene-Y (file-Y → scene-Z) — the standard
+ * Z-up→Y-up rotation. It is correct for BOTH shape classes with no
+ * heuristics: Z-up statues stand upright, flat plates (thin file-Z) lie on
+ * their largest face. (The old smallest-axis heuristic lay statues down on
+ * their backs; removing normalization entirely — the 72cf23b "natural
+ * upright" attempt — stood plates on their edges and broke packing. The
+ * constant swap is the only rule that serves both.) The y↔z transposition is
+ * an odd permutation — it mirrors triangle winding, so swap two vertices per
+ * triangle or every face shades inverted.
  */
 export function normalizeAxes(tris: Float64Array, count: number): void {
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (let i = 0; i < count; i++) {
     const o = i * 9;
     for (let v = 0; v < 9; v += 3) {
-      const x = tris[o + v], y = tris[o + v + 1], z = tris[o + v + 2];
-      if (x < minX) minX = x; if (x > maxX) maxX = x;
-      if (y < minY) minY = y; if (y > maxY) maxY = y;
-      if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+      const y = tris[o + v + 1];
+      tris[o + v + 1] = tris[o + v + 2];
+      tris[o + v + 2] = y;
     }
-  }
-  const ext = [
-    { axis: 0, e: maxX - minX },
-    { axis: 1, e: maxY - minY },
-    { axis: 2, e: maxZ - minZ },
-  ].sort((a, b) => b.e - a.e);
-  const big = ext[0].axis, mid = ext[1].axis, small = ext[2].axis;
-  // scene axis ← file axis: X ← big, Y ← small, Z ← mid
-  const map = [0, 0, 0];
-  map[big] = 0;
-  map[small] = 1;
-  map[mid] = 2;
-  // permutation parity (inversion count) — odd flips winding
-  let inv = 0;
-  for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) if (map[i] > map[j]) inv++;
-  const odd = inv % 2 === 1;
-  for (let i = 0; i < count; i++) {
-    const o = i * 9;
-    for (let v = 0; v < 9; v += 3) {
-      const xs = [tris[o + v], tris[o + v + 1], tris[o + v + 2]];
-      tris[o + v] = xs[map[0]];
-      tris[o + v + 1] = xs[map[1]];
-      tris[o + v + 2] = xs[map[2]];
-    }
-    if (odd) {
-      for (let k = 0; k < 3; k++) {
-        const t = tris[o + 3 + k];
-        tris[o + 3 + k] = tris[o + 6 + k];
-        tris[o + 6 + k] = t;
-      }
+    for (let k = 0; k < 3; k++) {
+      const t = tris[o + 3 + k];
+      tris[o + 3 + k] = tris[o + 6 + k];
+      tris[o + 6 + k] = t;
     }
   }
 }
@@ -144,6 +120,7 @@ export async function readStlMesh(file: File | Blob): Promise<StlMesh> {
     if (!/^\s*solid/i.test(text)) throw new Error('Not a valid STL file (binary or ASCII)');
     parsed = parseAscii(text, name);
   }
+  normalizeAxes(parsed.tris, parsed.count);
   return { ...parsed, ...meshStats(parsed.tris, parsed.count) };
 }
 
