@@ -124,22 +124,21 @@ export async function probeSchema(sub: string): Promise<SpaceSchema | null> {
 async function getClient(space: SpaceDef, hfToken: string): Promise<Client> {
   const existing = clients.get(space.id);
   if (existing) return existing;
-  const options = hfToken ? { hf_token: hfToken as `hf_${string}` } : undefined;
+  // `token` (hf_token is the deprecated alias)
+  const options = hfToken ? { token: hfToken as `hf_${string}` } : undefined;
   const client = await Client.connect(space.id, options);
   clients.set(space.id, client);
   return client;
 }
 
-/** Named-params payload: explicit overrides win, schema defaults fill gaps. */
+/** Named-params payload: explicit overrides win, schema defaults fill gaps.
+ *  STRICT — overrides for params the schema doesn't declare are DROPPED
+ *  (Hunyuan3D-2.1 rejects unknown kwargs like `caption`). */
 function buildPayload(params: ParamSpec[] | undefined, overrides: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const p of params ?? []) {
     if (p.name in overrides) out[p.name] = overrides[p.name];
     else if (p.def !== undefined) out[p.name] = p.def;
-  }
-  // schema-less fallback: always send our known essentials
-  for (const [k, v] of Object.entries(overrides)) {
-    if (!(k in out)) out[k] = v;
   }
   return out;
 }
@@ -183,11 +182,20 @@ async function runJob(
   return final;
 }
 
-function findFileData(data: unknown[]): { url: string; path: string } | null {
+function findFileData(data: unknown[]): { url: string; path: string; raw: unknown } | null {
   for (const item of data) {
-    const d = item as Record<string, unknown> | null;
-    if (d && (typeof d['url'] === 'string' || typeof d['path'] === 'string')) {
-      return { url: (d['url'] as string) ?? '', path: (d['path'] as string) ?? '' };
+    // gradio File components return update wrappers: { value: FileData, __type__: 'update' }
+    const d = (item as Record<string, unknown>)?.['value'] as Record<string, unknown> | undefined;
+    const top = item as Record<string, unknown> | null;
+    const file = (d && (typeof d['url'] === 'string' || typeof d['path'] === 'string')) ? d
+      : (top && (typeof top['url'] === 'string' || typeof top['path'] === 'string')) ? top
+      : null;
+    if (file) {
+      return {
+        url: (file['url'] as string) ?? '',
+        path: (file['path'] as string) ?? '',
+        raw: d ?? top, // the plain FileData dict — what downstream endpoints expect
+      };
     }
   }
   return null;
@@ -220,10 +228,14 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 /**
- * NIM quota backup (approved): ZeroGPU dies → NVIDIA's hosted TRELLIS
+ * NIM quota backup: NVIDIA's hosted TRELLIS
  * (ai.api.nvidia.com/v1/genai/microsoft/trellis) on the NVIDIA credit pool —
- * a completely separate quota from Hugging Face. Image in (base64 data URL),
- * GLB out (binary body) → local STL conversion.
+ * a completely separate quota from Hugging Face. Documented contract:
+ * payload {image | prompt, ss/slat cfg + steps, seed, no_texture, output_format}
+ * → JSON {artifacts: [{base64 (glb|stl bytes), finishReason, seed}]}.
+ * NOTE: the TRIAL tier only accepts NVIDIA's 4 example images
+ * (image: "data:image/png;example_id,0-3") — your own images need the
+ * production tier. The error is surfaced verbatim in that case.
  */
 async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
   const { imageBlob, nimToken, preset, onEvent, signal } = input;
@@ -231,7 +243,7 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
   onEvent({ stage: 'probe', space: 'NVIDIA TRELLIS (NIM)' });
   const dataUrl = await blobToDataUrl(imageBlob);
   onEvent({ stage: 'shape', space: 'NVIDIA TRELLIS (NIM)' });
-  const steps = preset.id === 'production' ? { ss: 12, slat: 24 } : { ss: 8, slat: 12 };
+  const steps = preset.id === 'production' ? { ss: 25, slat: 25 } : { ss: 12, slat: 16 };
   const res = await fetch(NIM_PROXY, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -241,30 +253,55 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
       path: 'genai/microsoft/trellis',
       image: dataUrl,
       ss_cfg_scale: 7.5,
-      slat_cfg_scale: 2.5,
+      slat_cfg_scale: 3,
       ss_sampling_steps: steps.ss,
       slat_sampling_steps: steps.slat,
       seed: Math.floor(Math.random() * 1_000_000),
+      no_texture: true, // shape only — the studio hand-paints
+      output_format: 'stl', // direct STL from NVIDIA
     }),
   });
   const buf = await res.arrayBuffer();
-  const isGlb = buf.byteLength > 4 && new Uint8Array(buf)[0] === 0x67 && new Uint8Array(buf)[1] === 0x6c && new Uint8Array(buf)[2] === 0x54 && new Uint8Array(buf)[3] === 0x46;
-  if (!res.ok || !isGlb) {
-    let detail = `NIM ${res.status}`;
-    try {
-      const parsed = JSON.parse(new TextDecoder().decode(buf));
-      detail = parsed.detail || parsed.error || parsed.message || parsed.title || detail;
-    } catch {
-      /* non-json body */
+  let parsed: { artifacts?: Array<{ base64?: string; finishReason?: string; seed?: number }>; detail?: string; title?: string; error?: string; message?: string } | null = null;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(buf));
+  } catch {
+    /* binary body — not expected from this endpoint */
+  }
+  const artifact = parsed?.artifacts?.[0];
+  if (!res.ok || !artifact?.base64) {
+    let detail = parsed?.detail || parsed?.error || parsed?.title || parsed?.message || `NIM ${res.status}`;
+    if (/example_id|preview/i.test(detail)) {
+      detail += ' — NVIDIA trial tier accepts only its example images; a production NIM key is required for your own photos.';
     }
     if (/credit|quota|exceed/i.test(detail)) throw new QuotaError();
     throw new SpaceUnavailableError(detail);
   }
-  const glbBlob = new Blob([buf], { type: 'model/gltf-binary' });
+  if (artifact.finishReason && artifact.finishReason !== 'SUCCESS') {
+    throw new SpaceUnavailableError(`NVIDIA finishReason: ${artifact.finishReason}`);
+  }
+  const b64 = artifact.base64.replace(/^data:[^;]+;base64,/, '');
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  // output_format 'stl' → bytes are a binary STL; read the real tri count
+  const isStl = !(bytes[0] === 0x67 && bytes[1] === 0x6c && bytes[2] === 0x54 && bytes[3] === 0x46);
+  let triangles = preset.targetFace;
+  if (isStl && bytes.length >= 84) {
+    triangles = new DataView(bytes.buffer).getUint32(80, true);
+  }
+  const kind = isStl ? 'model/stl' : 'model/gltf-binary';
+  const meshBlob = new Blob([bytes], { type: kind });
   onEvent({ stage: 'export', space: 'NVIDIA TRELLIS (NIM)' });
-  const local = await glbBlobToStl(glbBlob, signal);
+  let stlBlob = meshBlob;
+  let tri = triangles;
+  if (!isStl) {
+    const local = await glbBlobToStl(meshBlob, signal);
+    stlBlob = local.stl;
+    tri = local.triangles;
+  }
   onEvent({ stage: 'done', space: 'NVIDIA TRELLIS (NIM)' });
-  return { stlBlob: local.stl, meshBlob: glbBlob, triangles: local.triangles, source: 'nim', space: 'NVIDIA TRELLIS (NIM)' };
+  return { stlBlob, meshBlob, triangles: tri, source: 'nim', space: 'NVIDIA TRELLIS (NIM)' };
 }
 
 /** Full chain: probe → shape (cache mesh) → export (cloud STL, local fallback). */
@@ -311,8 +348,8 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
         if (space.kind === 'hunyuan') {
           const exportParams = schema.endpoints['/on_export_click'];
           const exportOverrides = {
-            file_out: shapeData[0],
-            file_out2: shapeData[1] ?? null,
+            file_out: meshFile.raw,
+            file_out2: null,
             file_type: 'stl' as const,
             reduce_face: preset.reduceFace,
             export_texture: false,
@@ -322,8 +359,11 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           const stlFile = findFileData(exportData);
           if (!stlFile) throw new SpaceUnavailableError('no STL file in export output');
           const stlBlob = await downloadFile(stlFile, signal);
+          // read the REAL triangle count from the binary STL header (bytes 80–84)
+          const head = new Uint8Array(await stlBlob.slice(0, 84).arrayBuffer());
+          const tris = head.length >= 84 ? new DataView(head.buffer).getUint32(80, true) : preset.targetFace;
           onEvent({ stage: 'done', space: space.id });
-          return { stlBlob, meshBlob, triangles: preset.targetFace, source: 'cloud', space: space.id };
+          return { stlBlob, meshBlob, triangles: tris, source: 'cloud', space: space.id };
         }
         // TRELLIS: GLB only — local conversion from the cached mesh
         const local = await glbBlobToStl(meshBlob, signal);
