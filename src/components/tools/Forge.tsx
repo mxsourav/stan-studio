@@ -7,7 +7,7 @@ import { fetchImageBlob, genImageUrl } from '../../lib/forge/pollinations';
 import { forgeMesh, type ForgeEngineId, type ForgeEvent, type ForgeMeshResult } from '../../lib/forge/spaces';
 import { FORGE_PRESETS } from '../../lib/forge/presets';
 import { enhanceStatueImage } from '../../lib/forge/imageEnhancer';
-import { rescaleStl } from '../../lib/forge/exportStl';
+import { computeReliefGrid, embossStlRelief, rescaleStl } from '../../lib/forge/exportStl';
 import { autoProperOrientation, autoProperScale, putShelfFile, saveShelfItem, uid } from '../../lib/stlHub';
 import { readStlMesh } from '../../lib/stl';
 import { drawMeshOnCanvas, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
@@ -120,6 +120,10 @@ export default function Forge() {
   const [sculptReliefActive, setSculptReliefActive] = useState(true);
   const [trimmedMarginPct, setTrimmedMarginPct] = useState(0);
   const [enhancingImage, setEnhancingImage] = useState(false);
+  const [reliefDepthMm, setReliefDepthMm] = useState<number>(1.2);
+  const [rawBaseStl, setRawBaseStl] = useState<Blob | null>(null);
+  const [cachedReliefGrid, setCachedReliefGrid] = useState<Float32Array | null>(null);
+  const [embossingBusy, setEmbossingBusy] = useState(false);
   const [enhanced, setEnhanced] = useState<EnhancedPrompt | null>(null);
   const [enhBusy, setEnhBusy] = useState(false);
   const [enhErr, setEnhErr] = useState<string | null>(null);
@@ -320,6 +324,18 @@ export default function Forge() {
       } else {
         setScaleNote(null);
       }
+
+      setRawBaseStl(out.stlBlob);
+      if (sculptReliefActive && imageBlob && reliefDepthMm > 0) {
+        logEvent('applying chiseled relief embossing');
+        const grid = await computeReliefGrid(imageBlob, 512);
+        setCachedReliefGrid(grid);
+        const embossed = await embossStlRelief(out.stlBlob, grid, 512, reliefDepthMm);
+        out = { ...out, stlBlob: embossed };
+        info = await readStlMesh(embossed);
+      }
+
+      setResult(out);
       setStlInfo({ triangles: info.triangles, dims: info.bbox, volumeCm3: info.volumeMm3 / 1000 });
       setStlMesh({ tris: info.tris, count: info.count });
       setMeshStatus(null);
@@ -329,6 +345,35 @@ export default function Forge() {
       setMeshErr(msg);
     } finally {
       setMeshBusy(false);
+    }
+  };
+
+  const handleReEmboss = async (depth: number) => {
+    if (!rawBaseStl || !imageBlob) return;
+    setEmbossingBusy(true);
+    setReliefDepthMm(depth);
+    try {
+      if (depth === 0) {
+        const info = await readStlMesh(rawBaseStl);
+        setResult((r) => (r ? { ...r, stlBlob: rawBaseStl } : null));
+        setStlInfo({ triangles: info.triangles, dims: info.bbox, volumeCm3: info.volumeMm3 / 1000 });
+        setStlMesh({ tris: info.tris, count: info.count });
+        return;
+      }
+      let grid = cachedReliefGrid;
+      if (!grid) {
+        grid = await computeReliefGrid(imageBlob, 512);
+        setCachedReliefGrid(grid);
+      }
+      const embossed = await embossStlRelief(rawBaseStl, grid, 512, depth);
+      const info = await readStlMesh(embossed);
+      setResult((r) => (r ? { ...r, stlBlob: embossed } : null));
+      setStlInfo({ triangles: info.triangles, dims: info.bbox, volumeCm3: info.volumeMm3 / 1000 });
+      setStlMesh({ tris: info.tris, count: info.count });
+    } catch (err) {
+      console.warn('Re-emboss error:', err);
+    } finally {
+      setEmbossingBusy(false);
     }
   };
 
@@ -790,6 +835,48 @@ export default function Forge() {
               <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-zinc-600">via {result.space}</p>
             </div>
           </div>
+
+          {/* Physical Sculpt Relief Embosser (Live tuning) */}
+          <div className="mt-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="font-mono text-[10.5px] font-semibold text-zinc-200">
+                  ✦ Physical Sculpt Relief (Sharpens Face & Filigree)
+                </span>
+                <p className="mt-0.5 text-[10px] text-zinc-400">
+                  Displaces vertices along surface normals to physically carve sharp facial features and ornaments.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {[
+                  { depth: 0, label: 'Off' },
+                  { depth: 0.6, label: 'Subtle 0.6mm' },
+                  { depth: 1.2, label: 'Chiseled 1.2mm' },
+                  { depth: 1.8, label: 'Deep 1.8mm' },
+                ].map((opt) => (
+                  <button
+                    key={opt.depth}
+                    type="button"
+                    disabled={embossingBusy || !rawBaseStl}
+                    onClick={() => void handleReEmboss(opt.depth)}
+                    className={`rounded-lg border px-2.5 py-1 font-mono text-[10px] transition active:scale-95 ${
+                      reliefDepthMm === opt.depth
+                        ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-200 font-semibold'
+                        : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white'
+                    } disabled:opacity-50`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {embossingBusy && (
+              <p className="mt-2 font-mono text-[9.5px] text-zinc-400 animate-pulse">
+                Embossing physical relief onto mesh vertices…
+              </p>
+            )}
+          </div>
+
           <div className="mt-5 flex gap-2">
             <a
               href={URL.createObjectURL(result.stlBlob)}
