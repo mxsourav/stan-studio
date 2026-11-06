@@ -2,14 +2,15 @@
  * 3D Forge — Stage 3: image → 3D mesh via Hugging Face Spaces (@gradio/client,
  * browser-direct, ZeroGPU) with NVIDIA NIM backup.
  *
- * 3-Pass Iterative Architecture:
- * - PASS 1: Surface Normal & Micro-Depth Extraction (Cloud Call #1 on Stable-X/Hi3DGen
- *   or Depth-Anything-V2) with dedicated isolated ZeroGPU timer.
- * - PASS 2: Ultra-Dense Base Mesh Generation (Cloud Call #2 on microsoft/TRELLIS.2,
- *   tencent/Hunyuan3D-2.1 with 512³ octree and zero decimation, Stable-X/Hi3DGen,
- *   or VAST-AI/TripoSG).
- * - PASS 3: Iterative Detail Stamp & Normal-Depth Vertex Displacement in Three.js
- *   (see refineMesh.ts).
+ * Masterclass pipeline:
+ * - PASS 1: Normal-bridge conditioning — Hi3DGen's NiRNE preprocess converts
+ *   the statue image into a surface normal map that is fed INTO the mesh
+ *   generator as input (unambiguous geometry cues → sharp faces, no melted
+ *   anatomy). Never stamped onto vertices — that was the spiky-dust failure.
+ * - PASS 2: Base mesh generation on the space chain (microsoft/TRELLIS.2,
+ *   tencent/Hunyuan3D-2.1 with 512³ octree, Stable-X/Hi3DGen, VAST-AI/TripoSG)
+ *   conditioned on the normal map when available.
+ * - PASS 3: Surface refinement in refineMesh.ts (weld + Taubin + budget cap).
  */
 import { Client, handle_file } from '@gradio/client';
 import { glbBlobToStl } from './exportStl';
@@ -231,16 +232,17 @@ async function downloadFile(file: { url: string; path: string }, subdomain: stri
 }
 
 /**
- * PASS 1: Surface Normal & Micro-Depth Extraction (Cloud Call #1).
- * Runs as its own separate Gradio call with an isolated ZeroGPU budget.
+ * PASS 1: Normal-bridge conditioning (Hi3DGen NiRNE).
+ * Converts the statue image into a surface normal map that becomes the mesh
+ * generator's INPUT — geometry cues instead of albedo guessing. Returns null
+ * when the bridge is unavailable; the caller falls back to the raw image.
  */
-export async function extractSurfaceNormals(
+export async function extractNormalBridge(
   imageBlob: Blob,
   hfToken: string,
   onEvent: (e: ForgeEvent) => void,
   signal?: AbortSignal,
-): Promise<{ normalBlob: Blob | null; space: string }> {
-  // Candidate 1: Stable-X/Hi3DGen (/preprocess_image)
+): Promise<Blob | null> {
   try {
     const spaceDef: SpaceDef = {
       id: 'Stable-X/Hi3DGen',
@@ -249,50 +251,21 @@ export async function extractSurfaceNormals(
       label: 'Hi3DGen NiRNE Normal Bridge',
       engine: 'hi3dgen',
     };
-    onEvent({ stage: 'probe', space: spaceDef.id, detail: 'Pass 1: connecting to normal extractor…' });
+    onEvent({ stage: 'probe', space: spaceDef.id, detail: 'Pass 1: connecting to the normal bridge…' });
     const client = await getClient(spaceDef, hfToken);
     const schema = await probeSchema(spaceDef.subdomain);
-    if (schema?.endpoints['/preprocess_image']) {
-      onEvent({ stage: 'shape', space: spaceDef.id, detail: 'Pass 1: extracting 2.5D surface normal map…' });
-      const prepData = await runJob(client, '/preprocess_image', { image: handle_file(imageBlob) }, onEvent, spaceDef.id, signal);
-      const prepFile = findFileData(prepData);
-      if (prepFile) {
-        const normalBlob = await downloadFile(prepFile, spaceDef.subdomain, signal);
-        onEvent({ stage: 'done', space: spaceDef.id, detail: 'Pass 1: 2.5D normal map generated' });
-        return { normalBlob, space: spaceDef.id };
-      }
-    }
+    if (!schema?.endpoints['/preprocess_image']) return null;
+    onEvent({ stage: 'shape', space: spaceDef.id, detail: 'Pass 1: bridging RGB → surface normal map…' });
+    const prepData = await runJob(client, '/preprocess_image', { image: handle_file(imageBlob) }, onEvent, spaceDef.id, signal);
+    const prepFile = findFileData(prepData);
+    if (!prepFile) return null;
+    const normalBlob = await downloadFile(prepFile, spaceDef.subdomain, signal);
+    onEvent({ stage: 'done', space: spaceDef.id, detail: 'Pass 1: surface normal map ready' });
+    return normalBlob;
   } catch {
-    onEvent({ stage: 'space-failed', space: 'Stable-X/Hi3DGen', detail: 'Normal pass fallback' });
+    onEvent({ stage: 'space-failed', space: 'Stable-X/Hi3DGen', detail: 'normal bridge unavailable — rgb input' });
+    return null;
   }
-
-  // Candidate 2: depth-anything/Depth-Anything-V2 (/on_submit)
-  try {
-    const depthDef: SpaceDef = {
-      id: 'depth-anything/Depth-Anything-V2',
-      subdomain: 'depth-anything-depth-anything-v2',
-      kind: 'hi3dgen',
-      label: 'Depth-Anything-V2 Metric Depth',
-      engine: 'auto',
-    };
-    onEvent({ stage: 'probe', space: depthDef.id, detail: 'Pass 1: probing Depth-Anything-V2…' });
-    const client = await getClient(depthDef, hfToken);
-    const schema = await probeSchema(depthDef.subdomain);
-    if (schema?.endpoints['/on_submit']) {
-      onEvent({ stage: 'shape', space: depthDef.id, detail: 'Pass 1: extracting micro-depth field…' });
-      const depthData = await runJob(client, '/on_submit', { image: handle_file(imageBlob) }, onEvent, depthDef.id, signal);
-      const depthFile = findFileData(depthData);
-      if (depthFile) {
-        const normalBlob = await downloadFile(depthFile, depthDef.subdomain, signal);
-        onEvent({ stage: 'done', space: depthDef.id, detail: 'Pass 1: micro-depth field generated' });
-        return { normalBlob, space: depthDef.id };
-      }
-    }
-  } catch {
-    /* fallback to local relief */
-  }
-
-  return { normalBlob: null, space: 'local-relief' };
 }
 
 export interface ForgeRunInput {
@@ -302,6 +275,10 @@ export interface ForgeRunInput {
   nimToken: string;
   preset: ForgePreset;
   engine?: ForgeEngineId;
+  /** Pass 1 normal map — fed to the generator as input instead of the RGB image. */
+  conditioningBlob?: Blob | null;
+  /** Space to skip (quality-guard retry lands on the next chain entry). */
+  excludeSpace?: string;
   onEvent: (e: ForgeEvent) => void;
   signal?: AbortSignal;
 }
@@ -317,10 +294,10 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 /** NIM quota backup via NVIDIA's hosted TRELLIS. */
 async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
-  const { imageBlob, nimToken, preset, onEvent, signal } = input;
+  const { nimToken, preset, onEvent, signal } = input;
   if (!nimToken) throw new SpaceUnavailableError('no NVIDIA key set');
   onEvent({ stage: 'probe', space: 'NVIDIA TRELLIS (NIM)' });
-  const dataUrl = await blobToDataUrl(imageBlob);
+  const dataUrl = await blobToDataUrl(input.conditioningBlob ?? input.imageBlob);
   onEvent({ stage: 'shape', space: 'NVIDIA TRELLIS (NIM)' });
   const steps =
     preset.id === 'master' || preset.id === 'ultra'
@@ -392,15 +369,15 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
  * Runs with an independent ZeroGPU timeout budget.
  */
 export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> {
-  const { imageBlob, caption, hfToken, preset, engine = 'auto', onEvent, signal } = input;
+  const { caption, hfToken, preset, engine = 'auto', onEvent, signal } = input;
+  // Conditioning input: the Pass 1 normal map when available, else the RGB image
+  const genImage = input.conditioningBlob ?? input.imageBlob;
 
+  const pool = SPACE_CHAIN.filter((s) => s.id !== input.excludeSpace);
   const targetChain =
     engine === 'auto'
-      ? SPACE_CHAIN
-      : [
-          ...SPACE_CHAIN.filter((s) => s.engine === engine),
-          ...SPACE_CHAIN.filter((s) => s.engine !== engine),
-        ];
+      ? pool
+      : [...pool.filter((s) => s.engine === engine), ...pool.filter((s) => s.engine !== engine)];
 
   let lastErr: Error = new Error('no space available');
 
@@ -418,8 +395,10 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
         }
 
-        let inputImage = handle_file(imageBlob);
-        if (schema.endpoints['/preprocess_image']) {
+        let inputImage = handle_file(genImage);
+        // A normal map arrives pre-segmented — the space's own background
+        // removal would mangle it, so skip /preprocess_image when conditioning
+        if (schema.endpoints['/preprocess_image'] && !input.conditioningBlob) {
           onEvent({ stage: 'shape', space: space.id, detail: 'Preprocessing reference image & silhouette…' });
           try {
             const prepData = await runJob(client, '/preprocess_image', { input: inputImage }, onEvent, space.id, signal);
@@ -500,14 +479,17 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
 
         onEvent({ stage: 'shape', space: space.id, queue: null, eta: null, detail: `Octree ${preset.octree}³ · ${preset.steps} steps` });
         const shapeParams = schema.endpoints['/shape_generation'];
+        // rembg would chew on a normal map's solid background — only strip
+        // background when conditioning on the raw RGB image
+        const rembg = !input.conditioningBlob;
         let shapeData: unknown[];
         try {
           const shapeOverrides = {
-            image: handle_file(imageBlob),
+            image: handle_file(genImage),
             caption,
             steps: preset.steps,
             octree_resolution: preset.octree,
-            check_box_rembg: true,
+            check_box_rembg: rembg,
             randomize_seed: true,
             guidance_scale: preset.guidance ?? 8.5,
             num_chunks: preset.numChunks ?? 500000,
@@ -518,11 +500,11 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           if (preset.octree > 384) {
             onEvent({ stage: 'shape', space: space.id, detail: 'Octree 512³ fallback → retrying at 384³' });
             const shapeOverrides = {
-              image: handle_file(imageBlob),
+              image: handle_file(genImage),
               caption,
               steps: preset.steps,
               octree_resolution: 384,
-              check_box_rembg: true,
+              check_box_rembg: rembg,
               randomize_seed: true,
               guidance_scale: preset.guidance ?? 8.5,
               num_chunks: 500000,
@@ -574,8 +556,10 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
         }
 
-        let prepImage = handle_file(imageBlob);
-        if (schema.endpoints['/preprocess_image']) {
+        let prepImage = handle_file(genImage);
+        // Hi3DGen generates FROM the normal map — a conditioned normal map is
+        // already the bridge output, skip the space's own preprocess
+        if (schema.endpoints['/preprocess_image'] && !input.conditioningBlob) {
           onEvent({ stage: 'shape', space: space.id, detail: 'Pass 1: Normal bridging & surface segmentation' });
           try {
             const prepData = await runJob(client, '/preprocess_image', { image: prepImage }, onEvent, space.id, signal);
@@ -615,8 +599,9 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           throw new SpaceUnavailableError(`endpoints missing: ${missing.join(', ') || 'schema unreachable'}`);
         }
 
-        let inputImage = handle_file(imageBlob);
-        if (schema.endpoints['/run_segmentation']) {
+        let inputImage = handle_file(genImage);
+        // A conditioned normal map is already segmented
+        if (schema.endpoints['/run_segmentation'] && !input.conditioningBlob) {
           onEvent({ stage: 'shape', space: space.id, detail: 'TripoSG: Segmenting foreground object…' });
           try {
             const segData = await runJob(client, '/run_segmentation', { image: inputImage }, onEvent, space.id, signal);
@@ -654,7 +639,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS structured latent (${preset.steps} steps)` });
           const trellisParams = schema.endpoints['/generate_and_extract_glb'];
           const trellisOverrides = {
-            image: handle_file(imageBlob),
+            image: handle_file(genImage),
             multiimages: [],
             seed: Math.floor(Math.random() * 1000000),
             ss_guidance_strength: 7.5,
@@ -677,7 +662,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
           onEvent({ stage: 'shape', space: space.id, detail: `TRELLIS shape generation` });
           const shapeParams = schema.endpoints['/image_to_3d'];
           const shapeOverrides = {
-            image: handle_file(imageBlob),
+            image: handle_file(genImage),
             seed: 0,
             ss_sampling_steps: preset.steps >= 40 ? 25 : 12,
             slat_sampling_steps: preset.steps >= 40 ? 25 : 12,

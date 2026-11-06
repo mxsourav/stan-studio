@@ -4,11 +4,12 @@ import { IconCheckmark, IconCube, IconForge, IconLink, IconUpload } from '../ico
 import { clearForgeKeys, getForgeKey, setForgeKeys } from '../../lib/forge/keys';
 import { enhancePrompt, type EnhancedPrompt } from '../../lib/forge/groq';
 import { fetchImageBlob, genImageUrl } from '../../lib/forge/pollinations';
-import { extractSurfaceNormals, forgeMesh, type ForgeEngineId, type ForgeEvent, type ForgeMeshResult } from '../../lib/forge/spaces';
+import { extractNormalBridge, forgeMesh, type ForgeEngineId, type ForgeEvent, type ForgeMeshResult } from '../../lib/forge/spaces';
 import { FORGE_PRESETS } from '../../lib/forge/presets';
+import { meshQualityReport, type QualityReport } from '../../lib/forge/meshQuality';
+import { refineMeshStl, type RefineMeshResult } from '../../lib/forge/refineMesh';
 import { enhanceStatueImage } from '../../lib/forge/imageEnhancer';
 import { rescaleStl } from '../../lib/forge/exportStl';
-import { refineMeshStl } from '../../lib/forge/refineMesh';
 import { autoProperOrientation, autoProperScale, putShelfFile, saveShelfItem, uid } from '../../lib/stlHub';
 import { readStlMesh } from '../../lib/stl';
 import { drawMeshOnCanvas, renderStlThumb, sessionMeshCache } from '../../lib/stlThumb';
@@ -77,109 +78,6 @@ function ForgeMeshView({ mesh, size = 210 }: { mesh: { tris: Float64Array; count
   );
 }
 
-/** Range slider with hover mouse wheel scrolling. */
-function WheelSlider({
-  min,
-  max,
-  step = 0.1,
-  value,
-  onChange,
-  onStep,
-  className = '',
-  ariaLabel,
-}: {
-  min: number;
-  max: number;
-  step?: number;
-  value: number;
-  onChange: (val: number) => void;
-  onStep?: (delta: number) => void;
-  className?: string;
-  ariaLabel: string;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const mult = e.shiftKey ? 5 : 1;
-      const dir = e.deltaY < 0 ? 1 : -1;
-      const stepVal = (step || 0.1) * mult;
-      if (onStep) {
-        onStep(dir * stepVal);
-      } else {
-        const next = Math.min(max, Math.max(min, Math.round((value + dir * stepVal) * 10) / 10));
-        onChange(next);
-      }
-    };
-    el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
-  }, [min, max, step, value, onChange, onStep]);
-
-  return (
-    <input
-      ref={ref}
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      aria-label={ariaLabel}
-      className={className}
-    />
-  );
-}
-
-/** Number input responding to hover mouse wheel scrolling. */
-function WheelInput({
-  value,
-  onChange,
-  onBlur,
-  onKeyDown,
-  onStep,
-  className = '',
-  ariaLabel,
-}: {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onBlur?: () => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onStep?: (delta: number) => void;
-  className?: string;
-  ariaLabel: string;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const mult = e.shiftKey ? 0.5 : 0.1;
-      const dir = e.deltaY < 0 ? 1 : -1;
-      onStep?.(dir * mult);
-    };
-    el.addEventListener('wheel', handler, { passive: false });
-    return () => el.removeEventListener('wheel', handler);
-  }, [onStep]);
-
-  return (
-    <input
-      ref={ref}
-      type="text"
-      value={value}
-      onChange={onChange}
-      onBlur={onBlur}
-      onKeyDown={onKeyDown}
-      aria-label={ariaLabel}
-      className={className}
-    />
-  );
-}
-
 /** Minimal binary-STL box for mock mode (E2E without any cloud call). */
 function mockStlBlob(dx: number, dy: number, dz: number): Blob {
   const v = [
@@ -224,12 +122,14 @@ export default function Forge() {
   const [sculptReliefActive, setSculptReliefActive] = useState(true);
   const [trimmedMarginPct, setTrimmedMarginPct] = useState(0);
   const [enhancingImage, setEnhancingImage] = useState(false);
-  const [reliefDepthMm, setReliefDepthMm] = useState<number>(1.2);
-  const [reliefDraft, setReliefDraft] = useState<string>('1.2');
-  const [cachedNormalBlob, setCachedNormalBlob] = useState<Blob | null>(null);
-  const [normalSpaceUsed, setNormalSpaceUsed] = useState<string | null>(null);
+  const [refineStrength, setRefineStrength] = useState<0 | 1 | 2 | 3>(2);
+  const [refining, setRefining] = useState(false);
+  const [normalBridgeOn, setNormalBridgeOn] = useState(true);
+  const [guardOn, setGuardOn] = useState(true);
+  const [condSource, setCondSource] = useState<string | null>(null);
+  const [refineMeta, setRefineMeta] = useState<Omit<RefineMeshResult, 'stlBlob'> | null>(null);
+  const [quality, setQuality] = useState<QualityReport | null>(null);
   const [rawBaseStl, setRawBaseStl] = useState<Blob | null>(null);
-  const [embossingBusy, setEmbossingBusy] = useState(false);
   const [enhanced, setEnhanced] = useState<EnhancedPrompt | null>(null);
   const [enhBusy, setEnhBusy] = useState(false);
   const [enhErr, setEnhErr] = useState<string | null>(null);
@@ -370,7 +270,7 @@ export default function Forge() {
     await processImage(file);
   };
 
-  // ── Stage 3: forge the mesh (3-Pass Iterative Detail Pipeline) ──
+  // ── Stage 3: forge the mesh (conditioned generation + surface refinement) ──
   const doForge = async () => {
     if (!imageBlob) return;
     const caption = enhanced?.caption ?? (idea.trim().replace(/\s+/g, ' ').slice(0, 90) || 'idol statue from photo');
@@ -383,111 +283,121 @@ export default function Forge() {
     setResult(null);
     setStlInfo(null);
     setStlMesh(null);
+    setQuality(null);
+    setRefineMeta(null);
     setHubDone(false);
     const logEvent = (label: string) => setEventLog((log) => [...log.slice(-7), { label, at: Date.now() }]);
+    const budget = isMock ? 0 : (preset.budget ?? 0);
     try {
-      let out: ForgeMeshResult;
-      let normalBlob: Blob | null = null;
-      let normalSpace = 'local-relief';
-
+      // PASS 1 — normal-bridge conditioning (skipped in mock / when toggled off)
+      let conditioningBlob: Blob | null = null;
       if (isMock) {
-        logEvent('Pass 1: mock normal bridge simulated');
-        setMeshStatus('mock: Pass 1 normal bridge');
-        await new Promise((r) => setTimeout(r, 500));
-        logEvent('Pass 2: mock ultra-dense base mesh forging');
-        setMeshStatus('mock: Pass 2 forging box');
-        await new Promise((r) => setTimeout(r, 900));
-        const stl = mockStlBlob(40, 45, 30);
-        out = { stlBlob: stl, meshBlob: stl, triangles: 12, source: 'local', space: 'mock' };
-      } else {
-        // PASS 1 — Surface Normal & Micro-Depth Extraction (Cloud Call #1: isolated ZeroGPU budget)
-        logEvent('Pass 1: extracting 2.5D surface normal & depth bridge');
-        setMeshStatus('Pass 1: surface normal & depth extraction…');
-        try {
-          const normRes = await extractSurfaceNormals(
-            imageBlob,
-            hfToken,
-            (e) => {
-              if (e.detail) {
-                logEvent(e.detail);
-                setMeshStatus(e.detail);
-              }
-            }
-          );
-          normalBlob = normRes.normalBlob;
-          normalSpace = normRes.space;
-          setCachedNormalBlob(normalBlob);
-          setNormalSpaceUsed(normalSpace);
-          if (normalBlob) {
-            logEvent(`Pass 1 complete: 2.5D normal bridge via ${normalSpace}`);
-          } else {
-            logEvent('Pass 1 complete: silhouette luminance relief bridge');
+        setCondSource('rgb input');
+        logEvent('Pass 1: skipped (mock pipeline)');
+      } else if (normalBridgeOn) {
+        logEvent('Pass 1: normal bridge conditioning (Hi3DGen)');
+        setMeshStatus('Pass 1: normal bridge conditioning…');
+        conditioningBlob = await extractNormalBridge(imageBlob, hfToken, (e) => {
+          if (e.detail) {
+            logEvent(e.detail);
+            setMeshStatus(e.detail);
           }
-        } catch {
-          logEvent('Pass 1: using reference image luminance relief fallback');
+        });
+        if (conditioningBlob) {
+          setCondSource('normal bridge · Hi3DGen');
+          logEvent('Pass 1 complete: generator input = surface normal map');
+        } else {
+          setCondSource('rgb input');
+          logEvent('Pass 1 fallback: generator input = rgb image');
+        }
+      } else {
+        setCondSource('rgb input');
+        logEvent('Pass 1: normal bridge off — rgb input');
+      }
+
+      const attempt = async (excludeSpace?: string): Promise<{ out: ForgeMeshResult; info: Awaited<ReturnType<typeof readStlMesh>>; refined: Omit<RefineMeshResult, 'stlBlob'>; quality: QualityReport }> => {
+        // PASS 2 — conditioned base mesh generation
+        let out: ForgeMeshResult;
+        if (isMock) {
+          logEvent('Pass 2: mock ultra-dense base mesh forging');
+          setMeshStatus('mock: Pass 2 forging box');
+          await new Promise((r) => setTimeout(r, 900));
+          const stl = mockStlBlob(40, 45, 30);
+          out = { stlBlob: stl, meshBlob: stl, triangles: 12, source: 'local', space: 'mock' };
+        } else {
+          logEvent(`Pass 2: synthesizing base geometry (${preset.label})`);
+          out = await forgeMesh({
+            imageBlob,
+            caption,
+            hfToken,
+            nimToken: nimKey,
+            preset,
+            engine: engineId,
+            conditioningBlob,
+            excludeSpace,
+            onEvent: (e: ForgeEvent) => {
+              const bits: string[] = [e.stage];
+              if (e.space) bits.push(e.space.split('/')[1] ?? e.space);
+              if (typeof e.queue === 'number') bits.push(`queue #${e.queue}`);
+              if (typeof e.eta === 'number' && e.eta > 0) bits.push(`~${e.eta}s`);
+              if (e.stage === 'local-export') bits.push('cloud export failed — local fallback');
+              const line = bits.join(' · ');
+              setMeshStatus(line);
+              logEvent(line);
+              if (e.stage === 'space-failed' && e.space) {
+                const name = e.space.split('/')[1] ?? e.space;
+                setSpaceFails((f) => [...f, `${name}: ${e.detail ?? 'unavailable'}`]);
+              }
+            },
+          });
         }
 
-        // PASS 2 — Ultra-Dense Base Mesh Generation (Cloud Call #2: fresh ZeroGPU timer)
-        logEvent(`Pass 2: synthesizing base geometry (${preset.label})`);
-        out = await forgeMesh({
-          imageBlob,
-          caption,
-          hfToken,
-          nimToken: nimKey,
-          preset,
-          engine: engineId,
-          onEvent: (e: ForgeEvent) => {
-            const bits: string[] = [e.stage];
-            if (e.space) bits.push(e.space.split('/')[1] ?? e.space);
-            if (typeof e.queue === 'number') bits.push(`queue #${e.queue}`);
-            if (typeof e.eta === 'number' && e.eta > 0) bits.push(`~${e.eta}s`);
-            if (e.stage === 'local-export') bits.push('cloud export failed — local fallback');
-            const line = bits.join(' · ');
-            setMeshStatus(line);
-            logEvent(line);
-            if (e.stage === 'space-failed' && e.space) {
-              const name = e.space.split('/')[1] ?? e.space;
-              setSpaceFails((f) => [...f, `${name}: ${e.detail ?? 'unavailable'}`]);
-            }
-          },
-        });
+        let info = await readStlMesh(out.stlBlob);
+        // Auto-scale to a printable idol size — AI generators emit arbitrary
+        // units (a 1.97 mm Ganesha is as useless as a 4 m one)
+        const maxDim = Math.max(info.bbox.x, info.bbox.y, info.bbox.z);
+        if (maxDim > 0 && Math.abs(maxDim - AUTO_PRINT_MM) / AUTO_PRINT_MM > 0.02) {
+          const { stl: scaled, factor } = await rescaleStl(out.stlBlob, AUTO_PRINT_MM);
+          out = { ...out, stlBlob: scaled };
+          info = await readStlMesh(scaled);
+          setScaleNote(`auto-scaled ×${factor >= 1 ? factor.toFixed(1) : factor.toFixed(3)} → ${AUTO_PRINT_MM} mm tall`);
+        } else {
+          setScaleNote(null);
+        }
+        setRawBaseStl(out.stlBlob);
+
+        // PASS 3 — surface refinement (weld + Taubin + budget cap)
+        logEvent('Pass 3: weld + Taubin surface refinement');
+        setMeshStatus('Pass 3: weld + Taubin surface refinement…');
+        const refined = await refineMeshStl(out.stlBlob, { smoothingStrength: isMock ? 0 : refineStrength, maxTriangles: budget });
+        if (refined.simplified) {
+          logEvent(`Pass 3 budget: ${refined.inputTriangles.toLocaleString('en-IN')} → ${refined.triangles.toLocaleString('en-IN')} tris`);
+        }
+        logEvent(`Pass 3 complete: ${refined.triangles.toLocaleString('en-IN')} tris · manifold ${refined.manifold.closedPct}%`);
+
+        const quality = await meshQualityReport(refined.stlBlob, imageBlob);
+        const finalOut: ForgeMeshResult = { ...out, stlBlob: refined.stlBlob, triangles: refined.triangles };
+        const finalInfo = await readStlMesh(refined.stlBlob);
+        return { out: finalOut, info: finalInfo, refined, quality };
+      };
+
+      let run = await attempt();
+      // quality guard — one automatic retry on the next space of the chain
+      if (!isMock && guardOn && run.quality.silhouettePct != null && run.quality.silhouettePct < 55) {
+        logEvent(`quality guard: silhouette ${run.quality.silhouettePct}% < 55% — reforging on the next space`);
+        const retry = await attempt(run.out.space);
+        const first = run.quality.silhouettePct ?? 0;
+        const second = retry.quality.silhouettePct ?? 0;
+        const better = second > first;
+        logEvent(`quality guard: kept the ${better ? 'retry' : 'first'} forge · silhouette ${Math.max(first, second)}%`);
+        if (better) run = retry;
       }
 
-      setResult(out);
-      let info = await readStlMesh(out.stlBlob);
-      // Auto-scale to a printable idol size — AI generators emit arbitrary
-      // units (a 1.97 mm Ganesha is as useless as a 4 m one)
-      const maxDim = Math.max(info.bbox.x, info.bbox.y, info.bbox.z);
-      if (maxDim > 0 && Math.abs(maxDim - AUTO_PRINT_MM) / AUTO_PRINT_MM > 0.02) {
-        const { stl: scaled, factor } = await rescaleStl(out.stlBlob, AUTO_PRINT_MM);
-        out = { ...out, stlBlob: scaled };
-        info = await readStlMesh(scaled);
-        setScaleNote(`auto-scaled ×${factor >= 1 ? factor.toFixed(1) : factor.toFixed(3)} → ${AUTO_PRINT_MM} mm tall`);
-      } else {
-        setScaleNote(null);
-      }
-
-      setRawBaseStl(out.stlBlob);
-
-      // PASS 3 — Iterative "Detail Stamp / Normal-Depth Vertex Displacement"
-      if (sculptReliefActive && imageBlob && reliefDepthMm > 0) {
-        logEvent('Pass 3: adaptive facial tessellation & physical detail carve');
-        setMeshStatus('Pass 3: carving sharp facial & ornamental details…');
-        const refBlob = normalBlob || cachedNormalBlob || imageBlob;
-        const refined = await refineMeshStl(out.stlBlob, refBlob, {
-          carveDepthMm: reliefDepthMm,
-          subdivideDetailZones: true,
-          taubinSmoothing: true,
-          gridResolution: 512,
-        });
-        out = { ...out, stlBlob: refined.stlBlob };
-        info = await readStlMesh(refined.stlBlob);
-        logEvent(`Pass 3 complete: ${refined.triangles.toLocaleString('en-IN')} triangles`);
-      }
-
-      setResult(out);
-      setStlInfo({ triangles: info.triangles, dims: info.bbox, volumeCm3: info.volumeMm3 / 1000 });
-      setStlMesh({ tris: info.tris, count: info.count });
+      setResult(run.out);
+      setRefineMeta(run.refined);
+      setQuality(run.quality);
+      setStlInfo({ triangles: run.info.triangles, dims: run.info.bbox, volumeCm3: run.info.volumeMm3 / 1000 });
+      setStlMesh({ tris: run.info.tris, count: run.info.count });
       setMeshStatus(null);
       setStage(3);
     } catch (err) {
@@ -498,34 +408,24 @@ export default function Forge() {
     }
   };
 
-  const handleReEmboss = async (depth: number) => {
-    if (!rawBaseStl || !imageBlob) return;
-    setEmbossingBusy(true);
-    setReliefDepthMm(depth);
-    setReliefDraft(depth.toFixed(1));
+  /** Re-run Pass 3 from the cached pre-refine STL with a new denoise strength. */
+  const handleRefine = async (strength: 0 | 1 | 2 | 3) => {
+    if (!rawBaseStl || !imageBlob || refining || meshBusy) return;
+    setRefining(true);
+    setRefineStrength(strength);
     try {
-      if (depth === 0) {
-        const info = await readStlMesh(rawBaseStl);
-        setResult((r) => (r ? { ...r, stlBlob: rawBaseStl } : null));
-        setStlInfo({ triangles: info.triangles, dims: info.bbox, volumeCm3: info.volumeMm3 / 1000 });
-        setStlMesh({ tris: info.tris, count: info.count });
-        return;
-      }
-      const refBlob = cachedNormalBlob || imageBlob;
-      const refined = await refineMeshStl(rawBaseStl, refBlob, {
-        carveDepthMm: depth,
-        subdivideDetailZones: true,
-        taubinSmoothing: true,
-        gridResolution: 512,
-      });
+      const budget = isMock ? 0 : (preset.budget ?? 0);
+      const refined = await refineMeshStl(rawBaseStl, { smoothingStrength: strength, maxTriangles: budget });
       const info = await readStlMesh(refined.stlBlob);
-      setResult((r) => (r ? { ...r, stlBlob: refined.stlBlob } : null));
+      setResult((r) => (r ? { ...r, stlBlob: refined.stlBlob, triangles: refined.triangles } : null));
+      setRefineMeta(refined);
       setStlInfo({ triangles: info.triangles, dims: info.bbox, volumeCm3: info.volumeMm3 / 1000 });
       setStlMesh({ tris: info.tris, count: info.count });
+      setQuality(await meshQualityReport(refined.stlBlob, imageBlob));
     } catch (err) {
-      console.warn('Re-emboss error:', err);
+      console.warn('Refine error:', err);
     } finally {
-      setEmbossingBusy(false);
+      setRefining(false);
     }
   };
 
@@ -865,13 +765,42 @@ export default function Forge() {
             </div>
             <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2 font-mono text-[9.5px]">
               <span className="text-zinc-400">
-                {preset.steps} steps · {preset.octree}³ octree · {preset.reduceFace ? `Decimate to ${preset.targetFace.toLocaleString('en-IN')} faces` : 'Zero decimation (raw marching cubes)'}
+                {preset.steps} steps · {preset.octree}³ octree · {preset.reduceFace ? `Decimate to ${preset.targetFace.toLocaleString('en-IN')} faces` : `Raw isosurface · refine ≤ ${(preset.budget ?? 0).toLocaleString('en-IN')}`}
               </span>
               {!preset.reduceFace && (
                 <span className="text-emerald-300 font-semibold uppercase tracking-wider">
-                  ✦ Ultra-Detail Zero Decimation
+                  ✦ Ultra-Detail Raw Isosurface
                 </span>
               )}
+            </div>
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-2">
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Pipeline</span>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  onClick={() => setNormalBridgeOn((v) => !v)}
+                  title="Hi3DGen converts your image into a surface normal map that the mesh generator reads as geometry — sharper faces, no melted anatomy (one quick GPU call)"
+                  className={`rounded-lg border px-2.5 py-1 font-mono text-[10px] transition ${
+                    normalBridgeOn
+                      ? 'border-sky-400/40 bg-sky-400/15 text-sky-200 font-medium'
+                      : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Normal bridge {normalBridgeOn ? 'on' : 'off'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGuardOn((v) => !v)}
+                  title="If the forged silhouette barely matches your image (<55%), the forge auto-retries once on the next space of the chain"
+                  className={`rounded-lg border px-2.5 py-1 font-mono text-[10px] transition ${
+                    guardOn
+                      ? 'border-emerald-400/40 bg-emerald-400/15 text-emerald-200 font-medium'
+                      : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Quality guard {guardOn ? 'on' : 'off'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -976,7 +905,7 @@ export default function Forge() {
               </p>
               {!preset.reduceFace ? (
                 <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-emerald-300">
-                  ✦ Raw un-decimated isosurface · Zero decimation active
+                  ✦ Raw isosurface{preset.budget ? ` · refined ≤ ${preset.budget.toLocaleString('en-IN')}` : ' · zero decimation'}
                 </p>
               ) : stlInfo.triangles > 150000 ? (
                 <p className="mt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-amber-200/80">heavy mesh — slicer may lag</p>
@@ -988,173 +917,83 @@ export default function Forge() {
             </div>
           </div>
 
-          {/* Physical Sculpt Relief & Detail Carve (Pass 3 Live Tuning) */}
+          {/* Surface refinement (Pass 3 live tuning) */}
           <div className="mt-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-[11px] font-semibold text-zinc-100">
-                    ✦ Pass 3 · Detail Stamp & Facial Carve
+                    ✦ Pass 3 · Surface refinement
                   </span>
-                  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-300">
-                    {normalSpaceUsed ? `Bridge: ${normalSpaceUsed.split('/')[1] ?? normalSpaceUsed}` : 'High-Pass Relief'}
-                  </span>
+                  {condSource && (
+                    <span className="rounded-full border border-sky-400/30 bg-sky-400/[0.08] px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-sky-300">
+                      {condSource}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-0.5 text-[10px] text-zinc-400">
-                  Adaptive midpoint tessellation on head/crown + normal displacement with Taubin silhouette smoothing.
+                  Weld → Taubin denoise → error-bounded budget. Manifold, spike-free geometry.
                 </p>
               </div>
-
-              {/* Re-run Detail Pass Action Button */}
-              <button
-                type="button"
-                disabled={embossingBusy || !rawBaseStl}
-                onClick={() => void handleReEmboss(reliefDepthMm)}
-                className="flex items-center gap-1.5 rounded-xl border border-emerald-400/40 bg-emerald-400/15 px-3 py-1.5 font-mono text-[10.5px] font-semibold text-emerald-200 transition hover:bg-emerald-400/25 active:scale-95 disabled:opacity-50"
-              >
-                {embossingBusy ? (
-                  <>
-                    <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-emerald-300 border-t-transparent" />
-                    <span>Carving…</span>
-                  </>
-                ) : (
-                  <>
-                    <span>⚡</span>
-                    <span>Re-run Detail Pass</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Depth Slider & Direct Input Controls */}
-            <div className="mt-3 rounded-xl border border-white/[0.06] bg-black/30 p-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-300">
-                  Detail Carve Depth
+              {refining && (
+                <span className="flex items-center gap-1.5 font-mono text-[10px] text-emerald-300">
+                  <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-emerald-300 border-t-transparent" />
+                  refining…
                 </span>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    aria-label="Decrease Carve Depth"
-                    title="Decrease 0.1mm (Shift: 0.5mm)"
-                    disabled={embossingBusy || !rawBaseStl}
-                    onClick={(e) => {
-                      const delta = e.shiftKey ? -0.5 : -0.1;
-                      const next = Math.max(0, Math.min(2.5, Math.round((reliefDepthMm + delta) * 10) / 10));
-                      setReliefDepthMm(next);
-                      setReliefDraft(next.toFixed(1));
-                    }}
-                    className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-white/[0.04] font-mono text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95 disabled:opacity-40"
-                  >
-                    −
-                  </button>
-
-                  <div className="flex h-6 items-center rounded border border-emerald-500/30 bg-black/50 px-1.5 focus-within:border-emerald-400">
-                    <WheelInput
-                      ariaLabel="Carve Depth in millimeters"
-                      value={reliefDraft}
-                      onChange={(e) => {
-                        setReliefDraft(e.target.value);
-                        const n = parseFloat(e.target.value);
-                        if (!isNaN(n) && n >= 0 && n <= 2.5) {
-                          setReliefDepthMm(Math.round(n * 10) / 10);
-                        }
-                      }}
-                      onBlur={() => {
-                        const n = parseFloat(reliefDraft);
-                        const clamped = isNaN(n) ? 1.2 : Math.max(0, Math.min(2.5, Math.round(n * 10) / 10));
-                        setReliefDepthMm(clamped);
-                        setReliefDraft(clamped.toFixed(1));
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          (e.target as HTMLInputElement).blur();
-                          void handleReEmboss(reliefDepthMm);
-                        }
-                      }}
-                      onStep={(delta) => {
-                        const next = Math.max(0, Math.min(2.5, Math.round((reliefDepthMm + delta) * 10) / 10));
-                        setReliefDepthMm(next);
-                        setReliefDraft(next.toFixed(1));
-                      }}
-                      className="w-10 bg-transparent text-right font-mono text-[11px] font-semibold tabular-nums text-emerald-200 outline-none"
-                    />
-                    <span className="ml-1 font-mono text-[10px] text-emerald-300/70">mm</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    aria-label="Increase Carve Depth"
-                    title="Increase 0.1mm (Shift: 0.5mm)"
-                    disabled={embossingBusy || !rawBaseStl}
-                    onClick={(e) => {
-                      const delta = e.shiftKey ? 0.5 : 0.1;
-                      const next = Math.max(0, Math.min(2.5, Math.round((reliefDepthMm + delta) * 10) / 10));
-                      setReliefDepthMm(next);
-                      setReliefDraft(next.toFixed(1));
-                    }}
-                    className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-white/[0.04] font-mono text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white active:scale-95 disabled:opacity-40"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* Mouse-wheel scrollable range slider */}
-              <div className="mt-2.5 flex items-center gap-2">
-                <WheelSlider
-                  min={0.0}
-                  max={2.5}
-                  step={0.1}
-                  value={reliefDepthMm}
-                  onChange={(v) => {
-                    setReliefDepthMm(v);
-                    setReliefDraft(v.toFixed(1));
-                  }}
-                  onStep={(delta) => {
-                    const next = Math.max(0, Math.min(2.5, Math.round((reliefDepthMm + delta) * 10) / 10));
-                    setReliefDepthMm(next);
-                    setReliefDraft(next.toFixed(1));
-                  }}
-                  ariaLabel="Detail Carve Depth slider (mouse scrollable on hover)"
-                  className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/15 accent-emerald-400"
-                />
-              </div>
-
-              {/* Quick Preset Chips */}
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                {[
-                  { depth: 0, label: 'Off 0.0mm' },
-                  { depth: 0.6, label: 'Subtle 0.6mm' },
-                  { depth: 1.2, label: 'Chiseled 1.2mm' },
-                  { depth: 1.8, label: 'Deep 1.8mm' },
-                  { depth: 2.5, label: 'Max 2.5mm' },
-                ].map((opt) => (
-                  <button
-                    key={opt.depth}
-                    type="button"
-                    disabled={embossingBusy || !rawBaseStl}
-                    onClick={() => {
-                      setReliefDepthMm(opt.depth);
-                      setReliefDraft(opt.depth.toFixed(1));
-                      void handleReEmboss(opt.depth);
-                    }}
-                    className={`rounded-lg border px-2 py-1 font-mono text-[9.5px] transition active:scale-95 ${
-                      Math.abs(reliefDepthMm - opt.depth) < 0.05
-                        ? 'border-emerald-400/40 bg-emerald-400/20 text-emerald-200 font-semibold'
-                        : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06]'
-                    } disabled:opacity-50`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              )}
             </div>
 
-            {embossingBusy && (
-              <p className="mt-2 font-mono text-[9.5px] text-emerald-300 animate-pulse">
-                Subdividing facial triangles & physically carving displacement…
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-300">Denoise</span>
+              {([0, 1, 2, 3] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  disabled={refining || !rawBaseStl}
+                  onClick={() => void handleRefine(s)}
+                  className={`rounded-lg border px-2.5 py-1 font-mono text-[10px] transition active:scale-95 ${
+                    refineStrength === s
+                      ? 'border-emerald-400/40 bg-emerald-400/20 text-emerald-200 font-semibold'
+                      : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06]'
+                  } disabled:opacity-50`}
+                >
+                  {(['Off', 'Light', 'Medium', 'Strong'] as const)[s]}
+                </button>
+              ))}
+              {preset.budget ? (
+                <span className="font-mono text-[9.5px] text-zinc-500">budget ≤ {preset.budget.toLocaleString('en-IN')}</span>
+              ) : null}
+            </div>
+
+            {(refineMeta || quality) && (
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-white/[0.06] pt-2.5 font-mono text-[9.5px] tabular-nums">
+                {refineMeta && (
+                  <span className={refineMeta.manifold.closedPct >= 99 ? 'text-emerald-300' : refineMeta.manifold.closedPct >= 90 ? 'text-zinc-300' : 'text-amber-300'}>
+                    manifold {refineMeta.manifold.closedPct}%
+                  </span>
+                )}
+                {quality && (
+                  <span className={quality.silhouettePct == null ? 'text-zinc-500' : quality.silhouettePct >= 70 ? 'text-emerald-300' : quality.silhouettePct >= 55 ? 'text-zinc-300' : 'text-amber-300'}>
+                    silhouette {quality.silhouettePct == null ? 'n/a' : `${quality.silhouettePct}%`}
+                  </span>
+                )}
+                {refineMeta && (
+                  <span className="text-zinc-500">
+                    {refineMeta.simplified
+                      ? `${refineMeta.inputTriangles.toLocaleString('en-IN')} → ${refineMeta.triangles.toLocaleString('en-IN')} tris`
+                      : `${refineMeta.triangles.toLocaleString('en-IN')} tris`}
+                  </span>
+                )}
+                {quality && (
+                  <span className={quality.flatBasePct >= 2 ? 'text-emerald-300' : 'text-amber-300'}>
+                    base {quality.flatBasePct >= 2 ? 'flat' : `rounded · ${quality.flatBasePct}%`}
+                  </span>
+                )}
+              </div>
+            )}
+            {quality && quality.flatBasePct < 2 && (
+              <p className="mt-2 rounded-xl bg-amber-500/10 px-3 py-2 font-mono text-[10px] text-amber-200/90">
+                rounded base — Lay Flat in the STL Hub puts it print-ready on the plate
               </p>
             )}
           </div>
@@ -1213,9 +1052,9 @@ function ForgeHeader(props: { keysOpen: boolean; onToggleKeys: () => void; groqR
 function forgeStageLabel(status: string | null, busy: boolean): string {
   if (!busy && status) return 'Forged.';
   const s = status ?? 'probe';
-  if (s.startsWith('Pass 1')) return 'Pass 1 · Surface normal & depth extraction…';
+  if (s.startsWith('Pass 1')) return 'Pass 1 · Normal bridge conditioning…';
   if (s.startsWith('Pass 2')) return 'Pass 2 · Synthesizing base geometry…';
-  if (s.startsWith('Pass 3')) return 'Pass 3 · Facial tessellation & detail carve…';
+  if (s.startsWith('Pass 3')) return 'Pass 3 · Surface refinement…';
   const head = s.split(' · ')[0];
   if (head.startsWith('probe')) return 'Waking the space…';
   if (head.startsWith('shape')) return 'Forging on the GPU…';

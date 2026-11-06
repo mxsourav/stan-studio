@@ -5,9 +5,12 @@
  * Hanumanji):
  * - Draft: Fast low-step preview for pose validation.
  * - Production: Crisp statue detail with balanced decimation.
- * - Ultra HD: High-density 384³ octree with zero decimation.
+ * - Ultra HD: High-density 384³ octree with zero cloud decimation.
  * - Studio Master: Extreme commercial-grade fidelity with un-decimated raw
- *   isosurface marching cubes, 448³ octree, deep facial contours & filigree.
+ *   isosurface marching cubes, 512³ octree, deep facial contours & filigree.
+ *
+ * `budget` caps the LOCAL refined triangle count for zero-decimation presets
+ * (meshoptimizer, error-bounded — facial detail survives; slicer stays fast).
  */
 export interface ForgePreset {
   id: 'draft' | 'production' | 'ultra' | 'master';
@@ -18,6 +21,8 @@ export interface ForgePreset {
   reduceFace: boolean;
   guidance?: number;
   numChunks?: number;
+  /** Local triangle budget applied by Pass 3 surface refinement. */
+  budget?: number;
   hint: string;
 }
 
@@ -50,10 +55,11 @@ export const FORGE_PRESETS: Record<'draft' | 'production' | 'ultra' | 'master', 
     steps: 45,
     octree: 384,
     targetFace: 600000,
-    reduceFace: false, // ZERO DECIMATION: keeps raw marching cubes geometry
+    reduceFace: false, // ZERO cloud decimation: keeps raw marching cubes geometry
     guidance: 8.5,
     numChunks: 500000,
-    hint: 'high geometric density: 384³ octree, zero decimation, fine jewelry (~1 min)',
+    budget: 600000, // local error-bounded cap after refinement
+    hint: 'high geometric density: 384³ octree, raw isosurface, local refine ≤600k (~1 min)',
   },
   master: {
     id: 'master',
@@ -61,9 +67,10 @@ export const FORGE_PRESETS: Record<'draft' | 'production' | 'ultra' | 'master', 
     steps: 50,
     octree: 512, // maximum 512³ octree resolution
     targetFace: 1000000,
-    reduceFace: false, // ZERO DECIMATION: stops facial & finger polygon crushing
+    reduceFace: false, // ZERO cloud decimation: stops facial & finger polygon crushing
     guidance: 9.0,
     numChunks: 1000000,
-    hint: 'commercial-grade print fidelity: un-decimated raw isosurface, 512³ octree, deep facial contours & filigree (2–3+ min)',
+    budget: 750000, // local error-bounded cap after refinement
+    hint: 'commercial-grade print fidelity: raw 512³ isosurface, deep facial contours, local refine ≤750k (2–3+ min)',
   },
 };
