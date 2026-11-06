@@ -116,6 +116,10 @@ export default function Forge() {
   const [imageObjectUrl, setImageObjectUrl] = useState<string | null>(null);
   const [imgErr, setImgErr] = useState<string | null>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const directUploadRef = useRef<HTMLInputElement>(null);
+  // Generation epoch: any newer user action (upload / regenerate) invalidates
+  // an in-flight pollinations fetch so it can NEVER clobber the user's image
+  const genEpochRef = useRef(0);
 
   const [meshBusy, setMeshBusy] = useState(false);
   const [meshStatus, setMeshStatus] = useState<string | null>(null);
@@ -176,37 +180,56 @@ export default function Forge() {
   // ── Stage 2: statue view ──
   const doGenerateImage = async () => {
     if (!enhanced) return;
+    const epoch = ++genEpochRef.current; // any upload/regenerate invalidates this run
     setImageBusy(true);
     setImgErr(null);
     setImageBlob(null);
     try {
+      let blob: Blob;
+      let url: string;
       if (isMock) {
-        const blob = await (await fetch('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPcv2P9fwAH1QM7dEKEpAAAAABJRU5ErkJggg==')).blob();
-        setImageBlob(blob);
-        setImageObjectUrl(URL.createObjectURL(blob));
-        return;
+        blob = await (await fetch('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPcv2P9fwAH1QM7dEKEpAAAAABJRU5ErkJggg==')).blob();
+        url = URL.createObjectURL(blob);
+      } else {
+        url = genImageUrl(enhanced.imagePrompt, imageSeed);
+        blob = await fetchImageBlob(url);
       }
-      const url = genImageUrl(enhanced.imagePrompt, imageSeed);
-      const blob = await fetchImageBlob(url);
+      if (epoch !== genEpochRef.current) return; // stale — the user already picked another image
       setImageBlob(blob);
       setImageObjectUrl(url);
     } catch (err) {
+      if (epoch !== genEpochRef.current) return;
       setImgErr(err instanceof Error ? err.message : 'image generation failed');
     } finally {
-      setImageBusy(false);
+      if (epoch === genEpochRef.current) setImageBusy(false);
     }
   };
 
   const onUploadOverride = async (file: File | undefined | null) => {
     if (!file) return;
+    ++genEpochRef.current; // kill any in-flight generation — the user's image wins
     setImageBlob(file);
     setImageObjectUrl(URL.createObjectURL(file));
+    setImgErr(null);
+    setImageBusy(false);
+    setStage(2);
+  };
+
+  /** Direct upload from the IDEA stage — a real photo skips AI generation. */
+  const onDirectUpload = async (file: File | undefined | null) => {
+    if (!file) return;
+    ++genEpochRef.current;
+    setImageBlob(file);
+    setImageObjectUrl(URL.createObjectURL(file));
+    setImgErr(null);
+    setImageBusy(false);
     setStage(2);
   };
 
   // ── Stage 3: forge the mesh ──
   const doForge = async () => {
-    if (!imageBlob || !enhanced) return;
+    if (!imageBlob) return;
+    const caption = enhanced?.caption ?? (idea.trim().replace(/\s+/g, ' ').slice(0, 90) || 'idol statue from photo');
     const t0 = Date.now();
     setMeshStartedAt(t0);
     setEventLog([]);
@@ -229,7 +252,7 @@ export default function Forge() {
       } else {
         out = await forgeMesh({
           imageBlob,
-          caption: enhanced.caption,
+          caption,
           hfToken,
           nimToken: nimKey,
           preset,
@@ -337,7 +360,7 @@ export default function Forge() {
           {enhanced ? (
             <div className="mt-4 border-t border-white/[0.08] pt-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">
-                Sculpted prompt {enhanced.usedGroq ? '· groq llama-3.3' : '· offline template'}
+                Sculpted prompt {enhanced.usedGroq ? '· groq sculpted' : '· offline template'}
               </p>
               <textarea
                 value={enhanced.imagePrompt}
@@ -392,6 +415,28 @@ export default function Forge() {
               {enhBusy ? 'Sculpting…' : 'Sculpt the prompt'}
             </button>
           )}
+
+          {/* direct upload — a real photo skips AI generation entirely */}
+          <div className="mt-3 flex items-center gap-3">
+            <span aria-hidden className="h-px min-w-4 flex-1 bg-white/10" />
+            <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-600">or skip the ai image</span>
+            <span aria-hidden className="h-px min-w-4 flex-1 bg-white/10" />
+          </div>
+          <input
+            ref={directUploadRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => void onDirectUpload(e.target.files?.[0])}
+          />
+          <button
+            type="button"
+            onClick={() => directUploadRef.current?.click()}
+            className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-[11.5px] font-semibold uppercase tracking-wider text-zinc-200 transition hover:bg-white/[0.1] active:scale-[0.99]"
+          >
+            <IconUpload size={13} />
+            Forge from my own image
+          </button>
           {enhErr && <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2 font-mono text-[10.5px] text-amber-200/90">{enhErr}</p>}
           {!groqReady && !enhErr && (
             <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.1em] text-zinc-600">
