@@ -19,9 +19,10 @@ const PRINT_RULES = [
   'A flat, connected lotus / pedestal base under the figure (the print sits on it).',
   'Deep relief carvings only — never through-holes or open cutouts.',
   'Front-facing orthographic view, centered, full figure visible with margin.',
-  'White marble / carved stone sculpture style, matte, monochrome.',
-  'Solid flat light-gray background, no environment, no harsh shadows, soft diffused studio light.',
-  'Photo-realistic 3D render quality, sharp silhouette against the background (asset-friendly).',
+  'Exquisite digital clay sculpture / matte stone temple carving style, high-end ZBrush clay render fidelity, monochrome warm-gray.',
+  'Hyper-detailed micro-relief: sharp ornate mukut crown filigree, kantha necklace beads, bajuband armlets, well-defined closed eyelids and serene facial anatomy, crisp flowing drapery folds, defined lotus petals.',
+  'Solid flat light-gray background, no environment, no harsh shadows, soft diffused studio lighting with subtle ambient occlusion.',
+  'Razor-sharp geometric edges and high contrast contours for 3D reconstruction.',
 ];
 
 const SYSTEM_PROMPT = `You are the prompt sculptor for an AI 3D-printing studio that prints Hindu deities and temple architecture in solid white PLA on FDM printers.

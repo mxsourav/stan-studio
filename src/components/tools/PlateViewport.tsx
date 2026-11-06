@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { sessionMeshCache } from '../../lib/stlThumb';
 import { readStlMesh } from '../../lib/stl';
@@ -291,7 +292,7 @@ export default function PlateViewport({
       // Base geometry builder (session cache → IndexedDB revival)
       const buildBase = (tris: Float64Array, count: number): THREE.BufferGeometry | null => {
         if (count <= 0) return null;
-        const cap = 450_000;
+        const cap = 2_000_000;
         const stride = Math.max(1, Math.ceil(count / cap));
         const n = Math.floor(count / stride);
         if (n <= 0) return null;
@@ -300,9 +301,12 @@ export default function PlateViewport({
           const o = i * stride * 9;
           arr.set(tris.subarray(o, o + 9), i * 9);
         }
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
-        geo.computeVertexNormals();
+        const rawGeo = new THREE.BufferGeometry();
+        rawGeo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+        const welded = BufferGeometryUtils.mergeVertices(rawGeo, 1e-4);
+        rawGeo.dispose();
+        const geo = BufferGeometryUtils.toCreasedNormals(welded, (45 * Math.PI) / 180);
+        welded.dispose();
         geo.computeBoundingBox();
         const bb = geo.boundingBox;
         if (!bb) {
@@ -311,6 +315,7 @@ export default function PlateViewport({
         }
         modelRadiusRef.current = Math.hypot(bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z) / 2 || 1;
         geo.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
+        geo.computeBoundingBox();
         return geo;
       };
 

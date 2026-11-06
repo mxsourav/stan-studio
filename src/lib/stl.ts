@@ -80,7 +80,7 @@ function parseAscii(text: string, fileName: string): { fileName: string; triangl
  * odd axis permutation flips triangle winding — restore it by swapping two
  * vertices per triangle, or every face shades inverted.
  */
-function normalizeAxes(tris: Float64Array, count: number): void {
+export function normalizeAxes(tris: Float64Array, count: number): void {
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (let i = 0; i < count; i++) {
     const o = i * 9;
@@ -144,7 +144,6 @@ export async function readStlMesh(file: File | Blob): Promise<StlMesh> {
     if (!/^\s*solid/i.test(text)) throw new Error('Not a valid STL file (binary or ASCII)');
     parsed = parseAscii(text, name);
   }
-  normalizeAxes(parsed.tris, parsed.count);
   return { ...parsed, ...meshStats(parsed.tris, parsed.count) };
 }
 

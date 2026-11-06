@@ -110,7 +110,7 @@ export default function Forge() {
 
   const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
   const [idea, setIdea] = useState('');
-  const [presetId, setPresetId] = useState<'draft' | 'production' | 'ultra'>('production');
+  const [presetId, setPresetId] = useState<'draft' | 'production' | 'ultra' | 'master'>('master');
   const [enhanced, setEnhanced] = useState<EnhancedPrompt | null>(null);
   const [enhBusy, setEnhBusy] = useState(false);
   const [enhErr, setEnhErr] = useState<string | null>(null);
@@ -388,7 +388,7 @@ export default function Forge() {
               <p className="mt-1.5 font-mono text-[10px] tabular-nums text-zinc-500">caption: {enhanced.caption}</p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-zinc-400">Mode</span>
-                {(Object.keys(FORGE_PRESETS) as Array<'draft' | 'production' | 'ultra'>).map((id) => (
+                {(Object.keys(FORGE_PRESETS) as Array<'draft' | 'production' | 'ultra' | 'master'>).map((id) => (
                   <button
                     key={id}
                     type="button"

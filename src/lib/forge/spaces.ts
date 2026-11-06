@@ -243,7 +243,7 @@ async function runNimTrellis(input: ForgeRunInput): Promise<ForgeMeshResult> {
   onEvent({ stage: 'probe', space: 'NVIDIA TRELLIS (NIM)' });
   const dataUrl = await blobToDataUrl(imageBlob);
   onEvent({ stage: 'shape', space: 'NVIDIA TRELLIS (NIM)' });
-  const steps = preset.id === 'production' ? { ss: 25, slat: 25 } : { ss: 12, slat: 16 };
+  const steps = preset.id === 'master' || preset.id === 'ultra' ? { ss: 35, slat: 35 } : preset.id === 'production' ? { ss: 25, slat: 25 } : { ss: 12, slat: 16 };
   const res = await fetch(NIM_PROXY, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -332,10 +332,17 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
               octree_resolution: preset.octree,
               check_box_rembg: true,
               randomize_seed: true,
-              guidance_scale: 5.0,
-              num_chunks: 200000,
+              guidance_scale: preset.guidance ?? 8.0,
+              num_chunks: 250000,
             }
-          : { image: handle_file(imageBlob), seed: 0 };
+          : {
+              image: handle_file(imageBlob),
+              seed: 0,
+              ss_sampling_steps: preset.steps,
+              slat_sampling_steps: preset.steps,
+              ss_guidance_scale: preset.guidance ?? 7.5,
+              slat_guidance_scale: 3.0,
+            };
       const shapeData = await runJob(client, space.kind === 'hunyuan' ? '/shape_generation' : '/image_to_3d', buildPayload(shapeParams, shapeOverrides), onEvent, space.id, signal);
 
       // REFINEMENT 1 — cache the mesh blob IMMEDIATELY (quota never wasted)
