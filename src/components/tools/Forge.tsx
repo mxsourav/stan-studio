@@ -164,12 +164,40 @@ export default function Forge() {
   const [nimKey, setNimKey] = useState('');
   const [tripoKey, setTripoKey] = useState('');
   const [keysSaved, setKeysSaved] = useState(false);
+  const [keysImported, setKeysImported] = useState(false);
 
   useEffect(() => {
     setGroqKey(getForgeKey('groq'));
     setHfToken(getForgeKey('hf'));
     setNimKey(getForgeKey('nim'));
     setTripoKey(getForgeKey('tripo'));
+  }, []);
+
+  // One-time key import via URL fragment (#import-keys=<base64 json>) — the
+  // operator pastes/links the keys once; the fragment never reaches the
+  // server and is wiped from the address bar immediately after consumption.
+  useEffect(() => {
+    const m = window.location.hash.match(/^#import-keys=([A-Za-z0-9+/=]+)$/);
+    if (!m) return;
+    try {
+      const parsed = JSON.parse(atob(m[1])) as Record<string, unknown>;
+      const slot: Record<string, 'groq' | 'hf' | 'nim' | 'tripo'> = { groq: 'groq', hf: 'hf', nim: 'nim', tripo: 'tripo' };
+      const values: Partial<Record<'groq' | 'hf' | 'nim' | 'tripo', string>> = {};
+      for (const [k, v] of Object.entries(parsed)) {
+        if (slot[k] && typeof v === 'string' && v.length >= 8 && v.length < 400) values[slot[k]] = v;
+      }
+      if (Object.keys(values).length > 0) {
+        setForgeKeys(values);
+        setGroqKey(getForgeKey('groq'));
+        setHfToken(getForgeKey('hf'));
+        setNimKey(getForgeKey('nim'));
+        setTripoKey(getForgeKey('tripo'));
+        setKeysImported(true);
+      }
+    } catch {
+      /* malformed fragment — ignore */
+    }
+    history.replaceState(null, '', window.location.pathname + window.location.search);
   }, []);
 
   const preset = FORGE_PRESETS[presetId];
@@ -487,6 +515,11 @@ export default function Forge() {
         nimReady={nimReady}
         tripoReady={tripoReady}
       />
+      {keysImported && (
+        <p className="mt-2 rounded-xl bg-emerald-500/10 px-3 py-2 font-mono text-[10.5px] text-emerald-200/90">
+          keys imported — header line should read groq ✓ · hf ✓ · nim ✓ · tripo ✓
+        </p>
+      )}
       {keysOpen && (
         <KeysDrawer
           groqKey={groqKey}
