@@ -520,7 +520,7 @@ export default function Forge() {
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
             rows={3}
-            placeholder="e.g. Lord Ganesha seated on a lotus, four arms, ornate crown"
+            placeholder="e.g. Ganesha idol on a lotus, or a diya stand with om engraving"
             className="mt-2.5 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-3 text-[13px] leading-relaxed text-zinc-100 placeholder:text-zinc-500 outline-none transition focus:border-white/30"
           />
           {enhanced ? (

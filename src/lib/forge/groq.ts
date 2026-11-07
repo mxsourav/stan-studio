@@ -1,10 +1,12 @@
 /**
  * 3D Forge — Stage 1: LLM prompt sculptor (Groq llama-3.3-70b, free tier).
- * Rewrites a raw idol idea into a print-optimized statue prompt AND a short
- * Hunyuan3D caption. The system prompt hard-encodes FDM print geometry rules
- * so generated statues survive a real printer (approved spec 2026-11-06):
- * thick sturdy forms, nothing thin/floating detached from the body, a flat
- * connected base, deep-relief (not through-hole) carving.
+ * Rewrites a raw idea into a print-optimized image prompt AND a short
+ * image-to-3D caption. The system prompt hard-encodes FDM print geometry
+ * rules so generated pieces survive a real printer (approved spec
+ * 2026-11-06, décor retune 2026-11-07): thick sturdy forms, nothing
+ * thin/floating detached, a flat connected base, deep-relief carving — and
+ * an explicit NEVER-an-action-figure rule: the studio prints decorative
+ * showpieces and idols, never toys.
  */
 
 const MODEL = 'qwen/qwen3.8-27b'; // llama-3.3 left Groq's free tier — Qwen is the active slot
@@ -18,25 +20,33 @@ const PRINT_RULES = [
   'Thick sturdy geometry — no thin free-floating weapons/tridents/objects; any held item must merge into the body or rest on the base.',
   'A flat, connected lotus / pedestal base under the figure (the print sits on it).',
   'Deep relief carvings only — never through-holes or open cutouts.',
-  'Front-facing orthographic view, centered, full figure visible with margin.',
+  // — style rules: templateEnhance injects everything from this index —
+  'Front-facing orthographic view, centered, full subject visible with margin.',
+  'NEVER an action figure or toy: no articulated joints, no cartoon proportions, no oversized head, no display box, no figurine stand or plinth plate, no brand or character styling.',
+  'Decorative showpieces must read as elegant home / pooja-room décor: stable wide base for shelf or table placement, sculptural silhouette, graceful curves that survive FDM printing.',
+  'Engravings, jaali lattices, mandala / om / floral ornament are welcome as deep relief on idols and décor alike.',
   'Exquisite digital clay sculpture / matte stone temple carving style, high-end ZBrush clay render fidelity, monochrome warm-gray.',
-  'Hyper-detailed micro-relief: sharp ornate mukut crown filigree, kantha necklace beads, bajuband armlets, well-defined closed eyelids and serene facial anatomy, crisp flowing drapery folds, defined lotus petals.',
+  'Hyper-detailed micro-relief where the subject calls for it: ornate crown filigree, necklace beads, armlets, serene facial anatomy, crisp drapery folds, defined lotus petals — or crisp engraved ornament on décor pieces.',
   'Solid flat light-gray background, no environment, no harsh shadows, soft diffused studio lighting with subtle ambient occlusion.',
   'Razor-sharp geometric edges and high contrast contours for 3D reconstruction.',
 ];
 
-const SYSTEM_PROMPT = `You are the prompt sculptor for an AI 3D-printing studio that prints Hindu deities and temple architecture in solid white PLA on FDM printers.
+const SYSTEM_PROMPT = `You are the prompt sculptor for an AI 3D-printing studio that prints devotional idols AND elegant decorative showpieces — diya stands, oil lamps, incense holders, vases, bells, urli bowls, wall panels, torans, name plates — in solid white PLA on FDM printers.
 
-Given a raw idol idea, respond with JSON:
+First classify the user's idea: "deity idol", "devotional décor", or "decorative object". Shape the imagePrompt for that class:
+- deity idol → keep iconography exact (attributes, posture, mount, expression).
+- decorative object → emphasize form, symmetry, engraved ornament, the surface it lives on (wall, desk, table), and printability. Do not invent a figure unless the idea names one.
+
+Given the idea, respond with JSON:
 {
   "imagePrompt": "one paragraph for a text-to-image model, following every PRINT RULE below",
-  "caption": "max 12 words describing the SUBJECT ONLY (e.g. 'Lord Ganesha seated on lotus, four arms, ornate crown') for an image-to-3D model"
+  "caption": "max 12 words describing the SUBJECT ONLY (e.g. 'Lord Ganesha seated on lotus, four arms, ornate crown' or 'brass-style diya stand with engraved om, wide stable base') for an image-to-3D model"
 }
 
 PRINT RULES (mandatory):
 ${PRINT_RULES.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 
-Keep the imagePrompt under 90 words, comma-separated descriptors, no sentences like "this shows". Keep the deity's iconography accurate (attributes, posture, mount).`;
+Keep the imagePrompt under 90 words, comma-separated descriptors, no sentences like "this shows".`;
 
 export interface EnhancedPrompt {
   imagePrompt: string;
