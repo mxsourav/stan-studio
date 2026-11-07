@@ -842,7 +842,7 @@ export async function forgeMesh(input: ForgeRunInput): Promise<ForgeMeshResult> 
     .join(' · ');
   throw new Error(
     `every space failed — ${summary || lastErr.message}. ` +
-    `This exact pattern — every space ending silently — also matches an exhausted Hugging Face GPU quota (the free tier resets 24h AFTER your first forge, not at midnight) or an expired token. ` +
-    `Add an NVIDIA key in Settings for the quota-backup engine.`,
+    `This exact pattern — every space ending silently — also matches an exhausted Hugging Face GPU quota (the free tier resets 24h AFTER your first forge, not at midnight) or a stale token. ` +
+    `Check the key line in the header: it must read groq ✓ · hf ✓ · nim ✓ · tripo ✓ — if hf shows —, re-paste the fresh token in Settings. The Tripo backup fires automatically once its key is set.`,
   );
 }
