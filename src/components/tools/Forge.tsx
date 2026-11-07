@@ -124,7 +124,7 @@ export default function Forge() {
   const [enhancingImage, setEnhancingImage] = useState(false);
   const [refineStrength, setRefineStrength] = useState<0 | 1 | 2 | 3>(2);
   const [refining, setRefining] = useState(false);
-  const [normalBridgeOn, setNormalBridgeOn] = useState(true);
+  const [normalBridgeOn, setNormalBridgeOn] = useState(false);
   const [guardOn, setGuardOn] = useState(true);
   const [condSource, setCondSource] = useState<string | null>(null);
   const [refineMeta, setRefineMeta] = useState<Omit<RefineMeshResult, 'stlBlob'> | null>(null);
@@ -790,7 +790,7 @@ export default function Forge() {
                 <button
                   type="button"
                   onClick={() => setNormalBridgeOn((v) => !v)}
-                  title="Hi3DGen converts your image into a surface normal map that the mesh generator reads as geometry — sharper faces, no melted anatomy (one quick GPU call)"
+                  title="Experimental: feed the generator a Hi3DGen surface normal map instead of your image. A/B-tested worse on Hunyuan (fatter, blobbier meshes) — keep off unless experimenting"
                   className={`rounded-lg border px-2.5 py-1 font-mono text-[10px] transition ${
                     normalBridgeOn
                       ? 'border-sky-400/40 bg-sky-400/15 text-sky-200 font-medium'
