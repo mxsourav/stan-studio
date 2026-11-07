@@ -263,6 +263,14 @@ export function glbBlobToStl(blob: Blob, signal?: AbortSignal): Promise<LocalExp
       .arrayBuffer()
       .then((buffer) => {
         if (signal?.aborted) return reject(new Error('aborted'));
+        // GLB magic check — a preview image (webp/png) masquerading as the
+        // model makes GLTFLoader JSON-parse the bytes and fail cryptically
+        if (buffer.byteLength >= 4) {
+          const magic = new Uint8Array(buffer, 0, 4);
+          if (!(magic[0] === 0x67 && magic[1] === 0x6c && magic[2] === 0x54 && magic[3] === 0x46)) {
+            return reject(new Error('not a GLB — the space returned an image or unknown file'));
+          }
+        }
         loader.parse(
           buffer,
           '',

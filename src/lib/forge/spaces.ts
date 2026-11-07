@@ -228,6 +228,11 @@ async function runJob(
 }
 
 function findFileData(data: unknown[]): { url: string; path: string; raw: unknown } | null {
+  // Spaces often emit a preview IMAGE (webp/png) alongside the actual model
+  // — collecting every candidate and scoring by extension picks the mesh,
+  // not the render (a WebP here used to crash GLTFLoader into a cryptic
+  // 'Unexpected token R' JSON error).
+  const candidates: Array<{ url: string; path: string; raw: unknown; score: number }> = [];
   const queue: unknown[] = [...data];
   while (queue.length > 0) {
     const item = queue.shift();
@@ -238,7 +243,9 @@ function findFileData(data: unknown[]): { url: string; path: string; raw: unknow
     const path = typeof record['path'] === 'string' ? record['path'] : '';
 
     if (path || url) {
-      return { url, path, raw: record };
+      const ext = (path || url).split('?')[0].split('.').pop()?.toLowerCase() ?? '';
+      const score = /^(glb|gltf|obj|stl)$/.test(ext) ? 2 : /^(webp|png|jpg|jpeg|gif|mp4)$/.test(ext) ? 0 : 1;
+      candidates.push({ url, path, raw: record, score });
     }
 
     if (record['value'] && typeof record['value'] === 'object') {
@@ -251,7 +258,9 @@ function findFileData(data: unknown[]): { url: string; path: string; raw: unknow
       }
     }
   }
-  return null;
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0];
 }
 
 async function downloadFile(file: { url: string; path: string }, subdomain: string, signal?: AbortSignal): Promise<Blob> {
