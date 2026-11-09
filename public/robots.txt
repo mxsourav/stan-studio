@@ -1,0 +1,22 @@
+# Robots.txt for STΔN studio. (studio.mxsourav.dev)
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+User-agent: Googlebot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+# Host & Sitemap
+Host: https://studio.mxsourav.dev
+Sitemap: https://studio.mxsourav.dev/sitemap.xml
