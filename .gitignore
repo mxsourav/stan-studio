@@ -12,6 +12,7 @@ desktop.ini
 # Dependencies
 node_modules/
 dist/
+*.tsbuildinfo
 
 # Vercel
 .vercel
